@@ -1,16 +1,6 @@
-% Vorlage für eine Bachelorarbeit
-% Siehe auch LaTeX-Kurs von Mathematik-Online
-% www.mathematik-online.org/kurse
-% Anpassungen für die Fakultät für Mathematik
-% am KIT durch Klaus Spitzmüller und Roland Schnaubelt Dezember 2011
-
 \documentclass[12pt,a4paper]{scrartcl}
-% scrartcl ist eine abgeleitete Artikel-Klasse im Koma-Skript
-% zur Kontrolle des Umbruchs Klassenoption draft verwenden
-%\includeonly{chapter4}
-
 \usepackage{fontspec}
-\usepackage[ngerman,english]{babel}
+\usepackage[english,ngerman]{babel}
 \usepackage[style=alphabetic]{biblatex}
 \bibliography{report}
 
@@ -26,8 +16,8 @@
 \usepackage[amsmath,hyperref,amsthm,thmmarks]{ntheorem}
 
 %\usepackage{mathpazo}
-%\usepackage{enumitem}
-%\usepackage{etoolbox}
+\usepackage{enumitem}
+\usepackage{etoolbox}
 \usepackage{libertine}
 
 %\usepackage{longtable}
@@ -37,16 +27,16 @@
 \usepackage{hyperref}
 \usepackage{caption}%%Improves links to figures: Will show whole figure and not just the caption
 \usepackage[nameinlink,capitalise]{cleveref}
-\usepackage{soul} %%for underlining categorynames
+%\usepackage{soul} %%for underlining categorynames
 
 \usepackage[usenames,dvipsnames]{xcolor}
 \usepackage[scale=0.8]{geometry}
 
-% symbol packages
 %\usepackage{wasysym}
 %\usepackage{stmaryrd}
+\usepackage{csquotes}
 \usepackage{todonotes}
-\usepackage{mathtools,leftidx}
+%\usepackage{mathtools,leftidx}
 \usepackage[shortcuts]{extdash} %for no breaking lines at hyphenation
 \usepackage{mleftright}%%for better spacing aroung big brackets
 \mleftright
@@ -272,8 +262,3 @@ Københavns Universitet (KU)
 \listoftodos[Notes]
 
 \end{document}
-
-% Local Variables:
-% TeX-engine: xetex
-% TeX-command-extra-options: "-shell-escape"
-% End:
