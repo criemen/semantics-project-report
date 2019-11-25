@@ -10,7 +10,82 @@ Sed aliquam id nibh sit amet volutpat. Maecenas lobortis velit sed ante congue, 
 \subsection{Static Analysis}
 \subsection{Description of CodeQL}
 Quick history overview
+
+\subsection{Architecture Outline}
+% TODO check again
+In this section, we will give a short overview of the CodeQL architecture, as well as where our
+project fits in. We describe the extraction process where source code is turned into a relational database,
+as well as the QL language and the libraries supporting the queries.
+
+In order to analyze source code, it first needs to be processed into a database representation.
+For each language an \emph{extractor} parses the source code and outputs a database file.
+The extractor is language specific and usually hooks into a (possibly modified) compiler for that language.
+The output of the extractor is a relational database in a language-specific \emph{database schema}.
+This database schema evolves along with the language, as well as extractor capabilities.
+For example, the Java database schema changed when preliminary support for the Java 13 yield statement was
+added to the extractor.
+
+The \emph{database engine} allows users to query the database file produced by the extractor.
+Queries are written in the QL language.
+Both the database engine and the QL language are agnostic to the language the analyzed source code 
+is written in.
+This allows developers at Github with relative easy to add support for new languages to the CodeQL ecosystem.
+In theory, QL queries are also independent of the language the analyzed source code is written.
+However in practice queries are always tied intimately to the language of the analyzed source code,
+as they depend on the language-specific database schema.
+Furthermore, queries can't gloss over language-specific semantics either - one examples of many would be
+that signed integer overflow needs to be treated differently in Java than in C/C++.
+
+Queries for each language are supported by a set of \emph{libraries}, implemented in QL.
+These libraries implement features such as traint tracking, dataflow analysis or control flow graphs.
+For every supported language by the CodeQL analyzers, developers need to re-implement all of these libraries from
+scratch, as components can't be shared across languages.
+The only exception is the dataflow library, which is separated into a language-agnostic and 
+language-specific part.
+This language-agnostic part of the dataflow library is shared between the libraries for Java, C/C++ and C\#.
+
+Using those libraries, developers at Github  write \emph{queries} to detect bugs in the analyzed program.
+For example, one query detects when a variable access in Java might be null.
+Another query detects if untrusted user input ends up in a SQL query, without the user input being 
+sanitized properly for use in a database query.
+Queries often rely on the supporting libraries to do the heavy lifting, e.g.\ the SQL injection detection 
+is built on top of the dataflow library.
+
+% TODO
+The queries are accessible to researchers in academia and all open-source projects free of charge 
+via the \href{https://LGTM.com}{LGTM.com} online platform and the CodeQL CLI utility . % TODO font for LGTM
+
+
+The whole set of queries and their supporting libraries are open-source and published on Github\footnote{\url{https://github.com/Semmle/ql}}.
+
+% Every language has its own extractor, which parses source code into the language-specif%ic database scheme.
+% TODO? This database scheme evolves together with the language and extractor, 
+%The queries and the supporting libraries are all specific to the language being analyzed,
+%only the evaluator
+
+\subsection{Philosophy}
+
+
 \cite{qlpaper}
+\subsection{Evaluation Model}
+Every predicate is computed bottoms-up, so when a predicate is encountered, its
+tuple set is computed.
+Recursive predicates are computed as fixed-point iterations, meaning that the database engine 
+first adds the tuple sets arising from the base cases, and then from the recursive cases, until
+no more tuples can be added. (TODO improve).
+Mutual recursions are 
+
+Another useful feature of QL is that it includes syntactic sugar to compute the reflexive-transitive
+and the transitive closure of predicates.
+For example, a predicate \texttt{getSucc} on control flow nodes gives the set of all reachable
+nodes by invoking \texttt{getSucc*}.
+
+\subsection{QL And Relational Database TODO title}
+At the heart of QL lives a relational database, and QL is designed to query a relational database.
+Every predicate, the basic notion of a BLA, can be regarded as a tuple
+
+
+
 
 \newpage
 \section{Description of Dataflow Library}
@@ -19,6 +94,9 @@ TODO: I have no idea about this part yet
 \newpage
 \section{Call Sensitivity}
 \subsection{Motivation}
+Programmers sometimes write functions in their code 
+
+
 \subsection{Description of Implementation}
 \subsection{Sketch of Correctness proof?}
 
@@ -27,6 +105,7 @@ TODO: I have no idea about this part yet
 \subsection{Motivation}
 \subsection{Description of Implementation}
 \subsection{Sketch of correctness proof}
+
 
 
 
