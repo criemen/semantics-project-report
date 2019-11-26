@@ -30,14 +30,12 @@ The \emph{database engine} allows users to query the database file produced by t
 Queries are written in the QL language.
 Both the database engine and the QL language are agnostic to the language the analyzed source code 
 is written in.
-This allows developers at Github with relative easy to add support for new languages to the CodeQL ecosystem.
+This allows developers at GitHub with relative easy to add support for new languages to the CodeQL ecosystem.
 In theory, QL queries are also independent of the language the analyzed source code is written.
 However in practice queries are always tied intimately to the language of the analyzed source code,
 as they depend on the language-specific database schema.
 Furthermore, queries can't gloss over language-specific semantics either - one examples of many would be
 that signed integer overflow needs to be treated differently in Java than in C/C++.
-
-
 
 Queries for each language are supported by a set of \emph{libraries}, implemented in QL.
 These libraries implement features such as traint tracking, dataflow analysis or control flow graphs.
@@ -47,19 +45,29 @@ The only exception is the dataflow library, which is separated into a language-a
 language-specific part.
 This language-agnostic part of the dataflow library is shared between the libraries for Java, C/C++ and C\#.
 
-Using those libraries, developers at Github  write \emph{queries} to detect bugs in the analyzed program.
+Using those libraries, developers at GitHub  write \emph{queries} to detect bugs in the analyzed program.
 For example, one query detects when a variable access in Java might be null.
 Another query detects if untrusted user input ends up in a SQL query, without the user input being 
 sanitized properly for use in a database query.
 Queries often rely on the supporting libraries to do the heavy lifting, e.g.\ the SQL injection detection 
 is built on top of the dataflow library.
 
+
 % TODO
 The queries are accessible to researchers in academia and all open-source projects free of charge 
 via the \href{https://LGTM.com}{LGTM.com} online platform and the CodeQL CLI utility . % TODO font for LGTM
+Bugs can be reported via the issue tracker and the project takes pull requests.
 
 
-The whole set of queries and their supporting libraries are open-source and published on Github\footnote{\url{https://github.com/Semmle/ql}}.
+All queries as well as their supporting libraries are open-source and published 
+on GitHub\footnote{\url{https://github.com/Semmle/ql}}.
+The extractors and the query engine are available only in compiled form under a 
+very restrictive license\footnote{\url{https://github.com/github/codeql-cli-binaries}}.
+
+Our project outside the course scope contributes improvements to the dataflow library,
+both the shared and the language-specific part. We only implemented the language-specific 
+functionality, and an GitHub employee provided stubs for C/C++ and C\#.
+The individual features are discussed in the next chapters.
 
 % Every language has its own extractor, which parses source code into the language-specif%ic database scheme.
 % TODO? This database scheme evolves together with the language and extractor, 
@@ -67,6 +75,18 @@ The whole set of queries and their supporting libraries are open-source and publ
 %only the evaluator
 
 \subsection{Philosophy}
+Using static analysis for bug finding is lacking in the theoretical foundation - 
+analyses are usually neither sound nor complete.
+This means that a query can report \emph{false positives}, problems flagged by the query that 
+are not bugs at all.
+Furthermore, queries can also not report instances of a bug which are present in the code,
+that instance is then called a \emph{false negative}.
+Obviously both false positives and negatives are not desirable, but static analyzers go a long way
+to reduce false positives as a means to reduce noise.
+If false positives are reduced, almost every problem flagged by an analysis is a real bug.
+This makes the static analyzer a very useful tool.
+% TODO reword
+% TODO general thing
 
 
 \cite{qlpaper}
@@ -97,11 +117,38 @@ TODO: I have no idea about this part yet
 \newpage
 \section{Call Sensitivity}
 \subsection{Motivation}
-Programmers sometimes write functions in their code 
+TODO: as discussed above, the dataflow library reports 
+
+% TODO intro
+Programmers write functions in their code which change their behaviour based on 
+a boolean parameter.
+Then on the call sites, sometimes a boolean literal is used to determine the behaviour
+of the subroutine.
+In pseudo-code, this looks like this:
+\begin{minted}{java}
+        fun A(bool param) {
+            if(param) {
+                // do great thing $A_1$
+            }
+            else {
+                // do great thing $A_2$
+            }
+        }
+
+        fun B() {
+            A(false);
+            A(true);
+        }
+\end{minted}
+
+
+Previously, the dataflow library didn't take these 
 
 
 \subsection{Description of Implementation}
 \subsection{Sketch of Correctness proof?}
+\subsection{Future improvements}
+Enums
 
 \newpage
 \section{Path Sensitivity}
