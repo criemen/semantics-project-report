@@ -107,9 +107,6 @@ nodes by invoking \texttt{getSucc*}.
 At the heart of QL lives a relational database, and QL is designed to query a relational database.
 Every predicate, the basic notion of a BLA, can be regarded as a tuple
 
-
-
-
 \newpage
 \section{Description of Dataflow Library}
 TODO: I have no idea about this part yet
@@ -124,7 +121,9 @@ Programmers write functions in their code which change their behaviour based on
 a boolean parameter.
 Then on the call sites, sometimes a boolean literal is used to determine the behaviour
 of the subroutine.
-In pseudo-code, this looks like this:
+For example in the apache hadoop project, almost 10000 instances of this
+pattern occured\footnote{\url{https://lgtm.com/query/139379883091955/}}.
+In pseudo-code, the pattern looks like this:
 \begin{minted}{java}
         fun A(bool param) {
             if(param) {
@@ -142,7 +141,7 @@ In pseudo-code, this looks like this:
 \end{minted}
 
 
-Previously, the dataflow library didn't take these 
+Previously, the dataflow library didn't take these into account.
 
 
 \subsection{Description of Implementation}
