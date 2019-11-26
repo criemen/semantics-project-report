@@ -1,9 +1,20 @@
-%\include{preamble}
+\include{preamble}
 
-% can apparently not be precompiled
+% parts of the preamble which either need to be loaded very late or cannot be pre-compiled
 \usepackage[english]{babel}
 \usepackage{microtype}
+\usepackage{minted}
+\usepackage{csquotes}
+\usepackage{hyperref}
+\usepackage[nameinlink,capitalise]{cleveref}
 
+
+\hypersetup{
+colorlinks,
+linkcolor={red!50!black},
+citecolor={blue!50!black},
+urlcolor={blue!80!black}
+}
 \begin{document}
 
 % Keine Seitenzahlen im Vorspann
@@ -19,3 +30,4 @@
 %\printbibliography
 
 \end{document}
+

@@ -23,9 +23,7 @@
 %\usepackage{pdflscape} % for 'landscape' environment, use pdflscape here to also rotate the pdf pages
 %\usepackage{tabu}
 \usepackage{aliascnt}
-\usepackage{hyperref}
 \usepackage{caption}%%Improves links to figures: Will show whole figure and not just the caption
-\usepackage[nameinlink,capitalise]{cleveref}
 %\usepackage{soul} %%for underlining categorynames
 
 \usepackage[usenames,dvipsnames]{xcolor}
@@ -33,7 +31,6 @@
 
 %\usepackage{wasysym}
 %\usepackage{stmaryrd}
-\usepackage{csquotes}
 %\usepackage{mathtools,leftidx}
 \usepackage[shortcuts]{extdash} %for no breaking lines at hyphenation
 \usepackage{mleftright}%%for better spacing aroung big brackets
@@ -65,12 +62,6 @@
 \colorlet{MyRed}{red}
 \colorlet{MyGreen}{green!90!blue}
 
-\hypersetup{
-colorlinks,
-linkcolor={red!50!black},
-citecolor={blue!50!black},
-urlcolor={blue!80!black}
-}
 \urlstyle{rm}
 %\usepackage{minted}
 %\usepackage[epsilon,tstt]{backnaur}
@@ -162,7 +153,7 @@ urlcolor={blue!80!black}
 \makeatother
 
 % a verbatim environment to my liking
-\DefineVerbatimEnvironment{codeverbatim}{Verbatim}{fontfamily=arial,fontsize=\small,frame=single,gobble=8,commandchars=\\\{\},codes={\catcode`$=3\catcode`^=7\catcode`_=8\everymath\expandafter{\the\everymath\verbmathspace}}}
+\DefineVerbatimEnvironment{codeverbatim}{Verbatim}{fontsize=\small,frame=single,gobble=8,commandchars=\\\{\},codes={\catcode`$=3\catcode`^=7\catcode`_=8\everymath\expandafter{\the\everymath\verbmathspace}}}
 %codes={\catcode`$=3\catcode`^=7\catcode`_=8}}
 \newenvironment{code}[1]{%
 \VerbatimEnvironment
@@ -210,4 +201,7 @@ urlcolor={blue!80!black}
 %%New sections will start on odd pages
 % \let\oldsection\section
 % \def\section{\cleardoublepage\oldsection}
-\endofdump
+
+
+
+%\endofdump
