@@ -111,6 +111,9 @@ Every predicate, the basic notion of a BLA, can be regarded as a tuple
 \section{Description of Dataflow Library}
 TODO: I have no idea about this part yet
 
+% start of considered nodes: nodeCandFwd1(node, config) -  simple local flow 
+
+
 \newpage
 \section{Call Sensitivity}
 \subsection{Motivation}
@@ -124,13 +127,14 @@ of the subroutine.
 For example in the apache hadoop project, almost 10000 instances of this
 pattern occured\footnote{\url{https://lgtm.com/query/139379883091955/}}.
 In pseudo-code, the pattern looks like this:
+% TODO better
 \begin{minted}{java}
         fun A(bool param) {
             if(param) {
-                // do great thing $A_1$
+                // do X
             }
             else {
-                // do great thing $A_2$
+                // do Y
             }
         }
 
@@ -145,9 +149,31 @@ Previously, the dataflow library didn't take these into account.
 
 
 \subsection{Description of Implementation}
+The implementation consists of N (TODO) different parts.
+First, there is the predicate \texttt{isUnreachableInCall(Node n, DataFlowCall call)} which
+computes the set of all nodes in the dataflow graph which are unreachable 
+% TODO mention virtual dispatch
 \subsection{Sketch of Correctness proof?}
+\subsection{Examples of code where detection is now improved}
 \subsection{Future improvements}
-Enums
+The analysis described in this pattern can be further generalized, as
+this pattern applies to more than just functions that take a boolean parameter.
+Boolean types are generalized by enumerated types, providing (usually) more than two options.
+In fact, using an enum over a boolean is can be the better from a software engineering perspective
+even when just encoding a choice of two options.
+Choices such as left and right are better represented 
+by enum constants \texttt{LEFT} and \texttt{RIGHT}, rather than the 
+nondescriptive \texttt{true} and \texttt{false}.
+
+Looking again at the apache hadoop project, we see almost 1800
+function calls\footnote{\url{https://lgtm.com/query/1789970986252448931/}} with enum constants as parameter.
+In all these instances the enum parameter influences control flow in the function.
+
+However, adding support for enum constants was not in the scope of the project, so we didn't implement it.
+Furthermore, our architecture is designed to be easily extended.
+Thus adding support for enum constant would be a mere software engineering effort
+with no significant academic interest.
+
 
 \newpage
 \section{Path Sensitivity}
