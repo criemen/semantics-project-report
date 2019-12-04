@@ -1,0 +1,15 @@
+{
+    "ltex.en-US.disabledRules": [
+        "ALSO",
+        "LOCAL",
+        "MULTIPLICATION_SIGN",
+        "NOTE",
+        "PROOF"
+    ],
+    "ltex.ignoreRuleInSentence": [
+        {
+            "rule": "DT_DT",
+            "sentence": "^\\QThese subtypes correspond to instance creation, implicit reads of the this parameter, the desugaring of vararg method calls and other technical elements that need to be represented in the dataflow graph.\\E$"
+        }
+    ]
+}
