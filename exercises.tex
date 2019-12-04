@@ -88,7 +88,6 @@ This makes the static analyzer a very useful tool.
 % TODO reword
 % TODO general thing
 
-
 \cite{qlpaper}
 \subsection{Evaluation Model}
 Every predicate is computed bottoms-up, so when a predicate is encountered, its
@@ -109,11 +108,106 @@ Every predicate, the basic notion of a BLA, can be regarded as a tuple
 
 \newpage
 \section{Description of Dataflow Library}
-TODO: I have no idea about this part yet
+Designing a dataflow library which works in theory is a task that is not too difficult.
+However, designing a datflow library which performs well on projects with millions of lines of code is 
+considerably more difficult.
+In this section, we will describe the dataflow library for the CodeQL platform % TODO check marketing material, is this correct?
+for analyzing programs in Java.
+We will describe the version without our contributions which are outlined in the next sections.
+
+As the dataflow library is used for bugfinding, it is neither sound nor complete.
+% TODO finish sentence
+In general, the dataflow library reports \emph{possible} dataflow, i.e.\ as soon
+as there is a path in the control flow graph TODO TODO flow is reported.
+On the other hand, sometimes dataflow paths which do exist are not reported by the 
+dataflow library because finding them would be prohibitive performance-wise.
+These limitations will be explained in detail later. 
+
+The dataflow library tracks only the flow of exact values.
+For example, dataflow of a string is interruped when \texttt{toUpperCase()} is called.
+However, using functions like \texttt{toUpperCase()} does not prevent XSS or SQL injection attacks.
+To find such paths that do not interrupt flow when the content of a variable still depends 
+heavily on the input data, the \texttt{TaintTracking} library exists.
+It is built onto the dataflow library and provides a generic interface to enable
+finding of bug classes XSS, SQL injections or directory traversals.
+While the taint tracking library is probably the biggest user of the dataflow library,
+it is not related to the implementation of the dataflow library.
+Thus, it is not discussed here further.
+However all improvements made to the dataflow library directly benefit taint tracking.
+
+\subsection{Interface}
+Before we delve into the internals of the dataflow library, we will describe the API 
+of the dataflow library users will encounter. %, as well as general design principles.
+
+\subsubsection*{Nodes}
+The main concept used throughout the dataflow library is that of a \texttt{Node}.
+Every element in the program holding data is a node.
+The type \texttt{Node} has several subtypes, corresponding to different kinds of nodes.
+The most important subclass of \texttt{Node} is \texttt{ExprNode}, 
+as every expression in the program corresponds to a \texttt{Node}.
+Another important subclass is \texttt{ParameterNode}.
+Both the implicit \texttt{this} parameter for methods as well as all explicit parameters
+given to methods are tracked via these nodes.
+Other subtypes exist as well, but are less important to the bigger picture.
+These subtypes correspond to instance creation, implicit reads of the \texttt{this} parameter,
+the desugaring of vararg method calls and other technical elements that need to be 
+represented in the dataflow graph.
+
+One peculiarity of the \texttt{Node} class is that the dataflow graph
+is stored in separate predicates, not on the nodes making up the graph itself.
+This means that the graph is stored in an adjacency matrix, where the adjacency matrix is encoded in the tuple 
+set of a predicate.
+Different kinds of dataflow graphs can be represented by different predicates.
+% TODO elaborate
+
+\subsubsection*{Configuration}
+The \emph{configuration} is the main class a user interacts with.
+A configuration defines which nodes are sources and sinks of dataflow.
+Furthermore, a configuration can also specify additional steps which yield flow.
+To stay in the example of above, a configuration could add that a call to 
+\texttt{toUpperCase()} on a string preserves data flow.
+On the other hand, configurations can also specify nodes which block flow.
+In the example above, this could be sanitizer methods which for example strip HTML tags.
+This enables the user to filter out paths which are known to be safe.
+
+
+\subsection{General Design}
+
+% configuration: source, sink, additional steps
+% localflowstep+jumpstep
+
+% simpleLocalFlowStep (Util): Follows SSA adjacent uses and def-first-use.
+%   Data also flows from assignments to asignees (Check word??)
+%   interestingly enough, also through casts
 
 % start of considered nodes: nodeCandFwd1(node, config) -  simple local flow 
+% node is reachable via dataflow from the source,
+% including local flow, field stores, reads, flows into callables via parameters
+% and flow out of callables via modified parameters (takes VD into account)
+% doesn't take call contexts into account
+
+% then nodeCand1 filters nodeCandFwd1 by just keeping all nodes which are
+% reachable from a sink (through the same steps as before)
+
+% nodeCand2: very simple call contexts, TODO find out exact differences to Cand1
+% nodeCand:=nodeCand2 excluding call contexts
+
+% bigstep relation: localFlowBigStep
+
+% flowCandFwd0 something something accesspathfront, starts again with flooding
+% from the source with all nodeCand2's
+% flowCand0 filters flowCandFwd from the sink backwards to the source
+
+% flowCandFwd = flowCandFwd0 AND CastingNode compatible type check
+
+% flowCand = flowCand0 AND flowCandFwd
+% flowCand0 uses flowCand and flowCandFwd, so mutual recursion, goes backwards from sink
+
+% TODO: Sections about casts
 
 
+% what is a node?
+% user interface
 \newpage
 \section{Call Sensitivity}
 \subsection{Motivation}
@@ -151,9 +245,15 @@ Previously, the dataflow library didn't take these into account.
 \subsection{Description of Implementation}
 The implementation consists of N (TODO) different parts.
 First, there is the predicate \texttt{isUnreachableInCall(Node n, DataFlowCall call)} which
-computes the set of all nodes in the dataflow graph which are unreachable 
+computes the set of all nodes in the dataflow graph which are unreachable
+TODO more
+Second, 
 % TODO mention virtual dispatch
-\subsection{Sketch of Correctness proof?}
+\subsection{Correctness}
+The correctness of the implementation is based on the observation that constants can be
+inlined.
+% TODO more
+
 \subsection{Examples of code where detection is now improved}
 \subsection{Future improvements}
 The analysis described in this pattern can be further generalized, as
