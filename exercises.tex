@@ -12,6 +12,7 @@
 
 \subsection{Architecture Outline}
 % TODO check again
+% overview paragraph is not very good/precise
 In this section, we will give a short overview of the CodeQL architecture, as well as where our
 project fits in. We describe the extraction process where source code is turned into a relational database,
 as well as the QL language and the libraries supporting the queries.
@@ -54,14 +55,16 @@ is built on top of the dataflow library.
 
 % TODO
 The queries are accessible to researchers in academia and all open-source projects free of charge 
-via the \href{https://LGTM.com}{LGTM.com} online platform and the CodeQL CLI utility . % TODO font for LGTM
+via the \href{https://LGTM.com}{LGTM.com} online platform and the CodeQL CLI utility. % TODO font for LGTM
 Bugs can be reported via the issue tracker and the project takes pull requests.
 
 
-All queries as well as their supporting libraries are open-source and published 
+All queries as well as the supporting libraries are open-source and published 
 on GitHub\footnote{\url{https://github.com/Semmle/ql}}.
 The extractors and the query engine are available only in compiled form under a 
-very restrictive license\footnote{\url{https://github.com/github/codeql-cli-binaries}}.
+proprietary license\footnote{\url{https://github.com/github/codeql-cli-binaries}}.
+While the license is quite restrictive,
+usage of the CodeQL CLI utility for academic research is explicitly allowed.
 
 Our project outside the course scope contributes improvements to the dataflow library,
 both the shared and the language-specific part. We only implemented the language-specific 
@@ -74,7 +77,7 @@ The individual features are discussed in the next chapters.
 %only the evaluator
 
 \subsection{Philosophy}
-Using static analysis for bug finding is lacking in the theoretical foundation - 
+Using static analysis for bug finding is lacking in the theoretical foundation {---} 
 analyses are usually neither sound nor complete.
 This means that a query can report \emph{false positives}, problems flagged by the query that 
 are not bugs at all.
@@ -117,7 +120,7 @@ We will describe the version without our contributions which are outlined in the
 As the dataflow library is used for bug finding, it is neither sound nor complete.
 % TODO finish sentence
 In general, the dataflow library reports \emph{possible} dataflow, i.e.\ as soon
-as there is a path in the control flow graph TODO TODO flow is reported.
+as there is a path in the control flow graph TODO flow is reported.
 On the other hand, sometimes dataflow paths which do exist are not reported by the 
 dataflow library because finding them would be prohibitive performance-wise.
 These limitations will be explained in detail later. 
@@ -200,11 +203,118 @@ Second, the transitive closure of the \texttt{step} relation enumerates all data
 paths in the program from one node to another.
 It is defined on the Cartesian product of \texttt{Node} with itself, which is roughly quadratic 
 in the size of the program.
+We would end up with a predicate that grows probably superlinear in the program size.
+Such a growth rate is too big TODO.
+
+On a very high level, the algorithm used in the dataflow library is very similar 
+to the algorithm sketched above.
+The last step of it is indeed taking the transitive closure of a step-relation.
+However, a lot of care is taken to define the step relation only on suitable 
+nodes which will probably be part of a dataflow path from a source to a sink.
+For example, nodes that cannot be reached from any source via a dataflow path 
+are ignored.
 
 \subsection{Description of the algorithm}
-% configuration: source, sink, additional steps
-% localflowstep+jumpstep
+We will now present the details of how dataflow is computed for Java programs.
+First, the algorithm runs multiple passes of finding candidate nodes which are part 
+of dataflow paths.
+Then the algorithm computes a step relation and takes the transitive closure of that.
+The implementation of the algorithm is divided into a generic dataflow algorithm which is 
+used for Java, C/C++ and C\# and a specific language-specific implementation of a common interface.
+In this description, we are glossing over the separation of those two modules and 
+describe the algorithm formed by the generic module together with the language-specific
+module for Java.
 
+\subsubsection*{Terminology}
+Before we can start with the steps of the algorithm, we need to introduce some terminology though.
+
+A \emph{local} flow step is a dataflow step that happens inside one callable.
+To compute local flow, an SSA form is first computed.
+Some examples of local flow steps are:
+\begin{itemize}
+    \item Data flows from the right-hand side of a variable assignment to a 
+    first read of that variable
+    \item Data flows from a variable read to an adjacent variable read (a use-use chain in SSA lingo)
+    \item Data flows from a parameter node to a first read of the parameter
+    \item Data flows from the inside of an expression in parentheses to the dataflow node
+    representing the outer expression, i.e.\ in the expression \texttt{(var)} there is dataflow from the node 
+    representing the variable read \texttt{var} to the dataflow node representing the entire expression \texttt{(var)}.
+\end{itemize}
+ % TODO check again, we're talking about single steps here, not entire graphs!
+ % This might be a bit early here
+Note that, unlike for global dataflow, the entire local dataflow graph for each function 
+is computed.
+This is necessary because the local dataflow is an important building block in computing
+the global dataflow.
+A priori it is not clear whether a local dataflow path is part of a (global) dataflow path
+from a source to a sink, thus it is not possible to filter paths based on that condition.
+As methods are much smaller in relation to the whole program, computing the whole local 
+dataflow graph is still feasible and no combinatorial explosion occurs.
+
+A \emph{jump} flow step is a dataflow step that jumps between callables 
+in a way that ignores call contexts.
+In Java, there are two possibilities for a jump step to occur.
+\begin{itemize}
+    \item \textbf{Static fields:} Data flows from an assignment to a static field to a read of that static field,
+    if the field read is not determined by SSA.
+    The field read is only determined by SSA, if a local value is assigned to the static field.
+    However, in most cases the static field will be assigned to in one callable, and read 
+    in another.
+    \item \textbf{Closures:} Data flows from a use or a definition of a variable in the outer callable 
+    to a use of a captured variable in the inner function.
+\end{itemize}
+
+An \emph{additional} (local or jump) flow step is a dataflow step that the user 
+provides via the \texttt{Configuration}.
+
+An \emph{extended return} is a generalized return that representing dataflow out of a callable.
+It is either a return statement, which we call a \emph{value return} or a parameter update.
+Parameter updates are often called having an \emph{out parameter}.
+The programmer supplies the reference to an object in a parameter, and the method then
+% TODO check what exactly out parameters are in Java, have a look at https://lgtm.com/query/4328056797028651291/
+% Should be in fact vacuous
+
+
+\subsubsection*{The Node Filtering}
+As a first step to compute global dataflow, the algorithm does several filtering passes to 
+determine candidate nodes which could possibly be part of a global dataflow path from
+a source to a sink.
+Note that in the description of the passes, \emph{candidate node} always refers
+to being a candidate node in that pass, unless otherwise noted.
+
+The first pass is done in the predicate \texttt{nodeCandFwd1}.
+It uses a flooding-style algorithm to compute all nodes reachable from the source nodes,
+while ignoring all call contexts.
+In detail, this means a \texttt{Node n} is a candidate node if either of the following is true:
+\begin{itemize}
+    \item The node \texttt{n} is a source node.
+    \item There exists a candidate node \texttt{mid} such that \texttt{n} is reachable with a single flow step,
+    either a local step, a jump step or an additional step.
+    \item There exists a candidate dataflow node \texttt{arg}, such that \texttt{arg} is an argument in 
+    a call, and \texttt{n} is a dataflow node representing the parameter in the target of the call.
+    In this case, we say that we have dataflow \emph{into} a callable.
+    \item The opposite case is that we have dataflow \emph{out} of a callable.
+    That happens when the node \texttt{n} is the target of an extended return, 
+    where the return node is already a candidate node.
+    \item TODO field flow
+\end{itemize}
+
+The second pass is done in the predicate \texttt{nodeCand1}.
+The second pass filters the results from the first pass by only keeping nodes
+which fulfill \texttt{nodeCandFwd1}, i.e.\ are reachable from the source nodes,
+that also are reachable when going backwards from the sinks.
+Like \texttt{nodeCandFwd1}, it ignores all call contexts.
+In detail, this means a \texttt{Node n} is a candidate node if it is contained in 
+\texttt{nodeCandFwd1} and either of the following is true:
+\begin{itemize}
+    \item The node \texttt{n} is a sink node.
+    % TODO
+\end{itemize}
+
+
+
+
+% TODO: why localFlowStep flows through casts?
 % simpleLocalFlowStep (Util): Follows SSA adjacent uses and def-first-use.
 %   Data also flows from assignments to asignees (Check word??)
 %   interestingly enough, also through casts
