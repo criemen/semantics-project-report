@@ -4,7 +4,10 @@
         "LOCAL",
         "MULTIPLICATION_SIGN",
         "NOTE",
-        "PROOF"
+        "PROOF",
+        "PASS",
+        "SIDE",
+        "ARGUMENT"
     ],
     "ltex.ignoreRuleInSentence": [
         {
