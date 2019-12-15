@@ -204,7 +204,9 @@ paths in the program from one node to another.
 It is defined on the Cartesian product of \texttt{Node} with itself, which is roughly quadratic 
 in the size of the program.
 We would end up with a predicate that grows probably superlinear in the program size.
-Such a growth rate is too big TODO.
+The CodeQL tools are capable of handling very large programs,
+for which algorithms with superlinear behaviour typically don't scale,
+so a more involved approach to compute dataflow is needed.
 
 On a very high level, the algorithm used in the dataflow library is very similar 
 to the algorithm sketched above.
@@ -224,12 +226,17 @@ used for Java, C/C++ and C\# and a specific language-specific implementation of 
 In this description, we are glossing over the separation of those two modules and 
 describe the algorithm formed by the generic module together with the language-specific
 module for Java.
+The implementation of the dataflow library for Java encompasses roughly 4000 lines of
+QL code. Describing every single detail of the implementation would be neither feasible nor 
+useful. Thus, some details are omitted or the implementation of a particular step 
+of the algorithm is only described on a very abstract level.
+Other parts of the algorithm are described more in-depth.
 
 \subsubsection*{Terminology}
-Before we can start with the steps of the algorithm, we need to introduce some terminology though.
+Before we can start with the steps of the algorithm, we need to introduce some terminology.
 
 A \emph{local} flow step is a dataflow step that happens inside one callable.
-To compute local flow, an SSA form is first computed.
+Before local flow can be computed, an SSA form is computed first.
 Some examples of local flow steps are:
 \begin{itemize}
     \item Data flows from the right-hand side of a variable assignment to a 
@@ -267,6 +274,7 @@ In Java, there are two possibilities for a jump step to occur.
 An \emph{additional} (local or jump) flow step is a dataflow step that the user 
 provides via the \texttt{Configuration}.
 
+
 An \emph{extended return} is a generalized return that representing dataflow out of a callable.
 It is either a return statement, which we call a \emph{value return} or a parameter update.
 Parameter updates are often called having an \emph{out parameter}.
@@ -274,8 +282,7 @@ The programmer supplies the reference to an object in a parameter, and the metho
 % TODO check what exactly out parameters are in Java, have a look at https://lgtm.com/query/4328056797028651291/
 % Should be in fact vacuous
 
-
-\subsubsection*{The Node Filtering}
+\subsubsection*{Node Filtering - Phase 1}
 As a first step to compute global dataflow, the algorithm does several filtering passes to 
 determine candidate nodes which could possibly be part of a global dataflow path from
 a source to a sink.
@@ -308,9 +315,74 @@ In detail, this means a \texttt{Node n} is a candidate node if it is contained i
 \texttt{nodeCandFwd1} and either of the following is true:
 \begin{itemize}
     \item The node \texttt{n} is a sink node.
-    % TODO
+    \item There exists a candidate node \texttt{mid} such that \texttt{mid} is reachable with a single flow step,
+    either a local step, a jump step or an additional step from the node \texttt{n}.
+    \item Flow into a callable:
+    There exists a candidate node \texttt{param} that is a parameter of a callable,
+    such that \texttt{node} is a possible argument that gets passed to the callable.
+    \item Flow out of a callable:
+    There exists a candidate node that is a return statement, and \texttt{n} is 
+    a node in a caller, receiving the returned value
+    \item TODO field flow
 \end{itemize}
 
+\subsubsection*{Flow Through Methods}
+As an intermediate step, the dataflow algorithm summarizes methods that at some point 
+return one of their parameters to a single dataflow step.
+The dataflow from the argument node to the node for the value returned by
+the method is thus represented by only a single edge.
+\begin{listing}[H]
+    \begin{javacode}
+        class A {
+            String name;
+        
+            public void setName(String name) {
+                this.name = name;
+                return this;
+            }
+        }
+    
+        class B {
+            public void caller() {
+                A a = new A();
+                a.setName("a name");
+            }
+        }
+    \end{javacode}
+    \caption{Example code for flow through method summarization}    
+    \label{lst:flow-through-example}
+\end{listing}
+In the code example in~\autoref{lst:flow-through-example}, there is dataflow of the instance
+of class \java{A} to the method \java{setName}, because the instance a 
+is (implicitly) passed as \java{this} parameter.
+Because of the return statement, there is dataflow back from \texttt{setName} to
+\texttt{caller}.
+After the summarization step, the dataflow in line 13 is described in a single step,
+from the node representing \texttt{a} as implicit argument to the method call, to the node 
+representing the expression \java{a.setName("a name")}.
+
+TODO overview of the algorithm used.
+
+\subsubsection*{Node Filtering - Phase 2}
+The second phase of node filtering works very similar to phase 1 - it 
+operates on all nodes which are present in \texttt{nodeCand1} and filters them further.
+It is again implemented in a flooding-style algorithm with a forward and backward 
+pass, like in phase 1.
+It takes simple call contexts into account to make the analysis more precise.
+
+The forward pass is implemented in the predicate \texttt{nodeCandFwd2}.
+A node is a candidate node if it is a candidate node as per phase 1 (i.e. it is in \texttt{nodeCand1})
+and fulfills one of the following conditions:
+\begin{itemize}
+    \item bla
+\end{itemize}
+Compared to \texttt{nodeCandFwd1}, it skips over methods where the argument value 
+flows through (see the subsection directly above), and uses the summarized dataflow for that.
+This reduces the number of nodes in the predicate.
+Furthermore, TODO.% limits virtual dispatch
+
+% Note: the fromArg parameter in nodeCandFwd2 is there to exclude the nodes
+% which have been summarized away in the flow-through-analysis
 
 
 
@@ -318,6 +390,11 @@ In detail, this means a \texttt{Node n} is a candidate node if it is contained i
 % simpleLocalFlowStep (Util): Follows SSA adjacent uses and def-first-use.
 %   Data also flows from assignments to asignees (Check word??)
 %   interestingly enough, also through casts
+% TODO for the purpose of dataflow analysis, all numeric types are considered the same,
+% so all numeric conversions are assumed to prevent dataflow
+% TODO find out when we use call contexts to help Virutal Dispatch
+% Question: compatibleTypes in DataFlowPrivate is always already called with erased representations,
+% and then calls getErasedRepr again?
 
 % start of considered nodes: nodeCandFwd1(node, config) -  simple local flow 
 % node is reachable via dataflow from the source,
@@ -416,7 +493,8 @@ with no significant academic interest.
 \section{Path Sensitivity}
 \subsection{Motivation}
 \subsection{Description of Implementation}
-\subsection{Sketch of Correctness Proof}
+\subsection{Soundness Problems}
+\subsection{Improved Algorithm}
 
 
 
