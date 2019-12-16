@@ -126,8 +126,8 @@ dataflow library because finding them would be prohibitive performance-wise.
 These limitations will be explained in detail later. 
 
 The dataflow library tracks only the flow of exact values.
-For example, dataflow of a string is interrupted when \texttt{toUpperCase()} is called.
-However, using functions like \texttt{toUpperCase()} does not prevent XSS or SQL injection attacks.
+For example, dataflow of a string is interrupted when \java{toUpperCase()} is called.
+However, using functions like \java{toUpperCase()} does not prevent XSS or SQL injection attacks.
 To find such paths that do not interrupt flow when the content of a variable still depends 
 heavily on the input data, the \texttt{TaintTracking} library exists.
 It is built onto the dataflow library and provides a generic interface to enable
@@ -150,16 +150,34 @@ as every expression in the program corresponds to a \texttt{Node}.
 Another important subclass is \texttt{ParameterNode}.
 Both the implicit \texttt{this} parameter for methods and all explicit parameters
 given to methods are tracked via these nodes.
-Other subtypes exist as well, but are less important to the bigger picture.
+Objects that potentially change their state through an operation are modelled
+ by \texttt{PostUpdateNode}s.
+Objects that have a method called on them (potentially mutating it),
+field accesses on an object and parameters to method cals (the callee could mutate the object)
+have two nodes for that expression - one so-called pre-update node, which represents 
+the object before the operation occured, and a post-update node which represents 
+the object after the operation occured.
+This becomes more clear when looking at the statement \java{a.field = "string"}.
+In this example, there exists an expression node for 
+\java{"string"}, an expression node for \java{a.field},
+and an expression node for \java{a}.
+However, none of these expression nodes capture that the object \java{a}
+is mutated by the assignment.
+For this, there exists also a \texttt{PostUpdateNode} for \java{a},
+which represents the fact that the statement (potentially) mutates object \java{a}.
+It has the expression node for \java{a} as corresponding pre-update node.
+
+Other subtypes of the \texttt{Node} class exist as well, 
+but are less important to the bigger picture of understanding the dataflow library.
 These subtypes correspond to instance creation, implicit reads of the \texttt{this} parameter,
-the desugaring of vararg method calls and other technical elements that need to be 
-represented in the dataflow graph.
+the desugaring of vararg method calls and other more technical details.
 
 One peculiarity of the \texttt{Node} class is that the dataflow graph
 is stored in separate predicates, not on the nodes making up the graph itself.
-This means that the graph is stored in an adjacency matrix, where the adjacency matrix is encoded in the tuple 
-set of a predicate.
-Different kinds of dataflow graphs can be represented by different predicates.
+This means that the graph is stored in an adjacency matrix, where the
+ adjacency matrix is encoded in the tuple set of a predicate.
+Different kinds of dataflow graphs can be represented by different predicates,
+using the same nodes.
 % TODO elaborate
 
 \subsubsection*{Configuration}
@@ -184,8 +202,6 @@ Is design limitation is intentionally restrictive, because it allows performance
 that make it feasible to compute whole-program dataflow.
 
 \subsection{General Design}
-
-% jumpstep+localstep
 
 In theory, implementing a dataflow algorithm in a logic programming language is very simple.
 Given the \texttt{Node} concept discussed above, one only needs to provide a relation
@@ -235,18 +251,24 @@ Other parts of the algorithm are described more in-depth.
 \subsubsection*{Terminology}
 Before we can start with the steps of the algorithm, we need to introduce some terminology.
 
-A \emph{local} flow step is a dataflow step that happens inside one callable.
+A \emph{local} flow step is a dataflow step where data flows from one node to another
+and both nodes are inside the same callable.
 Before local flow can be computed, an SSA form is computed first.
 Some examples of local flow steps are:
 \begin{itemize}
     \item Data flows from the right-hand side of a variable assignment to a 
     first read of that variable
-    \item Data flows from a variable read to an adjacent variable read (a use-use chain in SSA lingo)
+    \item Data flows from a variable read to an adjacent variable read (a use-use chain in SSA lingo).
+    That means that both nodes read the same variable, and there is no other operation between the 
+    reads, except possibly the presence of $\phi$-nodes.
     \item Data flows from a parameter node to a first read of the parameter
     \item Data flows from the inside of an expression in parentheses to the dataflow node
-    representing the outer expression, i.e.\ in the expression \texttt{(var)} there is dataflow from the node 
-    representing the variable read \texttt{var} to the dataflow node representing the entire expression \texttt{(var)}.
+    representing the outer expression, i.e.\ in the expression \java{(var)} there is dataflow from the node 
+    representing the variable read \java{var} to the dataflow node representing the entire expression \texttt{(var)}.
+    \item Data flows from a post-update node that represents an object to an adjacent read 
+    of that object
 \end{itemize}
+There are some more 
  % TODO check again, we're talking about single steps here, not entire graphs!
  % This might be a bit early here
 Note that, unlike for global dataflow, the entire local dataflow graph for each function 
@@ -274,7 +296,7 @@ In Java, there are two possibilities for a jump step to occur.
 An \emph{additional} (local or jump) flow step is a dataflow step that the user 
 provides via the \texttt{Configuration}.
 
-
+% TODO remove this, check for other references to it
 An \emph{extended return} is a generalized return that representing dataflow out of a callable.
 It is either a return statement, which we call a \emph{value return} or a parameter update.
 Parameter updates are often called having an \emph{out parameter}.
@@ -282,52 +304,9 @@ The programmer supplies the reference to an object in a parameter, and the metho
 % TODO check what exactly out parameters are in Java, have a look at https://lgtm.com/query/4328056797028651291/
 % Should be in fact vacuous
 
-\subsubsection*{Node Filtering - Phase 1}
-As a first step to compute global dataflow, the algorithm does several filtering passes to 
-determine candidate nodes which could possibly be part of a global dataflow path from
-a source to a sink.
-Note that in the description of the passes, \emph{candidate node} always refers
-to being a candidate node in that pass, unless otherwise noted.
-
-The first pass is done in the predicate \texttt{nodeCandFwd1}.
-It uses a flooding-style algorithm to compute all nodes reachable from the source nodes,
-while ignoring all call contexts.
-In detail, this means a \texttt{Node n} is a candidate node if either of the following is true:
-\begin{itemize}
-    \item The node \texttt{n} is a source node.
-    \item There exists a candidate node \texttt{mid} such that \texttt{n} is reachable with a single flow step,
-    either a local step, a jump step or an additional step.
-    \item There exists a candidate dataflow node \texttt{arg}, such that \texttt{arg} is an argument in 
-    a call, and \texttt{n} is a dataflow node representing the parameter in the target of the call.
-    In this case, we say that we have dataflow \emph{into} a callable.
-    \item The opposite case is that we have dataflow \emph{out} of a callable.
-    That happens when the node \texttt{n} is the target of an extended return, 
-    where the return node is already a candidate node.
-    \item TODO field flow
-\end{itemize}
-
-The second pass is done in the predicate \texttt{nodeCand1}.
-The second pass filters the results from the first pass by only keeping nodes
-which fulfill \texttt{nodeCandFwd1}, i.e.\ are reachable from the source nodes,
-that also are reachable when going backwards from the sinks.
-Like \texttt{nodeCandFwd1}, it ignores all call contexts.
-In detail, this means a \texttt{Node n} is a candidate node if it is contained in 
-\texttt{nodeCandFwd1} and either of the following is true:
-\begin{itemize}
-    \item The node \texttt{n} is a sink node.
-    \item There exists a candidate node \texttt{mid} such that \texttt{mid} is reachable with a single flow step,
-    either a local step, a jump step or an additional step from the node \texttt{n}.
-    \item Flow into a callable:
-    There exists a candidate node \texttt{param} that is a parameter of a callable,
-    such that \texttt{node} is a possible argument that gets passed to the callable.
-    \item Flow out of a callable:
-    There exists a candidate node that is a return statement, and \texttt{n} is 
-    a node in a caller, receiving the returned value
-    \item TODO field flow
-\end{itemize}
 
 \subsubsection*{Flow Through Methods}
-As an intermediate step, the dataflow algorithm summarizes methods that at some point 
+As a preparatory step, the dataflow algorithm summarizes methods that at some point 
 return one of their parameters to a single dataflow step.
 The dataflow from the argument node to the node for the value returned by
 the method is thus represented by only a single edge.
@@ -362,16 +341,77 @@ from the node representing \texttt{a} as implicit argument to the method call, t
 representing the expression \java{a.setName("a name")}.
 
 TODO overview of the algorithm used.
+% TODO first pass is used to detect getters
 
-\subsubsection*{Node Filtering - Phase 2}
-The second phase of node filtering works very similar to phase 1 - it 
+
+\subsubsection*{Node Filtering --- Phase 1}
+As a first step to compute global dataflow, the algorithm does several filtering passes to 
+determine candidate nodes which could possibly be part of a global dataflow path from
+a source to a sink.
+Note that in the description of the passes, \emph{candidate node} always refers
+to being a candidate node in that pass, unless otherwise noted.
+
+The first pass is done in the predicate \texttt{nodeCandFwd1}.
+It uses a flooding-style algorithm to compute all nodes reachable from the source nodes,
+while ignoring all call contexts.
+In detail, this means a \texttt{Node n} is a candidate node if either of the following is true:
+\begin{itemize}
+    \item The node \texttt{n} is a source node.
+    \item There exists a candidate node \texttt{mid} such that \texttt{n} is reachable with a single flow step,
+    either a local step, a jump step or an additional step.
+    \item There exists a candidate dataflow node \texttt{arg}, such that \texttt{arg} is an argument in 
+    a call, and \texttt{n} is a dataflow node representing the parameter in the target of the call.
+    In this case, we say that we have dataflow \emph{into} a callable.
+    \item The opposite case is that we have dataflow \emph{out} of a callable.
+    That happens when the node \texttt{n} is the target of an extended return, 
+    where the return node is already a candidate node.
+    \item TODO field flow
+\end{itemize}
+TODO: Field flow is only done when branching limit >= 1
+% TODO reformulate
+If field flow is enabled and data from a candidate node is stored in a field
+(directly, through a setter method, or through a method call that returns an
+ object in which an argument was stored), the node associated with that store
+ is also a candidate node.
+ If field flow is enabled and a candidate node is an object which appears in a 
+ read expression, the expression node for the field read is also a candidate node.
+Getter methods are also detected and treated exactly the same as a regular field read.
+
+
+The second pass is done in the predicate \texttt{nodeCand1}.
+The second pass filters the results from the first pass by only keeping nodes
+which fulfill \texttt{nodeCandFwd1}, i.e.\ are reachable from the source nodes,
+that also are reachable when going backwards from the sinks.
+Like \texttt{nodeCandFwd1}, it ignores all call contexts.
+In detail, this means a \texttt{Node n} is a candidate node if it is contained in 
+\texttt{nodeCandFwd1} and either of the following is true:
+\begin{itemize}
+    \item The node \texttt{n} is a sink node.
+    \item There exists a candidate node \texttt{mid} such that \texttt{mid} is reachable with a single flow step,
+    either a local step, a jump step or an additional step from the node \texttt{n}.
+    \item Flow into a callable:
+    There exists a candidate node \texttt{param} that is a parameter of a callable,
+    such that \texttt{node} is a possible argument that gets passed to the callable.
+    \item Flow out of a callable:
+    There exists a candidate node that is a return statement, and \texttt{n} is 
+    a node in a caller, receiving the returned value
+    \item TODO field flow
+\end{itemize}
+
+Both passes take virtual dispatch into account by dispatching to all possible callees
+for each call site. Only later phases use a more advanced analysis to use the call context 
+to restrict the virtual dispatch targets.
+
+\subsubsection*{Node Filtering --- Phase 2}
+The second phase of node filtering works very similar to phase 1 --- it 
 operates on all nodes which are present in \texttt{nodeCand1} and filters them further.
 It is again implemented in a flooding-style algorithm with a forward and backward 
 pass, like in phase 1.
 It takes simple call contexts into account to make the analysis more precise.
 
 The forward pass is implemented in the predicate \texttt{nodeCandFwd2}.
-A node is a candidate node if it is a candidate node as per phase 1 (i.e. it is in \texttt{nodeCand1})
+A node is a candidate node if it is a candidate node as per phase 1 
+(i.e. it is in \texttt{nodeCand1})
 and fulfills one of the following conditions:
 \begin{itemize}
     \item bla
@@ -395,6 +435,9 @@ Furthermore, TODO.% limits virtual dispatch
 % TODO find out when we use call contexts to help Virutal Dispatch
 % Question: compatibleTypes in DataFlowPrivate is always already called with erased representations,
 % and then calls getErasedRepr again?
+% TODO: local data flow: We have flow from PostUpdateNodes to the next adjacent read,
+% but we also have flow from the pre-update node to the next adjacent read?
+% Isn't that (more or less) two paths for the same?
 
 % start of considered nodes: nodeCandFwd1(node, config) -  simple local flow 
 % node is reachable via dataflow from the source,
