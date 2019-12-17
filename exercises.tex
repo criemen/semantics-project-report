@@ -236,6 +236,8 @@ are ignored.
 We will now present the details of how dataflow is computed for Java programs.
 First, the algorithm runs multiple passes of finding candidate nodes which are part 
 of dataflow paths.
+Every pass refines the set of nodes by computing more accurate information about the 
+possible dataflow.
 Then the algorithm computes a step relation and takes the transitive closure of that.
 The implementation of the algorithm is divided into a generic dataflow algorithm which is 
 used for Java, C/C++ and C\# and a specific language-specific implementation of a common interface.
@@ -250,7 +252,58 @@ Other parts of the algorithm are described more in-depth.
 
 \subsubsection*{Terminology}
 Before we can start with the steps of the algorithm, we need to introduce some terminology.
+The \emph{virtual dispatch} library provides functionality to resolve calls of 
+methods through interfaces and class hierarchies.
+For any given method call, it provides a list of all potential targets of that
+call site.
+With an optional provided call context, it can further narrow down the list of
+possible method implementations.
+\begin{listing}
+    \begin{javacode}
+        interface I {
+            public void f();
+        }
+        class A implements I {
+            @Override
+            public void f() {
+                // Implementation A
+            }
+        }
+        class B implements I {
+            @Override
+            public void f() {
+                // Implementation B
+            }
+        }
+        class User {
+            public void g(I i) {
+                i.f();
+            }
+            public void h() {
+                A a = new A();
+                g(a);
+            }
+        }
+    \end{javacode}
+    \caption{Example code for virtual dispatch resolution}
+    \label{lst:virtual-dispatch}
+\end{listing}
+In the example~\autoref{lst:virtual-dispatch}, the \java{interface I} defines a
+ method \java{f()}, and the two 
+classes \texttt{A} and \texttt{B} both implement the interface \texttt{I}.
+Without call contexts, the virtual dispatch library would resolve the call 
+of \java{f()} in the method \java{User.g(i)} to both 
+implementations in \texttt{A} and \texttt{B}.
+However, if call contexts are provided to the virtual dispatch library 
+it is able to infer that when \java{User.g(i)} is invoked by the method 
+\java{User.h()} it only can dispatch to the implementation of \texttt{f()} in 
+\java{class A}.
+This functionality is orthogonal to the dataflow library, and the implementation 
+of virtual dispatch is not described.
 
+
+% TODO additional steps are not value-preserving
+% They are not allowed when tracking an object into which we stored
 A \emph{local} flow step is a dataflow step where data flows from one node to another
 and both nodes are inside the same callable.
 Before local flow can be computed, an SSA form is computed first.
@@ -295,6 +348,15 @@ In Java, there are two possibilities for a jump step to occur.
 
 An \emph{additional} (local or jump) flow step is a dataflow step that the user 
 provides via the \texttt{Configuration}.
+The prime example of additional flow steps are taint steps.
+In Java, string concatenation is a taint step, but not a (regular) dataflow.
+The object that flows from the source to the sink is changed by the concatenation,
+but for example adding a newline to the end of a string makes it still dangerous
+to use in a SQL query without further checks.
+Note that an additional step (by definition) does not preserve the value of the
+variable in question, as all value-preserving steps are already contained in the
+dataflow library.
+
 
 % TODO remove this, check for other references to it
 An \emph{extended return} is a generalized return that representing dataflow out of a callable.
@@ -304,10 +366,38 @@ The programmer supplies the reference to an object in a parameter, and the metho
 % TODO check what exactly out parameters are in Java, have a look at https://lgtm.com/query/4328056797028651291/
 % Should be in fact vacuous
 
+\subsubsection*{Field Flow and Access Paths}
+The dataflow library has support for (an approximation of) storing the data in a
+field of an object. The details of the approximation will be described later, but
+we will introduce the concepts needed now.
+Whenever data is stored in an object, we need to switch what we are tracking - 
+before it was an object that originated at a source, after the store the object
+containing the field needs to be tracked, together with the information in which
+field the originally tracked data is stored in.
+Conversely, when reading out of the field, we need to switch back from tracking
+the containing object to tracking the data we were originally interested in.
+Because objects can be stored in objects, just keeping track of the state 
+\emph{tracking direct} versus \emph{tracking field stored in object} is not enough.
+Instead, we keep track of a list of all the fields objects were stored into along 
+the current path.
+We call such a list an \emph{access path}.
+The access path is empty if the data that originated from the source was not 
+stored in any field.
+The \emph{head} of the access path indicates which field was last stored into,
+if the access path is a non-empty list.
+The access path is treated as a stack-like datastructure.
+At every field store, the current context is pushed to the access path, and the head is
+replaced by the current context.
+At every field read, we pop the head from the access path and restore the context based 
+on that.
+
 
 \subsubsection*{Flow Through Methods}
 As a preparatory step, the dataflow algorithm summarizes methods that at some point 
 return one of their parameters to a single dataflow step.
+This is independent of the configuration, and does not take into account
+additional steps nor barriers.
+Later steps in the algorithm offset these shortcomings.
 The dataflow from the argument node to the node for the value returned by
 the method is thus represented by only a single edge.
 \begin{listing}[H]
@@ -340,9 +430,20 @@ After the summarization step, the dataflow in line 13 is described in a single s
 from the node representing \texttt{a} as implicit argument to the method call, to the node 
 representing the expression \java{a.setName("a name")}.
 
-TODO overview of the algorithm used.
-% TODO first pass is used to detect getters
+The summarization computes for every parameter a relation with all nodes 
+that are reachable by taking (value-preserving!) dataflow steps from that parameter.
+This means all dataflow nodes that receive that parameter are marked.
+Then a \emph{a parameter flows through a method} if the parameter reaches a 
+dataflow node associated with a return statement.
+This information is then used together with the virtual dispatch analysis
+(not described here) to match up 
 
+TODO overview of the algorithm used.
+% TODO first pass is used to detect getters and setters
+% Second pass also summarizes methods where local store and read steps are used
+% It depends on the first pass to identify setters
+% Whole summarization is independent of the configuration, so barriers
+% and extra steps are not taken into account
 
 \subsubsection*{Node Filtering --- Phase 1}
 As a first step to compute global dataflow, the algorithm does several filtering passes to 
@@ -438,6 +539,8 @@ Furthermore, TODO.% limits virtual dispatch
 % TODO: local data flow: We have flow from PostUpdateNodes to the next adjacent read,
 % but we also have flow from the pre-update node to the next adjacent read?
 % Isn't that (more or less) two paths for the same?
+
+% flowthrough matches callsites with returns (flow summary)
 
 % start of considered nodes: nodeCandFwd1(node, config) -  simple local flow 
 % node is reachable via dataflow from the source,
