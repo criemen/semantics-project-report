@@ -1,4 +1,5 @@
-\include{preamble}
+\input{preamble}
+\includeonly{titlepage,0-abstract-toc,2-dataflow-library}
 
 \colorlet{colors}{blue}
 \colorlet{colort}{cyan}
@@ -18,8 +19,13 @@ urlcolor={blue!80!black}
 \pagestyle{headings}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\newpage  % neuer Abschnitt auf neue Seite, kann auch entfallen
-\include{exercises}
+%\newpage  % neuer Abschnitt auf neue Seite, kann auch entfallen
+\include{0-abstract-toc}
+\include{1-introduction}
+\include{2-dataflow-library}
+\include{3-call-sensitivity}
+\include{4-path-sensitivity}
+\include{5-conclusion}
 
 %\printbibliography
 

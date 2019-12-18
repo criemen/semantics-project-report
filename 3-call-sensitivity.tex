@@ -1,0 +1,64 @@
+% !TEX root = main.tex
+\section{Call Sensitivity}
+\subsection{Motivation}
+TODO: as discussed above, the dataflow library reports 
+
+% TODO intro
+Programmers write functions in their code which change their behavior based on 
+a Boolean parameter.
+Then on the call sites, sometimes a Boolean literal is used to determine the behavior
+of the subroutine.
+For example in the Apache Hadoop project, almost 10000 instances of this
+pattern occurred\footnote{\url{https://lgtm.com/query/139379883091955/}}.
+In pseudo-code, the pattern looks like this:
+% TODO better
+\begin{minted}{java}
+        fun A(bool param) {
+            if(param) {
+                // do X
+            }
+            else {
+                // do Y
+            }
+        }
+
+        fun B() {
+            A(false);
+            A(true);
+        }
+\end{minted}
+Previously, the dataflow library didn't take these into account.
+
+
+\subsection{Description of Implementation}
+The implementation consists of N (TODO) different parts.
+First, there is the predicate \texttt{isUnreachableInCall(Node n, DataFlowCall call)} which
+computes the set of all nodes in the dataflow graph which are unreachable
+TODO more
+Second, 
+% TODO mention virtual dispatch
+\subsection{Correctness}
+The correctness of the implementation is based on the observation that constants can be
+inlined.
+% TODO more
+
+\subsection{Examples of code where detection is now improved}
+\subsection{Future improvements}
+The analysis described in this pattern can be further generalized, as
+this pattern applies to more than just functions that take a Boolean parameter.
+Boolean types are generalized by enumerated types, providing (usually) more than two options.
+In fact, using an enum-typed variable over a Boolean variable can be the better from a software engineering perspective
+even when just encoding a choice of two options.
+Choices such as left and right are better represented 
+by enum constants \texttt{LEFT} and \texttt{RIGHT}, rather than the 
+non-descriptive Boolean constants \texttt{true} and \texttt{false}.
+
+Looking again at the Apache Hadoop project, we see almost 1800
+function calls\footnote{\url{https://lgtm.com/query/1789970986252448931/}} with enum constants as parameter.
+In all these instances the enum parameter influences control flow in the function.
+
+However, adding support for enum constants was not in the scope of the project, so we didn't implement it.
+Furthermore, our architecture is designed to be easily extended.
+Thus adding support for enum constant would be a mere software engineering effort
+with no significant academic interest.
+
