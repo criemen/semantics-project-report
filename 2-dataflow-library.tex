@@ -8,24 +8,26 @@ for analyzing programs in Java.
 We will describe the version without our contributions which are outlined in the next sections.
 
 As the dataflow library is used for bug finding, it is neither sound nor complete.
-% TODO finish sentence
 In general, the dataflow library reports \emph{possible} dataflow, i.e.\ as soon
 as there is a path in the control flow graph TODO flow is reported.
-On the other hand, sometimes dataflow paths which do exist are not reported by the 
+On the other hand, sometimes dataflow paths that do exist are not reported by the 
 dataflow library because finding them would be prohibitive performance-wise.
-These limitations will be explained in detail later. 
+These limitations will be explained later in more detail.
+However, care is taken to be as precise as possible without sacrificing performance. 
 
 The dataflow library tracks only the flow of exact values.
 For example, dataflow of a string is interrupted when \java{toUpperCase()} is called.
 However, using functions like \java{toUpperCase()} does not prevent XSS or SQL injection attacks.
 To find such paths that do not interrupt flow when the content of a variable still depends 
 heavily on the input data, the \texttt{TaintTracking} library exists.
-It is built onto the dataflow library and provides a generic interface to enable
+It is built on top of the dataflow library and provides a generic interface to enable
 finding of bug classes XSS, SQL injections or directory traversals.
 While the taint tracking library is probably the biggest user of the dataflow library,
-it is not related to the implementation of the dataflow library.
-Thus, it is not discussed here further.
-However, all improvements made to the dataflow library directly benefit taint tracking.
+it is implemented strictly on top of the dataflow library.
+Thus, it is not discussed here further, except to highlight the hooks in the dataflow 
+library on top of which the taint tracking library is built.
+Because of that design, all improvements made to the dataflow library immediately
+also benefit taint tracking.
 
 \subsection{Interface}
 Before we delve into the internals of the dataflow library, we will describe the API 
@@ -34,33 +36,42 @@ of the dataflow library users will encounter. %, as well as general design princ
 \subsubsection*{Nodes}
 The main concept used throughout the dataflow library is that of a \texttt{Node}.
 Every element in the program holding data is a node.
+The dataflow library is concerned with the task to identify 
+under which circumstances there is flow between nodes.
+The set of nodes and the set of dataflow steps between those nodes make up the 
+\emph{dataflow graph}.
+
 The type \texttt{Node} has several subtypes, corresponding to different kinds of nodes.
 The most important subclass of \texttt{Node} is \texttt{ExprNode}, 
 as every expression in the program corresponds to a \texttt{Node}.
 Another important subclass is \texttt{ParameterNode}.
 Both the implicit \texttt{this} parameter for methods and all explicit parameters
-given to methods are tracked via these nodes.
-Objects that potentially change their state through an operation are modelled
- by \texttt{PostUpdateNode}s.
+given to methods are introduced in a method via these nodes.
+In a call, data flows from the node of the argument of the 
+call to the corresponding parameter node in the callee.
+
+Objects that potentially change through an operation are modelled
+ via \texttt{PostUpdateNode}s.
 Objects that have a method called on them (potentially mutating it),
-field accesses on an object and parameters to method cals (the callee could mutate the object)
-have two nodes for that expression - one so-called pre-update node, which represents 
-the object before the operation occured, and a post-update node which represents 
-the object after the operation occured.
+field accesses on an object and parameters to method calls (the callee could mutate the object)
+have two nodes for that expression - one so-called pre-update node, that represents 
+the object before the operation, and a post-update node that represents 
+the object after the operation.
 This becomes more clear when looking at the statement \java{a.field = "string"}.
 In this example, there exists an expression node for 
-\java{"string"}, an expression node for \java{a.field},
-and an expression node for \java{a}.
-However, none of these expression nodes capture that the object \java{a}
+\java{"string"}, an expression node for the instance access \java{a.field},
+an expression node for \java{a} and an expression node for the entire assignment.
+However, none of these expression nodes capture the fact that the object \java{a}
 is mutated by the assignment.
-For this, there exists also a \texttt{PostUpdateNode} for \java{a},
-which represents the fact that the statement (potentially) mutates object \java{a}.
-It has the expression node for \java{a} as corresponding pre-update node.
+To represent that fact a \texttt{PostUpdateNode} for \java{a} is introduced,
+represting that the assignment (potentially) mutates the object \java{a}.
+The corresponding pre-update node is the expression node for \java{a}.
 
 Other subtypes of the \texttt{Node} class exist as well, 
 but are less important to the bigger picture of understanding the dataflow library.
-These subtypes correspond to instance creation, implicit reads of the \texttt{this} parameter,
-the desugaring of vararg method calls and other more technical details.
+This subtypes are more technical in nature and correspond for example 
+to instance creation, implicit reads of the \texttt{this} parameter or
+the desugaring of vararg method calls.
 
 One peculiarity of the \texttt{Node} class is that the dataflow graph
 is stored in separate predicates, not on the nodes making up the graph itself.
@@ -88,8 +99,19 @@ It holds whenever there is dataflow starting at the given node \texttt{source}
 Note that this interface does \textbf{not} provide information about specific
 dataflow paths.
 It also limits dataflow queries to dataflow between the (previously defined) sources and sinks.
-Is design limitation is intentionally restrictive, because it allows performance optimizations
+This design limitation is intentional, because it allows performance optimizations
 that make it feasible to compute whole-program dataflow.
+
+The user can disable the use of field flow.
+That improves performance and allows the dataflow library to explore all branches
+from virtual dispatch.
+If field flow is enabled, the user has to set a limit on the number of branches 
+allowed for virtual dispatch in the presence of field flow.
+Methods calls via virtual dispatch are only considered as flow targets if there are 
+sufficiently few possible implementations to analyze.
+This restriction is needed to prevent the combinatorial explosion stemming from
+fully respecting virtual dispatch and field flow.
+This is explained in more detail later.
 
 \subsection{General Design}
 
@@ -107,7 +129,7 @@ First, note that the number of \texttt{Node}s grows roughly linear in the size o
 the program.
 Second, the transitive closure of the \texttt{step} relation enumerates all dataflow
 paths in the program from one node to another.
-It is defined on the Cartesian product of \texttt{Node} with itself, which is roughly quadratic 
+It is defined on the Cartesian product of \texttt{Node} with itself that is roughly quadratic 
 in the size of the program.
 We would end up with a predicate that grows probably superlinear in the program size.
 The CodeQL tools are capable of handling very large programs,
@@ -118,18 +140,18 @@ On a very high level, the algorithm used in the dataflow library is very similar
 to the algorithm sketched above.
 The last step of it is indeed taking the transitive closure of a step-relation.
 However, a lot of care is taken to define the step relation only on suitable 
-nodes which will probably be part of a dataflow path from a source to a sink.
+nodes that will probably be part of a dataflow path from a source to a sink.
 For example, nodes that cannot be reached from any source via a dataflow path 
 are ignored.
 
 \subsection{Description of the algorithm}
 We will now present the details of how dataflow is computed for Java programs.
-First, the algorithm runs multiple passes of finding candidate nodes which are part 
+First, the algorithm runs multiple passes of finding candidate nodes that are part 
 of dataflow paths.
 Every pass refines the set of nodes by computing more accurate information about the 
 possible dataflow.
 Then the algorithm computes a step relation and takes the transitive closure of that.
-The implementation of the algorithm is divided into a generic dataflow algorithm which is 
+The implementation of the algorithm is divided into a generic dataflow algorithm that is 
 used for Java, C/C++ and C\# and a specific language-specific implementation of a common interface.
 In this description, we are glossing over the separation of those two modules and 
 describe the algorithm formed by the generic module together with the language-specific
@@ -247,6 +269,9 @@ Note that an additional step (by definition) does not preserve the value of the
 variable in question, as all value-preserving steps are already contained in the
 dataflow library.
 
+A \emph{barrier} is a node that prevents dataflow.
+Barriers are user-specified via the \texttt{Configuration}.
+They are used in the taint tracking library to model sanitizing steps.
 
 % TODO remove this, check for other references to it
 An \emph{extended return} is a generalized return that representing dataflow out of a callable.
@@ -326,7 +351,19 @@ This means all dataflow nodes that receive that parameter are marked.
 Then a \emph{a parameter flows through a method} if the parameter reaches a 
 dataflow node associated with a return statement.
 This information is then used together with the virtual dispatch analysis
-(not described here) to match up 
+(not described here) to match up arguments to parameters, yielding a predicate 
+that describes all arguments that flow through their method calls.
+
+TODO reason of doing this
+1. When computing a possible dataflow path, we do not keep track of call contexts,
+so any return out of a method flows to all callers of that method.
+By summarizing methods where an argument flows through the method, we match up 
+callers and callees.
+This also ensures that any given dataflow path first returns out of methods, and only
+then enters other methods. As soon as the path starts entering methods, it can 
+never encounter return steps anymore.
+Furthermore, summarization provides shorter paths with fewer nodes involved.
+This helps performance.
 
 TODO overview of the algorithm used.
 % TODO first pass is used to detect getters and setters
