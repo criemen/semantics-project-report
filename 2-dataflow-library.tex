@@ -311,7 +311,7 @@ on that.
 As a preparatory step, the dataflow algorithm summarizes methods that at some point 
 return one of their parameters to a single dataflow step.
 This is independent of the configuration, and does not take into account
-additional steps nor barriers.
+neither additional steps nor barriers.
 Later steps in the algorithm offset these shortcomings.
 The dataflow from the argument node to the node for the value returned by
 the method is thus represented by only a single edge.
@@ -345,32 +345,55 @@ After the summarization step, the dataflow in line 13 is described in a single s
 from the node representing \texttt{a} as implicit argument to the method call, to the node 
 representing the expression \java{a.setName("a name")}.
 
-The summarization computes for every parameter a relation with all nodes 
-that are reachable by taking (value-preserving!) dataflow steps from that parameter.
-This means all dataflow nodes that receive that parameter are marked.
-Then a \emph{a parameter flows through a method} if the parameter reaches a 
-dataflow node associated with a return statement.
-This information is then used together with the virtual dispatch analysis
-(not described here) to match up arguments to parameters, yielding a predicate 
-that describes all arguments that flow through their method calls.
-
-TODO reason of doing this
-1. When computing a possible dataflow path, we do not keep track of call contexts,
-so any return out of a method flows to all callers of that method.
-By summarizing methods where an argument flows through the method, we match up 
-callers and callees.
-This also ensures that any given dataflow path first returns out of methods, and only
-then enters other methods. As soon as the path starts entering methods, it can 
+This summarization helps the dataflow algorithm in several ways.
+In the first passes of the dataflow algorithm, we do not keep track of call contexts
+for method calls, as that would be too expensive.
+However, that means that calls and returns are not matched up, and every return out of 
+a method flows to any of the callsites.
+For example, some programmers write their setters in a way that they always return \java{this},
+as that allows chaining setters.
+If one of these setters has 100 call-sites and we wouldn't match up the callers with the callees,
+the dataflow analysis would be very imprecise.
+Using method summaries is an inexpensive way
+to rectify that problem, as they match up callers and callees.
+It also ensures that any dataflow path first returns out of methods, and only
+then enters other methods. As soon as a path starts entering methods, it can 
 never encounter return steps anymore.
 Furthermore, summarization provides shorter paths with fewer nodes involved.
 This helps performance.
 
-TODO overview of the algorithm used.
-% TODO first pass is used to detect getters and setters
-% Second pass also summarizes methods where local store and read steps are used
-% It depends on the first pass to identify setters
-% Whole summarization is independent of the configuration, so barriers
-% and extra steps are not taken into account
+The summarization computes for every parameter a relation with all nodes 
+that are reachable by taking local (value-preserving) dataflow steps from that parameter.
+This means all dataflow nodes that receive that parameter are marked.
+Then a \emph{parameter flows through a method} if the parameter reaches a 
+dataflow node associated with a return statement.
+This information is then used together with the virtual dispatch analysis
+(not described here) to match up arguments to parameters, yielding a predicate 
+that describes all arguments that flow through their method calls.
+These predicates are mutually recursive.
+This means that in the setting of an outer method that calls an inner 
+method both methods are summarized if a parameter flows through both of them.
+
+The summarization is run in two passes.
+The first pass works exactly as described above.
+Its output is then used to detect getter and setter methods.
+This relies on the predicate that indicates which dataflow nodes in a method are
+reachable from a parameter.
+
+A \emph{getter} is a method where data flows from a parameter node 
+(the implicit \java{this} argument to methoods) to a field read (or recursively another getter)
+and then to a return statement.
+
+A \emph{setter} is a method with (at least) two parameters,
+where data flows from one parameter to a field store (or recursively another setter),
+and the store updates a field in an object that was provided as a parameter as well.
+
+The second pass enhances the detection of method calls where an argument flows through 
+by also taking \emph{local store-read steps} into account.
+These are stores of data into a field, that are read later, and both 
+the store and the read happen in the same method.
+This second pass relies on the first pass, as the store and read steps take the 
+(previously computed) getters and setters into account.
 
 \subsubsection*{Node Filtering --- Phase 1}
 As a first step to compute global dataflow, the algorithm does several filtering passes to 
