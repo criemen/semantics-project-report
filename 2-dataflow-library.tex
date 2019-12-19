@@ -213,9 +213,6 @@ it is able to infer that when \java{User.g(i)} is invoked by the method
 This functionality is orthogonal to the dataflow library, and the implementation 
 of virtual dispatch is not described.
 
-
-% TODO additional steps are not value-preserving
-% They are not allowed when tracking an object into which we stored
 A \emph{local} flow step is a dataflow step where data flows from one node to another
 and both nodes are inside the same callable.
 Before local flow can be computed, an SSA form is computed first.
@@ -274,38 +271,38 @@ Barriers are user-specified via the \texttt{Configuration}.
 They are used in the taint tracking library to model sanitizing steps.
 
 % TODO remove this, check for other references to it
-An \emph{extended return} is a generalized return that representing dataflow out of a callable.
-It is either a return statement, which we call a \emph{value return} or a parameter update.
-Parameter updates are often called having an \emph{out parameter}.
-The programmer supplies the reference to an object in a parameter, and the method then
+%An \emph{extended return} is a generalized return that representing dataflow out of a callable.
+%It is either a return statement, which we call a \emph{value return} or a parameter update.
+%Parameter updates are often called having an \emph{out parameter}.
+%The programmer supplies the reference to an object in a parameter, and the method then
 % TODO check what exactly out parameters are in Java, have a look at https://lgtm.com/query/4328056797028651291/
 % Should be in fact vacuous
 
 \subsubsection*{Field Flow and Access Paths}
 The dataflow library has support for (an approximation of) storing the data in a
 field of an object. The details of the approximation will be described later, but
-we will introduce the concepts needed now.
-Whenever data is stored in an object, we need to switch what we are tracking - 
-before it was an object that originated at a source, after the store the object
+we will introduce the concepts now.
+Whenever data is stored in an object, we need to switch the data we are tracking ---
+before a store, we track an object that originated at a source, after a store the object
 containing the field needs to be tracked, together with the information in which
 field the originally tracked data is stored in.
 Conversely, when reading out of the field, we need to switch back from tracking
 the containing object to tracking the data we were originally interested in.
 Because objects can be stored in objects, just keeping track of the state 
-\emph{tracking direct} versus \emph{tracking field stored in object} is not enough.
+direct tracking versus tracking a field stored in an object is not enough.
 Instead, we keep track of a list of all the fields objects were stored into along 
 the current path.
 We call such a list an \emph{access path}.
+This access path provides the needed context to track dataflow through fields.
 The access path is empty if the data that originated from the source was not 
 stored in any field.
 The \emph{head} of the access path indicates which field was last stored into,
-if the access path is a non-empty list.
+if the access path is non-empty.
 The access path is treated as a stack-like datastructure.
-At every field store, the current context is pushed to the access path, and the head is
+At every field store, the field is pushed to the access path, thus the head is
 replaced by the current context.
-At every field read, we pop the head from the access path and restore the context based 
-on that.
-
+At every field read, we pop the head from the access path which restores the old context.
+Using the access path, we can precisely track field flow.
 
 \subsubsection*{Flow Through Methods}
 As a preparatory step, the dataflow algorithm summarizes methods that at some point 
@@ -395,46 +392,70 @@ the store and the read happen in the same method.
 This second pass relies on the first pass, as the store and read steps take the 
 (previously computed) getters and setters into account.
 
-\subsubsection*{Node Filtering --- Phase 1}
-As a first step to compute global dataflow, the algorithm does several filtering passes to 
-determine candidate nodes which could possibly be part of a global dataflow path from
-a source to a sink.
+\subsubsection*{Node Filtering --- Phase 1 forward}
+Before computing a whole dataflow graph for a program,
+the algorithm identifies several sets of candidate nodes that are possibly part of 
+that dataflow graph.
+These sets are restricted further and further with every filtering pass.
+These sets are configuration-specific.
+They take sources, sinks, barriers and additional steps from the configuration into 
+account.
 Note that in the description of the passes, \emph{candidate node} always refers
-to being a candidate node in that pass, unless otherwise noted.
+to being a candidate node of that pass, unless otherwise noted.
 
 The first pass is done in the predicate \texttt{nodeCandFwd1}.
-It uses a flooding-style algorithm to compute all nodes reachable from the source nodes,
-while ignoring all call contexts.
-In detail, this means a \texttt{Node n} is a candidate node if either of the following is true:
+It uses a flooding-style algorithm to compute all nodes reachable from the source nodes
+using dataflow steps, while ignoring all call contexts.
+It is a huge overapproximation of the node set of the dataflow graph 
+but, because of its simplicity, cheap to compute.
+A \texttt{Node n} is a candidate node if it is not a barrier node and 
+either of the following is true:
 \begin{itemize}
     \item The node \texttt{n} is a source node.
     \item There exists a candidate node \texttt{mid} such that \texttt{n} is reachable with a single flow step,
     either a local step, a jump step or an additional step.
-    \item There exists a candidate dataflow node \texttt{arg}, such that \texttt{arg} is an argument in 
-    a call, and \texttt{n} is a dataflow node representing the parameter in the target of the call.
+    \item There exists a candidate dataflow node \texttt{arg}, such that 
+    \texttt{arg} is an argument in a call, and \texttt{n} is a dataflow node 
+    representing the parameter in the callee.
     In this case, we say that we have dataflow \emph{into} a callable.
     \item The opposite case is that we have dataflow \emph{out} of a callable.
-    That happens when the node \texttt{n} is the target of an extended return, 
-    where the return node is already a candidate node.
-    \item TODO field flow
+    That happens when the node \texttt{n} is a node representing a value returned by 
+    a call, either directly or by being a \texttt{PostUpdateNode} that
+    represents a parameter that is possibly modified by a call.
+    Furthermore, there exists a candidate node that returns from the callee.
+    \item The node \texttt{n} is a \texttt{PostUpdateNode}, representing the state of an 
+    object immediately after a field store (either direct, or by using a setter).
+    Furthermore, the data that is stored needs to be a candidate node already.
+    \item The node \texttt{n} takes the result of a field read 
+    (either directly, or via a getter), the node from which we read is already a
+    candidate node \textbf{and} the field we read from is stored to 
+    by a candidate node.
 \end{itemize}
-TODO: Field flow is only done when branching limit >= 1
-% TODO reformulate
-If field flow is enabled and data from a candidate node is stored in a field
-(directly, through a setter method, or through a method call that returns an
- object in which an argument was stored), the node associated with that store
- is also a candidate node.
- If field flow is enabled and a candidate node is an object which appears in a 
- read expression, the expression node for the field read is also a candidate node.
-Getter methods are also detected and treated exactly the same as a regular field read.
+In the case of calls and returns, virtual dispatch is taken into account,
+so calls branch out to all possible targets, and returns go back to all possible callers.
 
+Field flow is only considered when the field flow is enabled in the configuration.
+If field flow is enabled, we do not only track candidate nodes, as computed by 
+\texttt{nodeCandFwd1}, but also candidate fields in which we possibly store as
+part of a dataflow path.
+These fields are tracked by the predicate \texttt{storeCandFwd1}, which is mututally 
+recursive with \texttt{nodeCandFwd1}.
+While we do not track any access paths in this first pass,
+the candidate fields can be understood as (a superset of) the nodes that make up 
+access paths, as only fields in which we store can be a part of an access path.
 
+\subsubsection*{Node Filtering --- Phase 1 backwards}
 The second pass is done in the predicate \texttt{nodeCand1}.
 The second pass filters the results from the first pass by only keeping nodes
-which fulfill \texttt{nodeCandFwd1}, i.e.\ are reachable from the source nodes,
-that also are reachable when going backwards from the sinks.
-Like \texttt{nodeCandFwd1}, it ignores all call contexts.
-In detail, this means a \texttt{Node n} is a candidate node if it is contained in 
+that also are reachable from the sinks when taking all the steps backwards.
+This pattern is used for all the candidate node filtering steps --- first, we 
+filter the node set starting from the sources and taking steps forward,
+and then we filter that set further by starting with the sinks and taking steps backwards.
+
+Like \texttt{nodeCandFwd1}, \texttt{nodeCand1} ignores all call contexts.
+All cases are symmetric to the ones in \texttt{nodeCandFwd1}.
+In detail, this means a \texttt{Node n} is a candidate node as considered by 
+\texttt{nodeCand1} if it is contained in 
 \texttt{nodeCandFwd1} and either of the following is true:
 \begin{itemize}
     \item The node \texttt{n} is a sink node.
@@ -445,13 +466,26 @@ In detail, this means a \texttt{Node n} is a candidate node if it is contained i
     such that \texttt{node} is a possible argument that gets passed to the callable.
     \item Flow out of a callable:
     There exists a candidate node that is a return statement, and \texttt{n} is 
-    a node in a caller, receiving the returned value
-    \item TODO field flow
+    a node in a caller, receiving the returned value.
+    \item The node \texttt{n} is an object from which a field \texttt{f} is read,
+    where the value of the read flows to a candidate node, and \texttt{f}
+    is a candidate field as identified by the predicate \texttt{storeCandFwd1}.
+    \item The node \texttt{n} is stored into a field \texttt{f}, where the
+    object after the store is already a candidate node, \texttt{f} is a
+    candidate field as identified by the predicate \texttt{storeCandFwd1}
+    \textbf{and} the field is read from by a candidate node.
 \end{itemize}
 
-Both passes take virtual dispatch into account by dispatching to all possible callees
+Again, if field flow is enabled, we also track candidate fields that could make up 
+access paths. This predicate is called \texttt{readCand1} and is a subset of 
+\texttt{storeCandFwd1}.
+It tracks the fields that are read from in a path from the sink to a source.
+
+Both passes in phase 1 take virtual dispatch into account by dispatching to all possible callees
 for each call site. Only later phases use a more advanced analysis to use the call context 
 to restrict the virtual dispatch targets.
+Note that no type checking is done in phase 1.
+TODO elaborate on type checking
 
 \subsubsection*{Node Filtering --- Phase 2}
 The second phase of node filtering works very similar to phase 1 --- it 
