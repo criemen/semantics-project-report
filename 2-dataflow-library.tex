@@ -487,28 +487,168 @@ to restrict the virtual dispatch targets.
 Note that no type checking is done in phase 1.
 TODO elaborate on type checking
 
-\subsubsection*{Node Filtering --- Phase 2}
+\subsubsection*{Node Filtering --- Phase 2 forward}
 The second phase of node filtering works very similar to phase 1 --- it 
 operates on all nodes which are present in \texttt{nodeCand1} and filters them further.
 It is again implemented in a flooding-style algorithm with a forward and backward 
 pass, like in phase 1.
-It takes simple call contexts into account to make the analysis more precise.
+However, is starts taking very simple call contexts and access paths 
+into account to make the analysis more precise.
+In phase 2 both the call context and the access path are approximated by booleans.
+The boolean for the call context tracks whether the data flow entered through 
+a parameter or no.
+The boolean for the access path tracks whether the access path is empty or not.
+
 
 The forward pass is implemented in the predicate \texttt{nodeCandFwd2}.
-A node is a candidate node if it is a candidate node as per phase 1 
-(i.e. it is in \texttt{nodeCand1})
-and fulfills one of the following conditions:
-\begin{itemize}
-    \item bla
-\end{itemize}
-Compared to \texttt{nodeCandFwd1}, it skips over methods where the argument value 
-flows through (see the subsection directly above), and uses the summarized dataflow for that.
-This reduces the number of nodes in the predicate.
-Furthermore, TODO.% limits virtual dispatch
+It is different in the following steps from phase 1:
+It skips over methods where the argument value 
+flows through and uses the summarized dataflow instead.
+To take additional non-value-preserving steps into account,
+summaries are computed for methods which take at least one
+non-value-preserving step as well.
+Flow out of a callable is only taken into account when the call context 
+indicates that we did not end up in the current node via a method call.
+This excludes the non-summarized paths from the predicate.
 
-% Note: the fromArg parameter in nodeCandFwd2 is there to exclude the nodes
-% which have been summarized away in the flow-through-analysis
+Whenever we encounter a store, we simulate pushing to the head of the access path 
+by setting the flag indicating that the access-path is non-empty.
+Non-value-preserving steps are only allowed when the access path is empty.
+When the access-path is non-empty, we are tracking an object in which the tracked 
+data is stored. However, when a non-value-preserving step is applied to that object,
+object identity does not hold anymore, and the value of the field with the tracked
+data is lost.
+Thus, we do not need to track it for dataflow anymore.
 
+Whenever we encounter a read, we need to simulate a pop operation on the access path.
+However, with the limited information we track, it is not possible to determine 
+whether the access path is empty after one read or not.
+Thus, we continue with both options considered possible.
+
+Additionally, both reads and stores are only considered when they appear in the 
+predicate \texttt{readCand1}.
+Furthermore, just like in \texttt{nodeCandFwd1}, the predicate 
+\texttt{storeCandFwd2} tracks all fields that are stored into in the dataflow
+covered by this pass.
+As we only consider fields from \texttt{readCand1}, it is a further refinement 
+of that set.
+
+Whenever we encounter flow into or out of callables while having a non-empty 
+access path \textbf{and} we encounter virtual dispatch,
+we check that the branch limit holds.
+Virtual dispatch targets which branch out a lot are ignored when tracking objects 
+into which we stored earlier. What exactly a lot means is determined by the 
+configuration.
+This pruning obviously eliminates real dataflow paths from the results, but is needed
+to make the analysis feasible.
+
+\subsubsection*{Node Filtering --- Phase 2 backwards}
+The exact same filtering as done in phase 2 forwards from the sources to the sinks 
+is afterwards applied going backwards from the sinks to the sources.
+The predicate for this is \texttt{nodeCand2}.
+Furthermore, it also refines the potential fields making up access paths even further,
+only recording fields that are present in \texttt{storeCandFwd2} and that are 
+also read from in the flow covered by \texttt{nodeCand2}.
+The fields are stored in the predicate \texttt{readCand2}.
+
+
+\subsubsection*{Local Flow Summarization --- The Bigstep Local Flow Relation}
+Before filtering the node set even further, the local flow steps are summarized 
+into the so-called bigstep relation.
+
+The local flow step relation contains very detailed dataflow information.
+For example, the flow from a parameter to a method call 
+is in general not a single step.
+Indeed, every use of the parameter along the control flow graph until the method 
+call is a part of the dataflow.
+Having a such refined model of the dataflow is good for preciseness, but 
+reporting that dataflow path to the user would not be useful.
+Furthermore, it incurs quite a performance overhead, as a lot of nodes and edges 
+are needed to model local dataflow on that level.
+To address those problems, a coarser version of the 
+local dataflow step relation is computed.
+
+However, a simple transitive closure over the step relation would lose too much 
+information, as it would skip over interesting local flow steps,
+like storing the data in a field, or calling methods with the information as 
+argument.
+
+The \emph{local flow bigstep relation} strikes a balance between the refined 
+local flow step relation and its transitive closure.
+It conflates steps until it reaches nodes that are considered to be interesting.
+The intent is to skip over irrelevant steps for the programmer, while still 
+reporting enough steps in the dataflow graph that the programmer can understand 
+how the dataflow is happening.
+It thus stops conflating steps when it encounters casts, flow into or out of callables,
+jump steps, calls to methods where the argument value flows through (see above), field 
+stores and reads as well as when it reaches a sink. 
+Cast nodes are important stopping points, because in later steps the dataflow 
+algorithm actually prunes path based on the type information to rule out 
+paths where the type is not compatible.
+The bigstep relation also keeps track if non-value-preserving steps have been used 
+in the summarization or not, because as explained above, those steps are only allowed 
+when the current access path is empty.
+
+\subsubsection*{Node Filtering --- Phase 3 forward}
+The next filtering step filters the candidate nodes from \texttt{nodeCand2}
+and the candidate fields for the access paths from \texttt{readCand2} even further.
+It is implemented in the predicate \texttt{flowCandFwd}, that stores the candidate nodes,
+and in the predicate \texttt{consCandFwd} that tracks the fields that potentially 
+make up the access path.
+
+The main differences to \texttt{nodeCand2} are that the bigstep relation is 
+used for local flow (thus reducing the number of nodes needed), 
+a more precise approximation of the access path than just a boolean,
+and type-checking along the considered paths.
+Call contexts are still approximated by only a boolean that indicates whether 
+in the current context, dataflow came from a method parameter.
+
+To approximate the access path, we now store the front of the access path.
+The front of an access path is either Nil if the access path is empty,
+or the head of the access path (a field).
+This is clearly more accurate than the boolean that just stores whether the 
+access path is empty.
+This approximation relies on the observation made by Semmle engineers that
+in most programs the current head of the access path is a
+good predictor for the next element of the access path.
+Furthermore, given the current head of an non-empty access path, we get the 
+type of the currently-tracked object for free.
+Thus, by tracking type information when the access path is empty, we can type-check
+the whole path quite cheaply.
+
+The access path handling is implemented in the following way:
+Sources enforce that the access path front is Nil.
+Furthermore, non-value-preserving steps can only be used in contexts with
+a Nil access path front.
+Again, like in phase 2, we ignore calls to methods that branch out a lot when the
+access path front is Nil.
+
+When encountering a field store, we simulate a push to the access path by replacing 
+the current access path front with a new one that uses the stored-to field 
+as head.
+This operation stores exactly the current content.
+
+However, when encountering a field read, we need to simulate a pop operation.
+As we throw away the information about the reminder of the access path as soon as 
+we encounter a store, we have no reliable way to know what to set the access path front 
+to.
+TODO more details on how push is implemented.
+
+Types along dataflow paths are mostly checked by the compiler already, it is 
+only a few places where the final type check is either deferred to the runtime 
+(casts) or the dataflow analysis could get confused.
+Thus, we prune using the recorded type information only at nodes that represent 
+casts, parameters and returns.
+These nodes are only candidate nodes if their type 
+matches the type recorded in the access path front.
+
+\subsubsection*{Node Filtering --- Phase 3 backwards}
+This pass is TODO symmetric to the forwards pass.
+\subsubsection*{Node Filtering --- Phase 4 forward}
+Full call contexts, even better access path approximation 
+\subsubsection*{Node Filtering --- Phase 4 backwards}
+
+\subsubsection*{Dataflow Graph Computation}
 
 
 % TODO: why localFlowStep flows through casts?
