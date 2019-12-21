@@ -629,10 +629,76 @@ as head.
 This operation stores exactly the current content.
 
 However, when encountering a field read, we need to simulate a pop operation.
-As we throw away the information about the reminder of the access path as soon as 
+As we throw away the information about the remainder of the access path as soon as 
 we encounter a store, we have no reliable way to know what to set the access path front 
 to.
-TODO more details on how push is implemented.
+Thus, we explore all possible options and consider all access path fronts that could fit.
+This becomes a bit more clear when looking at the following example:
+
+\begin{listing}[H]
+    \begin{javacode}
+        class A {
+            public String stringField;
+        }
+        class A1  extends A {
+            public String f1;
+        }
+        class A2 extends A{
+            public String f2;
+        }
+        class O1 {
+            public Object fo1;
+        }
+        class O2 {
+            public Object fo2;
+        }
+
+        class Flow {
+            // flow enters via the parameter source, access path front is Nil, 
+            // type is String
+            public void flowMethod(String source) {
+                A1 a1 = new A1();
+                // field store, access path front changes to the head for 
+                // the field f1 in class A1
+                // the new type of the object we're tracking is A1
+                a1.f1 = source;
+                O1 o1 = new O1();
+                // field store, access path front changes to the head for
+                // field a1, class O1
+                // the new type we're tracking is O1
+                o1.a1 = a1;
+                // field read, access path front needs to be restored.
+                // two options, either O1.a1, or O2.a2
+                // the new type we're tracking is A
+                A1 a1New = o.a1;
+
+            }         
+            public void flowMethod2(String source) {
+                A2 a2 = new A2();
+                // field store, access path front changes to the head for 
+                // the field f2 in class A2
+                // the new type of the object we're tracking is A2
+                a2.f2 = source;
+                O2 o2 = new O2();
+                // field store, access path front changes to the head for
+                // field a1, class O1
+                // the new type we're tracking is O1
+                o2.a2 = a2;
+                // field read, access path front needs to be restored.
+                // two options, either O1.a1, or O2.a2
+                // the new type we're tracking is A
+                A2 a2New = o.a2;
+
+            }
+
+
+        }
+    \end{javacode}
+\end{listing}
+
+The example assumes that at some other point in the program, as part of some dataflow 
+from a source to a sink we encounter a store and a read in the field \texttt{a2} of the class 
+\texttt{O2}.
 
 Types along dataflow paths are mostly checked by the compiler already, it is 
 only a few places where the final type check is either deferred to the runtime 
