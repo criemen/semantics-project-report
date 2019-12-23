@@ -172,30 +172,30 @@ With an optional provided call context, it can further narrow down the list of
 possible method implementations.
 \begin{listing}
     \begin{javacode}
-        interface I {
-            public void f();
-        }
-        class A implements I {
-            @Override
-            public void f() {
-                // Implementation A
-            }
-        }
-        class B implements I {
-            @Override
-            public void f() {
-                // Implementation B
-            }
-        }
-        class User {
-            public void g(I i) {
-                i.f();
-            }
-            public void h() {
-                A a = new A();
-                g(a);
-            }
-        }
+interface I {
+    public void f();
+}
+class A implements I {
+    @Override
+    public void f() {
+        // Implementation A
+    }
+}
+class B implements I {
+    @Override
+    public void f() {
+        // Implementation B
+    }
+}
+class User {
+    public void g(I i) {
+        i.f();
+    }
+    public void h() {
+        A a = new A();
+        g(a);
+    }
+}
     \end{javacode}
     \caption{Example code for virtual dispatch resolution}
     \label{lst:virtual-dispatch}
@@ -314,21 +314,21 @@ The dataflow from the argument node to the node for the value returned by
 the method is thus represented by only a single edge.
 \begin{listing}[H]
     \begin{javacode}
-        class A {
-            String name;
-        
-            public void setName(String name) {
-                this.name = name;
-                return this;
-            }
-        }
-    
-        class B {
-            public void caller() {
-                A a = new A();
-                a.setName("a name");
-            }
-        }
+class A {
+    String name;
+
+    public void setName(String name) {
+        this.name = name;
+        return this;
+    }
+}
+
+class B {
+    public void caller() {
+        A a = new A();
+        a.setName("a name");
+    }
+}
     \end{javacode}
     \caption{Example code for flow through method summarization}    
     \label{lst:flow-through-example}
@@ -707,12 +707,46 @@ This pass is symmetric to the forwards pass.
 The resulting candidate nodes are stored in the predicate \texttt{flowCand},
 and the fields encountered along the paths are recorded in
 the predicate \texttt{consCand}.
+Both the node and the field candidate sets are sub-sets of the ones generated
+in the forwards part of phase 3.
 
 \subsubsection*{Node Filtering --- Phase 4 forward}
-Full call contexts, even better access path approximation 
+The fourth phase is the last phase of node filtering.
+Afterwards, the node set is all the nodes in the transitive closure of 
+the actual step relation.
+The forwards pass is implemented in the predicate \texttt{flowFwd}.
+The set of candidate fields that make up the access path is not
+restricted further.
+
+The fourth phase still approximates call contexts by a boolean indicating 
+whether we entered the current context via a parameter or not.
+However, the access path approximation is more accurate.
+This is in fact the last access path approximation done by the algorithm.
+Storing the full access path is infeasible, as any recursive datastructures
+would lead to access paths of infinite size.
+As lists in QL have to be fully instantiated this would be impossible to 
+represent.
+Furthermore, even for access paths with finite size $N$ the number of access paths 
+can grow exponentially in $N$.
+This can be seen by looking at simple binary trees, where an access path 
+of a leaf node is exactly a path from the root to a leaf node, and for a tree
+of depth $N$ (the length of the path) there are $O(2^N)$ different paths.
+Thus, the maximum length of access paths has to be chosen carefully to not 
+cause a combinatorial explosion.
+
+The approximation chosen for access paths is that the first two elements of
+the access path are tracked, and for the tail elements the length is tracked.
+Furthermore, only access paths up to the length of 5 are considered at all.
+Again, like in phase 3, the access path always tracks the type information of the 
+dataflow, even when the access path is empty.
+
+
+
+
+
 \subsubsection*{Node Filtering --- Phase 4 backwards}
 
-\subsubsection*{Dataflow Graph Computation}
+\subsubsection*{The Step Relation}
 
 
 % TODO: why localFlowStep flows through casts?
@@ -755,6 +789,7 @@ Full call contexts, even better access path approximation
 
 % TODO: Sections about casts
 % TODO note about numerical types
+% TODO: simpleArgumentValueFlowsThrough is not mentioned+only in empty AP
 % ANDERS:
 % consCandFwd why type check? Every store in a field needs to be compatible 
 % with the type of the field?
