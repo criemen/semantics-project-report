@@ -636,57 +636,10 @@ Thus, we explore all possible options and consider all access path fronts that c
 Precisely, during a read from a field \texttt{f},
 we explore data flow for all access path fronts that were encountered before 
 any store into the field \texttt{f} in flow covered by phase 3.
-TODO Type check! Maybe come up with an example where it matters?
+% TODO type check - why?
 
-This becomes a bit more clear when looking at the following example:
-
-\begin{listing}[H]
-    \begin{javacode}
-        class A {
-            public String stringField1;
-            public String stringField2;
-        }
-        class Box {
-            public A fo1;
-        }
-        class Flow {
-            // flow enters via the parameter source, access path front is Nil, 
-            // type is String
-            public void flowMethod(String source) {
-                A a1 = new A();
-                // field store, access path front changes to the head for 
-                // the field stringField1 in class A
-                // the new type of the object we're tracking is A
-                a1.stringField1 = source;
-                Box box = new Box();
-                // field store, access path front changes to the head for
-                // field fo1, class Box
-                // the new type we're tracking is Box
-                box.fo1 = a1;
-                // field read, access path front needs to be restored.
-                // two options, either A.stringField1, or A.stringField1
-                // the new type we're tracking is A
-                A a2 = box.fo1;
-                // field read, access path front 
-                String trackedObject = a2.stringField1;
-                // flow of the tracked object to a sink
-                sink(trackedObject);
-            }         
-            public void flowMethod2(String source) {
-                A a1 = new A();
-                a1.stringField2 = source;
-                Box box = new Box();
-                box.fo1 = a1;
-                A a2 = box.fo1;
-                String trackedObject = a2.stringField2;
-                sink(trackedObject);
-            }
-        }
-    \end{javacode}
-\end{listing}
-
-This example explains the access path approximation as done in the forward-phase 
-3 of the node filtering.
+The example below explains how the access path approximation as done in the forward-phase 
+3 of the node filtering works in practice.
 It creates an ambiguity in line 25 (the field read from the box),
 because there are two places in the program where data is stored in the box 
 (lines 21 and 35), and these two places have two different access path fronts.
@@ -695,6 +648,51 @@ and the algorithm cannot distinguish between them.
 To create the ambiguity, \java{flowMethod2} is provided that stores 
 in the second field of class \texttt{A}.
 
+\begin{listing}[H]
+    \begin{javacode}
+class A {
+    public String stringField1;
+    public String stringField2;
+}
+class Box {
+    public A fo1;
+}
+class Flow {
+    // flow enters via the parameter source, access path front is Nil,
+    // type is String
+    public void flowMethod(String source) {
+        A a1 = new A();
+        // field store, access path front changes to the head for the field 
+        // stringField1 in class A - the new type of the object we're tracking is A
+        a1.stringField1 = source;
+        Box box = new Box();
+        // field store, access path front changes to the head for
+        // field fo1, class Box - the new type we're tracking is Box
+        box.fo1 = a1;
+        // field read, access path front needs to be restored.
+        // two options, either A.stringField1, or A.stringField2
+        // the new type we're tracking is A
+        A a2 = box.fo1;
+        // field read, access path front becomes Nil, tracked type String
+        // as there is no read from A.stringField1 anymore on this path 
+        // it is a dead end and will be filtered out in the backwards pass
+        String trackedObject = a2.stringField1;
+        // flow of the tracked object to a sink
+        sink(trackedObject);
+    }         
+    public void flowMethod2(String source) {
+        A a1 = new A();
+        a1.stringField2 = source;
+        Box box = new Box();
+        box.fo1 = a1;
+        A a2 = box.fo1;
+        String trackedObject = a2.stringField2;
+        sink(trackedObject);
+    }
+}
+    \end{javacode}
+\end{listing}
+
 Types along dataflow paths are mostly checked by the compiler already, it is 
 only a few places where the final type check is either deferred to the runtime 
 (casts) or the dataflow analysis could get confused.
@@ -702,9 +700,14 @@ Thus, we prune using the recorded type information only at nodes that represent
 casts, parameters and returns.
 These nodes are only candidate nodes if their type 
 matches the type recorded in the access path front.
+% TODO maybe with example as well?
 
 \subsubsection*{Node Filtering --- Phase 3 backwards}
-This pass is TODO symmetric to the forwards pass.
+This pass is symmetric to the forwards pass.
+The resulting candidate nodes are stored in the predicate \texttt{flowCand},
+and the fields encountered along the paths are recorded in
+the predicate \texttt{consCand}.
+
 \subsubsection*{Node Filtering --- Phase 4 forward}
 Full call contexts, even better access path approximation 
 \subsubsection*{Node Filtering --- Phase 4 backwards}
@@ -751,7 +754,7 @@ Full call contexts, even better access path approximation
 % flowCand0 uses flowCand and flowCandFwd, so mutual recursion, goes backwards from sink
 
 % TODO: Sections about casts
-
-
-% what is a node?
-% user interface
+% TODO note about numerical types
+% ANDERS:
+% consCandFwd why type check? Every store in a field needs to be compatible 
+% with the type of the field?
