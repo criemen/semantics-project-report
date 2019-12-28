@@ -3,9 +3,9 @@
 Designing a dataflow library which works in theory is a task that is not too difficult.
 However, designing a dataflow library which performs well on projects with millions of lines of code is 
 considerably more difficult.
-In this section, we will describe the dataflow library for the CodeQL platform % TODO check marketing material, is this correct?
+In this section, we will describe the dataflow library used by the CodeQL platform % TODO check marketing material, is this correct?
 for analyzing programs in Java.
-We will describe the version without our contributions which are outlined in the next sections.
+We will describe the dataflow library without the contributions that are outlined in the next sections.
 
 As the dataflow library is used for bug finding, it is neither sound nor complete.
 In general, the dataflow library reports \emph{possible} dataflow, i.e.\ as soon
@@ -713,7 +713,7 @@ in the forwards part of phase 3.
 \subsubsection*{Node Filtering --- Phase 4 forward}
 The fourth phase is the last phase of node filtering.
 Afterwards, the node set is all the nodes in the transitive closure of 
-the actual step relation.
+the actual step relation (and thus not explicitly computed anymore).
 The forwards pass is implemented in the predicate \texttt{flowFwd}.
 The set of candidate fields that make up the access path is not
 restricted further.
@@ -740,13 +740,45 @@ Furthermore, only access paths up to the length of 5 are considered at all.
 Again, like in phase 3, the access path always tracks the type information of the 
 dataflow, even when the access path is empty.
 
+Pushing to such an approximation is easy - we just preprend the new field to the 
+existing list.
+Should the resulting list have more than 5 entries the dataflow path is not considered
+at all.
+This helps performance for example in the case of recursive datastructures,
+where there are candidate dataflow paths with infinite length.
 
-
+As in phase 3, popping from a list approximation is more complicated.
+However, in phase 4 we know exactly
+what to restore the access path to after a read for short access paths.
+When the access path has length one or two popping from that list 
+is possible in full precision.
+In the case of access paths of length three to five, we can precisely determine 
+the new head \texttt{f1} of the access path, as we store the second element.
+However, the second element \texttt{f2} in the access path after the read cannot be determined.
+Again, like in phase 3, we have to resort to just trying all possible options.
+For the second element, we consider all possible fields that occur in dataflow
+covered by phase 3 (i.e.\ exactly the fields recorded in \texttt{consCand}).
+This is further filtered by just considering fields that occur along any access path
+where the head of that access path is the field \texttt{f1}.
+This ensures a relatively high precision in most cases.
 
 
 \subsubsection*{Node Filtering --- Phase 4 backwards}
+The backwards pass of phase 4 is implemented in the predicate \texttt{flow}.
+This is the final candidate set of nodes on which the step relation is computed.
 
 \subsubsection*{The Step Relation}
+The step relation is computed in the predicate \texttt{pathStep}.
+It can be viewed as the edge set of a directed acyclic graph,
+the dataflow graph.
+The node set of that graph is the union of all nodes that are either the beginning 
+or the end of a single dataflow step.
+Taking the transitive closure of the step relation yields a relation that indicates 
+which sinks are reachable from a given source.
+
+It reuses the same access path approximation as phase 4 of the node filtering,
+but keeps track of more call contexts.
+
 
 
 % TODO: why localFlowStep flows through casts?
@@ -793,3 +825,7 @@ dataflow, even when the access path is empty.
 % ANDERS:
 % consCandFwd why type check? Every store in a field needs to be compatible 
 % with the type of the field?
+
+% TODO mention a bit more about the general design/ node exists versus computing explicit
+% step relation - we have an implicit union over the different step relations, but we don't connect
+% them to paths just yet, because that would've size NxN instead of size N
