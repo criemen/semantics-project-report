@@ -9,11 +9,12 @@ We will describe the dataflow library without the contributions that are outline
 
 As the dataflow library is used for bug finding, it is neither sound nor complete.
 In general, the dataflow library reports \emph{possible} dataflow, i.e.\ as soon
-as there is a path in the control flow graph TODO flow is reported.
+as there is a path in the control flow graph of the program dataflow is reported.
 On the other hand, sometimes dataflow paths that do exist are not reported by the 
-dataflow library because finding them would be prohibitive performance-wise.
+dataflow library because finding them would be prohibitive due to poor performance.
 These limitations will be explained later in more detail.
-However, care is taken to be as precise as possible without sacrificing performance. 
+However, a lot of care is taken to be as precise as possible 
+without sacrificing performance. 
 
 The dataflow library tracks only the flow of exact values.
 For example, dataflow of a string is interrupted when \java{toUpperCase()} is called.
@@ -29,9 +30,14 @@ library on top of which the taint tracking library is built.
 Because of that design, all improvements made to the dataflow library immediately
 also benefit taint tracking.
 
+There is one exception to the rule that changing the data stops flow: All numeric types 
+(integers and floating point numbers) are treated as data of the same type,
+as converting from one type to the other often preserves the value.
+
+
 \subsection{Interface}
 Before we delve into the internals of the dataflow library, we will describe the API 
-of the dataflow library users will encounter. %, as well as general design principles.
+of the dataflow library users will encounter.
 
 \subsubsection*{Nodes}
 The main concept used throughout the dataflow library is that of a \texttt{Node}.
@@ -78,7 +84,7 @@ is stored in separate predicates, not on the nodes making up the graph itself.
 This means that the graph is stored in an adjacency matrix, where the
  adjacency matrix is encoded in the tuple set of a predicate.
 Different kinds of dataflow graphs can be represented by different predicates,
-using the same nodes.
+using the same set of nodes.
 % TODO elaborate
 
 \subsubsection*{Configuration}
@@ -115,7 +121,7 @@ This is explained in more detail later.
 
 \subsection{General Design}
 
-In theory, implementing a dataflow algorithm in a logic programming language is very simple.
+In theory, implementing a dataflow algorithm in a logic programming language is simple.
 Given the \texttt{Node} concept discussed above, one only needs to provide a relation
 \texttt{step(Node node1, Node node2)}.
 This step relation holds if \texttt{node1} has dataflow in one step to \texttt{node2}
@@ -143,14 +149,26 @@ However, a lot of care is taken to define the step relation only on suitable
 nodes that will probably be part of a dataflow path from a source to a sink.
 For example, nodes that cannot be reached from any source via a dataflow path 
 are ignored.
+This pre-filtering of the suitable nodes makes up the most of the code for the 
+algorithm.
 
 \subsection{Description of the algorithm}
 We will now present the details of how dataflow is computed for Java programs.
-First, the algorithm runs multiple passes of finding candidate nodes that are part 
+
+First, the algorithm runs four passes of finding candidate nodes that are part 
 of dataflow paths.
 Every pass refines the set of nodes by computing more accurate information about the 
 possible dataflow.
-Then the algorithm computes a step relation and takes the transitive closure of that.
+Recording only candidate nodes (and not candidate dataflow edges) means that 
+the predicates for node filtering are only defined on the node set,
+not on the node set times the node set.
+Thus, the candidate node sets are inherently linear in the size of the program.
+This makes their computation feasible.
+
+Second, the algorithm computes a step relation and takes the transitive closure of that.
+As the step relation is only defined on a very refined set of candidate nodes,
+it's size is small enough to handle even for large programs.
+
 The implementation of the algorithm is divided into a generic dataflow algorithm that is 
 used for Java, C/C++ and C\# and a specific language-specific implementation of a common interface.
 In this description, we are glossing over the separation of those two modules and 
@@ -268,7 +286,8 @@ dataflow library.
 
 A \emph{barrier} is a node that prevents dataflow.
 Barriers are user-specified via the \texttt{Configuration}.
-They are used in the taint tracking library to model sanitizing steps.
+For example, they are used by the taint tracking library to model sanitizing steps
+that stop tained values to flow to a source.
 
 % TODO remove this, check for other references to it
 %An \emph{extended return} is a generalized return that representing dataflow out of a callable.
@@ -778,18 +797,50 @@ which sinks are reachable from a given source.
 
 It reuses the same access path approximation as phase 4 of the node filtering,
 but keeps track of more call contexts.
+It tracks the context of the current start node of the step, i.e.\ whether it is
+\begin{enumerate}
+    \item in a context where the call context doesn't matter 
+    \item in a context where data entered via a parameter. The parameter is recorded,
+    but the originating call itself is not tracked.
+    \item in a context where data entered via a parameter. The originating call,
+    as well as the parameter through which the dataflow entered are recorded.
+    This type of context is only used when it helps the virtual
+    dispatch analysis (see the example above). Otherwise, call contexts that don't
+    track the precise originating call are used.
+    \item TODO something about returns (needs Anders)
+\end{enumerate}
 
+Distinguishing between entering via a parameter without tracking the exact originating
+call and tracking the originating call helps performance, as 
+less call contexts are tracked.
+
+In general, we do not have a model of a call stack.
+Thus, when encountering a call all possible targets of the call have to be considered.
+When encountering a return it is not clear which caller should be returned to,
+so all callers are considered.
+When taking virtual dispatch into account that means that all callers of an interface 
+method are candidates to return to, even though they might call a different 
+implementation.
+TODO some call contexts make it possible to restrict this set of possible return
+targets.
+
+The different steps taken are the same as in all the node filtering passes,
+the only difference is that both the start and the end point of the step is 
+recorded.
+
+\subsubsection*{Dataflow}
+Using the step relation, it is now almost trivial to check if there is dataflow 
+between sources and sinks.
+One only needs to use the transitive closure of the step relation, as it contains 
+all nodes reachable from sources, and restrict to those nodes that are sinks.
+All those are reachable from sources, with the dataflow path being encoded in the 
+\texttt{pathStep} predicate.
 
 
 % TODO: why localFlowStep flows through casts?
 % simpleLocalFlowStep (Util): Follows SSA adjacent uses and def-first-use.
 %   Data also flows from assignments to asignees (Check word??)
 %   interestingly enough, also through casts
-% TODO for the purpose of dataflow analysis, all numeric types are considered the same,
-% so all numeric conversions are assumed to prevent dataflow
-% TODO find out when we use call contexts to help Virutal Dispatch
-% Question: compatibleTypes in DataFlowPrivate is always already called with erased representations,
-% and then calls getErasedRepr again?
 % TODO: local data flow: We have flow from PostUpdateNodes to the next adjacent read,
 % but we also have flow from the pre-update node to the next adjacent read?
 % Isn't that (more or less) two paths for the same?
