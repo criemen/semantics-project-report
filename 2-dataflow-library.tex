@@ -1,43 +1,80 @@
 % !TEX root = main.tex
 \section{Description of the Dataflow Library}
-Designing a dataflow library which works in theory is a task that is not too difficult.
-However, designing a dataflow library which performs well on projects with millions of lines of code is 
-considerably more difficult.
-In this section, we will describe the dataflow library used by the CodeQL platform % TODO check marketing material, is this correct?
-for analyzing programs in Java.
-We will describe the dataflow library without the contributions that are outlined in the next sections.
+In bug finding, it is often useful to consider where data (often user input)
+ends up at, and how it reached that point in the program.
+Generally, we would like to warn developers about security issues.
+Many security issues stem from user input that is not sanitized (or improperly sanitized).
+For example, in a web application it constitutes a security issue (an SQL injection)
+if unsanitized user input reaches a function that executes a SQL statement, 
+as this gives the user 
+the ability to run arbitrary SQL statements.
+Except for database query tools, this is undesired behaviour that can be abused
+by malicious users.
+In the same spirit, it is a security issue if a web application displays
+unsanitized user input directly on the web page, as this allows the user to execute
+java script in the context of the page. This is called an XSS injection.
 
-As the dataflow library is used for bug finding, it is neither sound nor complete.
+Warning about both SQL and XSS injections requires, besides other things,
+a concept of where user input will end up in the program.
+We call this concept \emph{dataflow}.
+Data enters the program at some point, at a \emph{dataflow source}, passes through 
+\emph{dataflow steps} (the data from the source is copied around, passed as parameter 
+to function calls, \ldots) and then ends up in a \emph{dataflow sink}.
+A sink could be a call to a relevant function, for example a function
+executing an SQL statement.
+All dataflow from sources via one or more steps to sinks make up the 
+\emph{dataflow graph}.
+Nodes in the dataflow graph are points in the program that can hold data, 
+and edges in the dataflow graph are dataflow steps.
+A \emph{dataflow library} is concerned with computing an approximation 
+the dataflow graph.
+As always in static analysis, it is impossible to precisely solve the task at hand.
+Calculate an exact dataflow graph would require solving the halting problem.
+
+Because of the halting problem, the dataflow library cannot be sound \textbf{and}
+complete. However, it is actually neither sound \textbf{nor} complete.
 In general, the dataflow library reports \emph{possible} dataflow, i.e.\ as soon
 as there is a path in the control flow graph of the program dataflow is reported.
+Thus, the dataflow library is not complete, as it reports more flow than present
+in the program.
 On the other hand, sometimes dataflow paths that do exist are not reported by the 
 dataflow library because finding them would be prohibitive due to poor performance.
+Thus, the dataflow library is not sound either.
 These limitations will be explained later in more detail.
 However, a lot of care is taken to be as precise as possible 
 without sacrificing performance. 
 
+Designing a dataflow library that works in theory is not too difficult.
+However, designing a dataflow library that performs well on projects with 
+millions of lines of code is considerably more difficult.
+In this section, we will describe the dataflow library used by the CodeQL platform % TODO check marketing material, is this correct?
+for analyzing programs in Java.
+We will describe the dataflow library without the contributions that are outlined 
+in the next sections.
+
 The dataflow library tracks only the flow of exact values.
 For example, dataflow of a string is interrupted when \java{toUpperCase()} is called.
-However, using functions like \java{toUpperCase()} does not prevent XSS or SQL injection attacks.
-To find such paths that do not interrupt flow when the content of a variable still depends 
-heavily on the input data, the \texttt{TaintTracking} library exists.
+However, using functions like \java{toUpperCase()} does not prevent XSS or SQL 
+injection attacks. To find such paths that do not interrupt flow when the
+content of a variable still depends heavily on the input data 
+(i.e.\ it is \emph{tainted}), the \texttt{TaintTracking} library exists.
 It is built on top of the dataflow library and provides a generic interface to enable
 finding of bug classes XSS, SQL injections or directory traversals.
 While the taint tracking library is probably the biggest user of the dataflow library,
 it is implemented strictly on top of the dataflow library.
-Thus, it is not discussed here further, except to highlight the hooks in the dataflow 
+Thus, we do not discuss it further, except to highlight the hooks in the dataflow 
 library on top of which the taint tracking library is built.
-Because of that design, all improvements made to the dataflow library immediately
-also benefit taint tracking.
+Because the taint tracking library is built on top of the dataflow library,
+ all improvements made to the dataflow library immediately also benefit taint tracking.
 
-There is one exception to the rule that changing the data stops flow: All numeric types 
+There is one exception to the rule that changing the data stops dataflow: All numeric types 
 (integers and floating point numbers) are treated as data of the same type,
 as converting from one type to the other often preserves the value.
 
 
 \subsection{Interface}
-Before we delve into the internals of the dataflow library, we will describe the API 
-of the dataflow library users will encounter.
+Before we delve into the internals of the dataflow library, we describe the API 
+that users of the dataflow library will encounter.
 
 \subsubsection*{Nodes}
 The main concept used throughout the dataflow library is that of a \texttt{Node}.
@@ -47,7 +84,7 @@ under which circumstances there is flow between nodes.
 The set of nodes and the set of dataflow steps between those nodes make up the 
 \emph{dataflow graph}.
 
-The type \texttt{Node} has several subtypes, corresponding to different kinds of nodes.
+The QL type \texttt{Node} has several subtypes, corresponding to different kinds of nodes.
 The most important subclass of \texttt{Node} is \texttt{ExprNode}, 
 as every expression in the program corresponds to a \texttt{Node}.
 Another important subclass is \texttt{ParameterNode}.
@@ -60,8 +97,8 @@ Objects that potentially change through an operation are modelled
  via \texttt{PostUpdateNode}s.
 Objects that have a method called on them (potentially mutating it),
 field accesses on an object and parameters to method calls (the callee could mutate the object)
-have two nodes for that expression - one so-called pre-update node, that represents 
-the object before the operation, and a post-update node that represents 
+have two nodes for that expression - one so-called \emph{pre-update node}, that represents 
+the object before the operation, and a \emph{post-update node} that represents 
 the object after the operation.
 This becomes more clear when looking at the statement \java{a.field = "string"}.
 In this example, there exists an expression node for 
@@ -69,8 +106,8 @@ In this example, there exists an expression node for
 an expression node for \java{a} and an expression node for the entire assignment.
 However, none of these expression nodes capture the fact that the object \java{a}
 is mutated by the assignment.
-To represent that fact a \texttt{PostUpdateNode} for \java{a} is introduced,
-represting that the assignment (potentially) mutates the object \java{a}.
+To represent that fact a \texttt{PostUpdateNode} for \java{a} exists,
+representing that the assignment (potentially) mutates the object \java{a}.
 The corresponding pre-update node is the expression node for \java{a}.
 
 Other subtypes of the \texttt{Node} class exist as well, 
@@ -80,26 +117,27 @@ to instance creation, implicit reads of the \texttt{this} parameter or
 the desugaring of vararg method calls.
 
 One peculiarity of the \texttt{Node} class is that the dataflow graph
-is stored in separate predicates, not on the nodes making up the graph itself.
-This means that the graph is stored in an adjacency matrix, where the
- adjacency matrix is encoded in the tuple set of a predicate.
-Different kinds of dataflow graphs can be represented by different predicates,
-using the same set of nodes.
-% TODO elaborate
+is stored in separate predicates, not on the nodes making up the dataflow
+ graph itself.
+This means that the dataflow graph is stored in an adjacency matrix, where the
+adjacency matrix is encoded in the tuple set of a predicate.
+%Different kinds of dataflow graphs can be represented by different predicates,
+%using the same set of nodes.
+% TODO elaborate - or maybe not?
 
 \subsubsection*{Configuration}
 The \texttt{Configuration} is the main class a user interacts with.
 A configuration defines which nodes are sources and sinks of dataflow.
 Furthermore, a configuration can also specify additional steps which yield flow.
-In the example, a configuration could add that a call to 
+For XSS, a configuration could add that a call to 
 \texttt{toUpperCase()} on a string still provides dataflow.
 On the other hand, configurations can also specify nodes which block flow.
-In the example, this could be sanitizer methods which for example strip HTML tags.
-This enables the user to filter out paths which are known to be safe.
+In the example, this could be a sanitizer method that strips HTML tags.
+This enables the user to filter out dataflow paths that are known to be safe.
 
 The most important predicate on the \texttt{Configuration} class 
 is the \texttt{hasFlow(Node source, Node sink)} predicate.
-With that predicate users can query the dataflow relation.
+Using that predicate, users can query the dataflow relation.
 It holds whenever there is dataflow starting at the given node \texttt{source} 
 (which has to be a source) which flows to the given node \texttt{sink} (which has to be a sink).
 Note that this interface does \textbf{not} provide information about specific
@@ -108,8 +146,8 @@ It also limits dataflow queries to dataflow between the (previously defined) sou
 This design limitation is intentional, because it allows performance optimizations
 that make it feasible to compute whole-program dataflow.
 
-The user can disable the use of field flow.
-That improves performance and allows the dataflow library to explore all branches
+The configuration also allows the user to disable dataflow via field reads and stores.
+Doing so improves performance and allows the dataflow library to explore all branches
 from virtual dispatch.
 If field flow is enabled, the user has to set a limit on the number of branches 
 allowed for virtual dispatch in the presence of field flow.
@@ -118,6 +156,7 @@ sufficiently few possible implementations to analyze.
 This restriction is needed to prevent the combinatorial explosion stemming from
 fully respecting virtual dispatch and field flow.
 This is explained in more detail later.
+% TODO is it?
 
 \subsection{General Design}
 
@@ -130,7 +169,7 @@ Then, the transitive closure of \texttt{step} has all possible dataflow paths in
 These dataflow paths then can be filtered so that only paths which begin in a source and 
 end in a sink are considered.
 
-In practice however, this example wouldn't perform well at all.
+In practice however, this example wouldn't perform well.
 First, note that the number of \texttt{Node}s grows roughly linear in the size of
 the program.
 Second, the transitive closure of the \texttt{step} relation enumerates all dataflow
@@ -138,19 +177,21 @@ paths in the program from one node to another.
 It is defined on the Cartesian product of \texttt{Node} with itself that is roughly quadratic 
 in the size of the program.
 We would end up with a predicate that grows probably superlinear in the program size.
-The CodeQL tools are capable of handling very large programs,
-for which algorithms with superlinear behaviour typically don't scale,
-so a more involved approach to compute dataflow is needed.
+The CodeQL toolchain is capable of handling very large programs,
+for which asymptotic superlinear algorithms typically don't scale.
+Thus, a more involved approach to compute dataflow is needed.
 
 On a very high level, the algorithm used in the dataflow library is very similar 
-to the algorithm sketched above.
+to the simple algorithm sketched above.
 The last step of it is indeed taking the transitive closure of a step-relation.
 However, a lot of care is taken to define the step relation only on suitable 
-nodes that will probably be part of a dataflow path from a source to a sink.
+nodes that with high probability will be part of a dataflow path from a source to a sink.
 For example, nodes that cannot be reached from any source via a dataflow path 
 are ignored.
 This pre-filtering of the suitable nodes makes up the most of the code for the 
 algorithm.
+Reducing the node set makes it possible to define the step relation on a much
+smaller set that is not quadratic in the size of the program.
 
 \subsection{Description of the algorithm}
 We will now present the details of how dataflow is computed for Java programs.
