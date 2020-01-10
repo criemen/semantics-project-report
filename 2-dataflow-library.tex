@@ -882,7 +882,7 @@ It tracks the context of the current start node of the step, i.e.\ whether it is
     This type of context is only used when it helps the virtual
     dispatch analysis (see the example above). Otherwise, call contexts that don't
     track the precise originating call are used.
-    \item TODO something about returns (needs Anders)
+    %\item TODO something about returns (needs Anders)
 \end{enumerate}
 
 Distinguishing between entering via a parameter without tracking the exact originating
@@ -896,8 +896,8 @@ so all callers are considered.
 When taking virtual dispatch into account that means that all callers of an interface 
 method are candidates to return to, even though they might call a different 
 implementation.
-TODO some call contexts make it possible to restrict this set of possible return
-targets.
+%TODO some call contexts make it possible to restrict this set of possible return
+%targets.
 
 The different steps taken are the same as in all the node filtering passes,
 the only difference is that both the start and the end point of the step is 
