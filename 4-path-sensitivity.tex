@@ -2,8 +2,185 @@
 \section{Path Sensitivity}
 \subsection{Motivation}
 
+As described previously, the dataflow library conflates all control flow paths 
+in a function and just reports possible flow through a function.
+This is obviously an overapproximation of flow.
+For example in~\autoref{lst:ex-ps-1} flow would be reported,
+although it is quite obvious that no flow can happen at runtime.
+Thus, it makes sense to add a notion of path-sensitivity to the dataflow library
+that tracks some path context that makes it possible to filter out dataflow paths 
+that will never occur at runtime.
+As in~\autoref{sec:call-sens}, our goal is to not introduce new sources of 
+unsoundness, so a pruned path is never allowed to be a live path.
+
+\begin{listing}
+    \begin{javacode}
+public void A(boolean b) {
+    Object o = null;
+    if (b) {
+        o = source();
+    }
+    if (!b) {
+        sink(o);
+    }
+}
+    \end{javacode}
+    \caption{Simple example of path-sensitive dataflow}
+    \label{lst:ex-ps-1}
+\end{listing}
+
+The issue of path sensitivity is not just a theoretical issue, but of practical importance.
+One analysis that runs on LGTM.com is the nullness analysis.
+It warns when developers (potentially) dereference a pointer that is null.
+Right now, it is built separately from the dataflow library and only works 
+intraprocedurally.
+However, it could be implemented on top of the dataflow library.
+The formulation of the nullness analysis as dataflow problem is:
+Any literal \java{null} and any variable declaration of an object 
+without initialization is a source.
+Any pointer dereference (i.e.\ field or method access on an object) is a sink.
+Then any assignment to a variable with a non-null expression leads to flow to stop.
+This approach would extend the nullness to be an interprocedural one, and furthermore 
+reduce the amount of code that needs to be maintained.
+
+Unfortunately with the current dataflow library, the resulting analysis would 
+be way too imprecise to be feasible.
+Often, the nullness-status of a variable is correlated with the value of a Boolean 
+variable, like in~\autoref{lst:ex-ps-nullness}.
+
+% TODO bla
+While having path-sensitivity as presented in this section would not be enough 
+to enable the precise analysis of~\autoref{lst:ex-ps-nullness},
+it is an important prerequisite.
+The reason that the presented analysis wouldn't work on that example is that
+the analysis focusses on identifying mutually exclusive blocks like in~\autoref{lst:ex-ps-1}.
+So the deduction of the fact that $b$ is false implies $o$ is null is missing.
+Still, incorporating the fact that we 
+TODO
+\begin{listing}
+    \begin{javacode}
+public void A(boolean b) {
+    SomeClass o = null;
+    if (b) {
+        o = new SomeClass();
+        o.method1();
+    }
+    // some more code
+    if (b) {
+        o.method2();
+    }
+}
+    \end{javacode}
+    \label{lst:ex-ps-nullness}
+    \caption{Nullness example that needs path-sensitivity}
+\end{listing}
+
+
+
+
+The goal of this section is to describe our approach to add a notion of
+path-sensitivity to the dataflow library.
+Then we highlight where and why our approach introduced soundness issues
+which made it unacceptable for Github to merge the code.
+However, Github still benefits by learning more about what does not work
+for implementing path-sensitivity.
+Furthermore, in the course of the project a lot of test cases containing
+corner cases for path-sensitivity were contributed.
+At last, we propose a possible fix to our approach. 
+% TODO possible fixes?
+Because we ran out of time, it was not possible to implement 
+and evaluate the fixed approach, though.
+
+
+% TODO mention somewhere something about only local scope
+
+\subsection{Theoretical Background}
+Is there any?
+
 
 \subsection{Description of Implementation}
+\subsubsection*{\texttt{Property}s and local flow filtering}
+The first part of the implementation introduces the concept of a \texttt{Property}
+to the local dataflow analysis.
+A property is a fact that, given a Boolean, holds at one or more dataflow nodes.
+Whenever a property holds with \java{true}, it is guaranteed that the dataflow nodes 
+at which the property holds with \java{false} will not be live.
+The concept of a property abstracts away from dealing with boolean condition variables
+directly. It is intended to be easily extended.
+
+The intuition behind a property is that it abstracts that a given 
+dataflow node is guarded by a Boolean condition variable.
+Thus, in~\autoref{lst:ex-ps-1} the property associated with the boolean variable \java{b}
+holds with the value \java{true} for all dataflow nodes guarded by
+\java{if (b)}, and it holds with the value \java{false} for all dataflow nodes 
+guarded by \java{if (!b)}.
+It does not hold for other dataflow nodes in the program.
+
+In the current implementation, the only inhabitant of the \texttt{Property}
+type is the \texttt{BooleanSsaVarProperty}, that represents the concept of
+a Boolean variable that guards dataflow nodes.
+While there are no other subtypes of \texttt{Property} yet, an implementation
+for enum constants instead of Boolean variables would be fairly easy to write.
+
+With the property concept in place, the local flow 
+is filtered.
+We only filter local flow to reduce the computational complexity of the problem,
+as opposed to filter interprocedurally.
+For any property that holds at any of the nodes of a local flow path,
+the local flow path has to be compatible with that property, i.e.\ the same 
+property never holds with both \java{true} and \java{false} for that local flow path.
+If there are no properties that hold along a local flow path, nothing is filtered.
+
+Note that this approach to filtering fixes one property first, and then filters 
+for that, and then considers the next property independently of the first one.
+Thus,~\autoref{lst:ps-diamond} is reported as having flow.
+First, when considering the boolean \java{b1}, it is inferred that flow is only 
+possible if \java{b1} is \java{false} 
+(otherwise, the source is never part of the flow).
+Then, independently of that it is inferred that flow is only possible if \java{b2}
+is \java{false} (otherwise, the sink is never part of the flow).
+However, the information about those properties are never combined to detect 
+that the assignment \java{y = x} can never happen while both reaching the 
+source and the sink.
+
+\begin{listing}
+    \begin{javacode}
+public void f(boolean b1, boolean b2) {
+    Object x = null;
+    if (!b1) {
+        x = source();
+    }
+    Object y = null;
+    if (b1) {
+        y = x;
+    }
+    if (b2) {
+        y = x;
+    }
+    if (!b2) {
+        sink(y);
+    }
+}
+    \end{javacode}
+    \caption{Example of false positive because of a diamond-shaped CFG}
+    \label{lst:ps-diamond}
+\end{listing}
+
+An easy fix to correctly filter that false positive,
+would be that the implementation considers a list of currently active
+properties that need to be checked against at the same time.
+For most programming languages, this is not a problem.
+In QL however, lists are quite tricky.
+They are not a first-class datatype, and because in QL all user-provided datatypes 
+are fully instantiated, they need to be fully constructible.
+Thus, any "list" datatype would need to be fully instantiated, this means it would
+need to list all possible lists ahead of time.
+This makes lists very complicated to deal with, and often not very useful.
+
+\subsubsection*{The Boolean SSA Variable property}
+
+
+
 \subsection{Soundness Problems}
 \subsection{Improved Algorithm Proposal}
 
