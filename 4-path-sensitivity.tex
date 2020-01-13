@@ -6,16 +6,23 @@ As described previously, the dataflow library conflates all control flow paths
 in a function and just reports possible flow through a function.
 This is obviously an overapproximation of flow.
 For example in~\autoref{lst:ex-ps-1} flow would be reported,
-although it is quite obvious that no flow can happen at runtime.
-Thus, it makes sense to add a notion of path-sensitivity to the dataflow library
-that tracks some path context that makes it possible to filter out dataflow paths 
-that will never occur at runtime.
-As in~\autoref{sec:call-sens}, our goal is to not introduce new sources of 
-unsoundness, so a pruned path is never allowed to be a live path.
+although it is quite obvious that no flow can happen at runtime,
+because the to if conditionals evaluating \java{b} are mutually exclusive.
+In one call of \java{f(b)}, only one of the blocks is executed.
+Thus, no dataflow happens.
 
-\begin{listing}
+To address this issue,
+it makes sense to add a notion of path-sensitivity to the dataflow library.
+This path-sensitivity tracks that some path contexts make it possible to 
+filter out dataflow paths that will never occur at runtime,
+because a path cannot visit dataflow nodes in mutually exclusive blocks.
+As in~\autoref{sec:call-sens}, our goal is to not introduce new sources of 
+unsoundness, so a pruned path by our proposed algorithm
+is never allowed to be a live path.
+
+\begin{listing}[h]
     \begin{javacode}
-public void A(boolean b) {
+public void f(boolean b) {
     Object o = null;
     if (b) {
         o = source();
@@ -51,13 +58,17 @@ variable, like in~\autoref{lst:ex-ps-nullness}.
 % TODO bla
 While having path-sensitivity as presented in this section would not be enough 
 to enable the precise analysis of~\autoref{lst:ex-ps-nullness},
-it is an important prerequisite.
+having a concept that some dataflow nodes are only active in some program paths 
+is an important prerequisite to implement this analysis.
 The reason that the presented analysis wouldn't work on that example is that
-the analysis focusses on identifying mutually exclusive blocks like in~\autoref{lst:ex-ps-1}.
-So the deduction of the fact that $b$ is false implies $o$ is null is missing.
-Still, incorporating the fact that we 
-TODO
-\begin{listing}
+the proposed path-sensitivity focusses on identifying mutually exclusive 
+blocks like in~\autoref{lst:ex-ps-1}.
+So the deduction of the fact that whenever \java{b} is \java{true},
+then \java{o} is overwritten with something non-null is missing.
+Adding this to the dataflow analysis would be another step needed to 
+implement a precise nullness analysis on top of it.
+
+\begin{listing}[h]
     \begin{javacode}
 public void A(boolean b) {
     SomeClass o = null;
@@ -71,32 +82,28 @@ public void A(boolean b) {
     }
 }
     \end{javacode}
-    \label{lst:ex-ps-nullness}
     \caption{Nullness example that needs path-sensitivity}
+    \label{lst:ex-ps-nullness}
 \end{listing}
-
-
 
 
 The goal of this section is to describe our approach to add a notion of
 path-sensitivity to the dataflow library.
 Then we highlight where and why our approach introduced soundness issues
-which made it unacceptable for Github to merge the code.
-However, Github still benefits by learning more about what does not work
-for implementing path-sensitivity.
-Furthermore, in the course of the project a lot of test cases containing
+that made it unacceptable for Github to merge the code.
+However, Github still benefits by learning more about the problems
+concerning implementing path-sensitivity and that this approach does not work.
+Furthermore, over the course of the project a lot of test cases containing
 corner cases for path-sensitivity were contributed.
-At last, we propose a possible fix to our approach. 
+%TODO is there?
+%At last, we propose a possible fix to our approach. 
 % TODO possible fixes?
-Because we ran out of time, it was not possible to implement 
-and evaluate the fixed approach, though.
+%Because we ran out of time, it was not possible to implement 
+%and evaluate the fixed approach, though.
 
 
-% TODO mention somewhere something about only local scope
-
-\subsection{Theoretical Background}
-Is there any?
-
+%\subsection{Theoretical Background}
+%Is there any?
 
 \subsection{Description of Implementation}
 \subsubsection*{\texttt{Property}s and local flow filtering}
@@ -162,11 +169,11 @@ public void f(boolean b1, boolean b2) {
     }
 }
     \end{javacode}
-    \caption{Example of false positive because of a diamond-shaped CFG}
+    \caption{Example of false positive because of a diamond-shaped control flow graph}
     \label{lst:ps-diamond}
 \end{listing}
 
-An easy fix to correctly filter that false positive,
+A supposedly easy fix to correctly filter that false positive,
 would be that the implementation considers a list of currently active
 properties that need to be checked against at the same time.
 For most programming languages, this is not a problem.
@@ -176,11 +183,143 @@ are fully instantiated, they need to be fully constructible.
 Thus, any "list" datatype would need to be fully instantiated, this means it would
 need to list all possible lists ahead of time.
 This makes lists very complicated to deal with, and often not very useful.
+Thus, lists do not make for a quick fix for this issue.
 
 \subsubsection*{The Boolean SSA Variable property}
+Now that we have seen how properties are used, how exactly do they work internally?
+
+Conceptually, we want to capture the fact that a boolean variable guards 
+control flow.
+For that, we can rely on the guards library (as discussed shortly in~\autoref{sec:call-sens}).
+Exposing all boolean variables as properties would incur a too high performance penalty,
+though.
+Because of that, we pre-filter the set of boolean variables used as guards.
+We only allow Boolean variables that guard at least two different blocks,
+with inverted conditions.
+This means that the property is useful for pruning later.
+
+Furthermore, the equality relation on Boolean variables used is equality on the 
+SSA form of the program - after assigning to a variable, it most likely does not
+contain the same value as before the assignment, so we treat it as a different variable.
+Thus, the two guards (for example, two if conditionals) need to read the same SSA 
+variable $b_1$ in their conditions, where one guard checks for $b_1$ to be \java{true},
+and the other guard checks for $b_1$ to be \java{false}.
+Then all the nodes that are guarded are candidates for dataflow pruning.
+
+Note that this approach implicitly assumes that a SSA variable always evaluates 
+to the same value.
+However, this is not true.
+
+In~\autoref{lst:ps-ssa-var-different}, the variable \java{b} has one SSA definition 
+in line 4, but different values at run time, depending on the iteration.
+Note that the SSA definition dominates all reads, thus there is no $\Phi$-node
+needed.
+Thus, just relying that \java{b} is the same SSA variable does not guarantee 
+that it always evaluates to the same value.
+However, without that guarantee any pruning based on \java{b} would introduce 
+unsoundness into the algorithm.
+
+\begin{figure}
+    \begin{javacode}
+public void f() {
+    int j = 0;
+    do {
+        boolean b = j % 2 == 0;
+        Object x = null;
+        if (b) {
+            x = source();
+        }
+        if (!b) {
+            sink(x);
+        }
+        j++;
+    } while (j < 100);
+}
+    \end{javacode}
+    \caption{Example where the SSA variable \java{b} has different values at run time}
+    \label{lst:ps-ssa-var-different}
+\end{figure}
+
+An oversimplistic fix for this issue to require that the SSA definition of the
+Boolean variable needs to be outside of any loops.
+A loop is defined on the control flow graph ---
+if the SSA definition viewed as a control flow graph node can reach itself by taking
+arbitrary (function-local) steps on the control flow graph, it is contained in a loop.
+This covers all cases where unsoundness occurs, but many more legitimate cases.
+Furthermore, it would lead to the very strange behaviour that the dataflow analysis 
+does not report dataflow because of path pruning, but as soon as the code is 
+wrapped in a loop statement, false positives would start to appear.
+This kind of behaviour is difficult to explain to the user, and also difficult
+to justify theoretically.
+
+Thus, a more involved solution is needed that caputures the
+essence of the problem with higher precision.
+TODO
+
+
+\subsection{Soundness Problem}
+Even with the quite complicated logic in place ensuring that only the same 
+instance of an SSA variable is read when pruning, unsoundness can occur.
+
+In~\autoref{lst:ps-false-negative}, the SSA variable \java{b} clearly
+suffices all conditions described above, thus it is eligible to be used for 
+dataflow pruning.
+Thus, after pruning the example does not report dataflow.
+However, in one loop iteration data flows from the source to \java{x},
+and in another loop iteration the data flows from \java{x} to the sink.
+Ergo pruning this flow is wrong.
+
+\begin{listing}[h]
+    \begin{javacode}
+public void f() {
+    boolean[] boolArray = {true, false};
+    Object x = null;
+    for(boolean b: boolArray) {
+        if (b) {
+            x = source();
+        }
+        if (!b) {
+            sink(x);
+        }
+    }
+}
+    \end{javacode}
+    \caption{Example of a false negative with the proposed algorithm}
+    \label{lst:ps-false-negative}
+\end{listing}
+
+An easy fix for this would be to return to the first proposed fix above and
+only consider boolen variables for pruning that are defined outside of loops,
+with all the associated drawbacks discussed above.
+Because of those drawbacks, this is understandably
+not an option that leads to an algorithm that Github wants to deploy.
+
+However, for a more general sound algorithm, the example shows that it is not enough
+to come up with the Boolean variables used for pruning dataflow without also 
+looking at the control flow path used by the dataflow path under consideration.
+
+A better algorithm would need to operate on the control flow graph itself to
+factor in that knowledge into the dataflow pruning.
+This would allow it to see that data flows from the source to the sink in different 
+loop iterations.
+
+With the current design of the dataflow algorithm, this is very difficult.
+In the very first step of computing (possible) local dataflow, it already 
+only looks at possible reads of SSA variables, thus ignoring control flow structures
+entirely.
+As this is a lossy process, it is not possible to go back from an edge in the
+dataflow graph and get the corresponding control flow path used by that edge.
+This is intentional by design, to make the dataflow representation as sparse 
+as possible, and thus more performant.
+
+Fixing this would require a major refactoring of the dataflow algorithm with 
+uncertain outcome.
+This is, while unsatisfactory, clearly outside the allocated time budget
+of a 15 ECTS project outside the course scope.
 
 
 
-\subsection{Soundness Problems}
-\subsection{Improved Algorithm Proposal}
+%\subsection{Improved Algorithm Proposal}
+
+
 
