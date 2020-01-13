@@ -198,7 +198,13 @@ We only allow Boolean variables that guard at least two different blocks,
 with inverted conditions.
 This means that the property is useful for pruning later.
 
-Furthermore, the equality relation on Boolean variables used is equality on the 
+Note that this implicitly assumes that pruning is always okay when we encounter
+two blocks that cannot be live at the same time, because they read the same variable.
+As we see in~\autoref{ssec:soundness}, this is unfortunately not true.
+However, we still describe the proposed algorithm fully to present the insights
+learned during this project.
+
+The equality relation on Boolean variables used is equality on the 
 SSA form of the program - after assigning to a variable, it most likely does not
 contain the same value as before the assignment, so we treat it as a different variable.
 Thus, the two guards (for example, two if conditionals) need to read the same SSA 
@@ -206,17 +212,17 @@ variable $b_1$ in their conditions, where one guard checks for $b_1$ to be \java
 and the other guard checks for $b_1$ to be \java{false}.
 Then all the nodes that are guarded are candidates for dataflow pruning.
 
-Note that this approach implicitly assumes that a SSA variable always evaluates 
+Note that this approach assumes that a SSA variable always evaluates 
 to the same value.
 However, this is not true.
-
 In~\autoref{lst:ps-ssa-var-different}, the variable \java{b} has one SSA definition 
 in line 4, but different values at run time, depending on the iteration.
-Note that the SSA definition dominates all reads, thus there is no $\Phi$-node
+Note that the SSA definition dominates all reads, thus no $\phi$-node is
 needed.
-Thus, just relying that \java{b} is the same SSA variable does not guarantee 
+We can conclude that relying that \java{b} is the same SSA variable 
+does not guarantee 
 that it always evaluates to the same value.
-However, without that guarantee any pruning based on \java{b} would introduce 
+Without that guarantee, any pruning based on \java{b} would introduce 
 unsoundness into the algorithm.
 
 \begin{figure}
@@ -254,20 +260,90 @@ to justify theoretically.
 
 Thus, a more involved solution is needed that caputures the
 essence of the problem with higher precision.
-TODO
+The key insight is that every time before the SSA variable is re-defined, it 
+goes out of scope, so technically we have been treating different variables
+as equal, just because they had the same name.
 
+Thus, we need to ensure that whenever we prune dataflow based on Boolean variables,
+all reads of the SSA variable refer to the SSA variable \textbf{in the same scope}.
+Then, the assumption that the SSA variables have the same value is actually true.
+
+As~\autoref{lst:ps-ssa-different-scopes} demonstrates,
+the issue of whether the second read of \java{b} (outside of the loop)
+refers always to the same definition of \java{b} that the first read of \java{b}
+uses (inside the loop) is dependent on the details of the loop execution.
+Thus, due to the halting problem, we cannot aim to find a precise solution to this.
+However, we only need a conservative heuristic that tells us when
+two reads will provably refer to the same definition of the SSA variable.
+This approximation would not mark the two reads of \java{b}
+in~\autoref{lst:ps-ssa-different-scopes} as referring to the same SSA definition.
+
+We propose the following notion of that heuristic:
+A SSA Boolean variable \java{b} with two reads is eligible for pruning 
+if all control flow paths from one read of \java{b} to the SSA definition of
+\java{b} include the other read as node on that control flow path.
+This ensures that everytime one read gets a value from \java{b}, the other read
+also gets it.
+Furthermore, it covers the case that \java{b} is defined in a loop (possibly
+multiple times), but both reads happen after the loop (thus, the value of \java{b}
+has "settled" before reading it).
+The case that both reads of \java{b} are in the loop defining \java{b} is also
+included.
+
+The case that one read of \java{b} happens inside the loop, and one outside of 
+the loop (like in~\autoref{lst:ps-ssa-different-scopes}) is correctly covered - 
+there exists a control flow path from the first read of \java{b} to the SSA 
+definition of \java{b} that does \textbf{not} visit the second read of \java{b}.
+Thus they might not get the same value of \java{b}, thus pruning is not safe
+in this case.
+
+\begin{listing}[h]
+    \begin{javacode}
+public void f(int k) {
+    int j = 0;
+    boolean b;
+    Object x = null;
+    do {
+        b = j % 2 == 0;
+        if (b) {
+            x = source();
+        }
+        j++;
+    } while (j < k);
+    if (!b) {
+        sink(x);
+    }
+}
+    \end{javacode}
+    \caption{An example where reads of 
+    \java{b} might refer to different SSA definitions}
+    \label{lst:ps-ssa-different-scopes}
+\end{listing}
+
+In general, this approach would need a formal argument to support it.
+This argument would show that every time this heuristic indicates that two
+SSA reads read from
+the same definition, they actually read the same value.
+This would convince the reader that this is indeed the right approach 
+to tackle this problem.
+However, as the whole proposed algorithm suffers soundness problems as described 
+in the next subsection, a formal justification is omitted.
 
 \subsection{Soundness Problem}
+\label{ssec:soundness}
 Even with the quite complicated logic in place ensuring that only the same 
 instance of an SSA variable is read when pruning, unsoundness can occur.
 
-In~\autoref{lst:ps-false-negative}, the SSA variable \java{b} clearly
-suffices all conditions described above, thus it is eligible to be used for 
-dataflow pruning.
-Thus, after pruning the example does not report dataflow.
+In~\autoref{lst:ps-false-negative}, the reads of the SSA variable \java{b} clearly
+fulfills all conditions described above, thus \java{b} and it two reads
+are eligible to be used for dataflow pruning.
+After pruning the example does not report dataflow.
 However, in one loop iteration data flows from the source to \java{x},
 and in another loop iteration the data flows from \java{x} to the sink.
-Ergo pruning this flow is wrong.
+Ergo pruning this dataflow is wrong.
+This shows that the assumption that pruning dataflow is sound whenever two mutually 
+exclusive reads of a SSA variable (even when always having the same value!) 
+happen is wrong.
 
 \begin{listing}[h]
     \begin{javacode}
