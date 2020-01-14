@@ -225,7 +225,7 @@ that it always evaluates to the same value.
 Without that guarantee, any pruning based on \java{b} would introduce 
 unsoundness into the algorithm.
 
-\begin{figure}
+\begin{listing}[h]
     \begin{javacode}
 public void f() {
     int j = 0;
@@ -244,7 +244,7 @@ public void f() {
     \end{javacode}
     \caption{Example where the SSA variable \java{b} has different values at run time}
     \label{lst:ps-ssa-var-different}
-\end{figure}
+\end{listing}
 
 An oversimplistic fix for this issue to require that the SSA definition of the
 Boolean variable needs to be outside of any loops.

@@ -1,0 +1,182 @@
+% !TEX root = main.tex
+\section{Formalization of Dataflow with IMP}
+
+In this section, we are going to formalize what we mean by dataflow,
+give a simple algorithm for computing dataflow and proving it is sound.
+We will furthermore use this formalization to prove that our
+path-sensitivity extension of the dataflow algorithm preserves soundness.
+
+We use the toy language IMP as presented in~\cite{sat}.
+The lecture notes themselves heavily borrow from~\cite{fsopl} for the
+presentation and semantics of IMP.
+We assume that the reader is familiar with the syntax and semantics of IMP
+as presented in section 2.1 of~\cite{sat}.
+
+\subsection{Syntax and Semantic of dIMP}
+We extend the syntax of IMP a little bit
+and call the resulting language dIMP (for dataflow IMP):
+\begin{align*}
+    &a \Coloneqq \dots | \textbf{source } a\\
+    &c \Coloneqq \dots | \textbf{sink } a\\
+\end{align*}
+We define the set $\tilde{\textbf{Z}} = \textbf{Z} \cup \{\top_n | n \in \textbf{Z}\}$.
+Stores are denoted with $\sigma \in \Sigma = \textbf{Loc} \to \tilde{\textbf{Z}}$.
+
+
+The intuition here is that for all $n \in \textbf{Z}$, $\top_n$
+is a marker indicating that the value $n$ is tracked by the dataflow algorithm,
+and all tracked values originate at the source (see the semantics below).
+The command $\textbf{sink } a$ is a special marker for the dataflow sink.
+In real programs, the dataflow source would likely be a procedure reading input,
+i.e.\ from a terminal, and the dataflow sink would likely be a procedure 
+printing the data to a terminal, or otherwise communicating with the outside world.
+Note that stores can now contain both regular integers as variable values,
+as well as dataflow-tracked values.
+
+The judgements are extended as follows:
+
+Judgment $\langle a, \sigma \rangle \downarrow n$:
+\begin{align*}
+    \textsc{EA-Source}\ddfrac{\langle a, \sigma \rangle \downarrow n}
+    {\langle \textbf{source }a, \sigma \rangle \downarrow \top_n}
+    \qquad     
+    \textsc{EA-Untracking}\ddfrac{\langle a, \sigma \rangle \downarrow \top_n}
+    {\langle a, \sigma \rangle \downarrow n}
+\end{align*}
+
+
+
+
+Judgment $\langle c, \sigma \rangle \downarrow \sigma'$:
+\begin{align*}
+    &\textsc{EC-Sink1}\ddfrac{\langle a, \sigma \rangle\downarrow \top_n}
+    {\langle \textbf{sink } a, \sigma \rangle \downarrow \sigma}\\
+    &\textsc{EC-Sink2}\ddfrac{\langle a, \sigma\rangle \downarrow n}
+    {\langle \textbf{sink } a, \sigma \rangle \downarrow \sigma}
+    (\text{Only if $\langle a, \sigma\rangle$ doesn't evaluate to $\top_n$, too})
+\end{align*}
+
+The rule \textsc{EC-Assign} is removed and replaced by:
+\begin{align*}
+    &\textsc{EC-Assign1}\ddfrac{\langle a, \sigma\rangle \downarrow \top_n}
+    {\langle X \coloneqq a, \sigma \rangle \downarrow \sigma[X \mapsto \top_n]}\\
+    &\textsc{EC-Assign2}\ddfrac{\langle a, \sigma \rangle \downarrow n}
+    {\langle X \coloneqq a, \sigma \rangle \downarrow \sigma[X \mapsto n]}
+     (\text{Only if $\langle a, \sigma\rangle$ doesn't evaluate to $\top_n$, too})
+\end{align*}
+
+Note that the side-conditions on \textsc{EC-Sink2} and \textsc{EC-Assign2}
+ensure that all derivations are unique.
+Furthermore, the rule \textsc{EA-Untracking} ensures that whenever the value of
+a tracked arithmetic expression is used in a non-value-preserving operation,
+the value is not tracked anymore.
+This applies even to operations like addition with 0 or multiplication with 1,
+that are value-preserving special cases of non-value-preserving operations.
+The \textbf{sink} command has the same semantics as \textbf{skip} 
+for program execution.
+However, the difference will become obvious when defining dataflow.
+
+\subsection{Definition of Dataflow}
+A \emph{program} in IMP is a command $c$.
+Complex programs are expressed by using the recursive nature of
+the definition of commands.
+
+An \emph{initial store} is a store $\sigma_0$ s.t.\ 
+$\forall X: \exists n: \sigma_0(X) = n$.
+This means that an initial store is not allowed to contain dataflow tracking 
+markers of the form $\top_n$.
+We will implicitly denote inital stores by $\sigma_0$.
+
+A tuple $(c, \sigma_0)$ of a program $c$ and initial store $\sigma_0$ 
+has \emph{dataflow from a source to a sink} if the derivation $\E$
+of $\langle c, \sigma_0 \rangle \downarrow \sigma'$ contains a 
+subderivation using rule \textsc{EC-Sink1}.
+
+A \emph{dataflow algorithm} $\A(c)$ computes, given a program $c$,
+if there exists an initial store $\sigma_0$ 
+such that $(c, \sigma_0)$ has dataflow from a source to a sink.
+
+A dataflow algorithm is \emph{sound} if for any tuple $(c, \sigma_0)$ that
+has dataflow it holds that $\A(c) = \text{HAS\_FLOW}$.
+
+A dataflow algorithm is \emph{complete} if $\A(c) = \text{HAS\_FLOW}$
+implies that there exists an initial store $\sigma_0$
+ such that $(c, \sigma_0)$ has dataflow.
+
+A program $c$ for which there exists no initial store $\sigma_0$ such that 
+$(c, \sigma_0)$ has dataflow, but for which $\A(c) = \text{HAS\_FLOW}$ holds
+is called a \emph{false positive} of the algorithm.
+
+In general, it is impossible to construct a dataflow algorithm that is both 
+sound and complete.
+In practice, a dataflow algorithm will be neither sound nor complete.
+However, in the theoretic section of this chapter, we are interested in 
+sound dataflow algorithms.
+
+The \emph{trivially sound dataflow algorithm} $\A_0(c) = \text{HAS\_FLOW}$ 
+is sound by definition, but not very interesting.
+We will not consider it further, but it is interesting to keep in mind,
+because it shows that just showing that a dataflow algorithm is sound does not
+mean it is an interesting algorithm.
+
+\subsection{The Dataflow Graph}
+To aid the construction of dataflow algorithms, we define the concept
+of a dataflow graph.
+Then we show that an algorithm that outputs HAS\_FLOW if 
+there exists a path from a source 
+node to a sink node in a dataflow graph and NO\_FLOW otherwise
+is a sound dataflow algorithm.
+Furthermore, we introduce an algorithm to compute a dataflow graph.
+
+The \emph{node set} of the dataflow graph is defined on the syntactic structure
+of $c$. It is a subset of the node set of the abstract syntax tree
+(every node knows about its location in the program text).
+Every (sub-)command of $c$, as well as any arithmetic expression $a$ in the 
+program is a node in the dataflow graph.
+For example for
+$c = \textbf{skip}; (\textbf{skip}; x \coloneqq \bar{4} + y)$
+the node set consists of $c$ itself, the first \textbf{skip}, the command 
+$\textbf{skip}; x \coloneqq \bar{4} + y$, the second \textbf{skip} (that is different 
+from the first because it appears in another location), the command
+$x \coloneqq \bar{4} + y$, and the arithmetic expressions $\bar{4}+y$,
+$\bar{4}$ and $y$.
+
+A dataflow graph needs to contain at least the (directed) edges 
+as defined here:
+\begin{itemize}
+    \item  There exists an inital store $\sigma_0$ such that the
+    bigstep derivation $\E$ 
+    of $\langle c, \sigma_0 \rangle \downarrow \sigma'$
+    contains a subderivation
+    \begin{equation*}
+        \E_1 = \ddfrac{\langle a, \sigma \rangle \downarrow \top_n}
+        {\langle X \coloneqq a, \sigma \rangle \downarrow
+         \sigma[X \mapsto \top_n]}
+    \end{equation*}
+    Then there is an edge from $a$ to the node of $X \coloneqq a$.
+    This case includes both outgoing edges from sinks and variable reads
+    of locations to which a tracked value was written to.
+    \item  There exists an inital store $\sigma_0$ such that the
+    bigstep derivation $\E$ 
+    of $\langle c, \sigma_0 \rangle \downarrow \sigma'$
+    contains a subderivation
+    \begin{equation*}
+        \E_2 = \ddfrac{\langle a, \sigma \rangle \downarrow \top_n}
+        {\langle \textbf{sink }a, \sigma \rangle \downarrow
+         \sigma}
+    \end{equation*}
+    Then there is an edge from $a$ to the node of $\textbf{sink }a$.
+    \item TODO connect variable stores and reads
+\end{itemize}
+
+% TODO write more about dataflow graph algorithm+dataflow algorithm
+If there are more edges, soundness of the resulting dataflow algorithm
+is not a problem, it will just report more false positives.
+Even the trivially sound dataflow algorithm can be recovered by always
+providing a dataflow graph with at least one path from source to sink.
+
+%However, as a dataflow algorithm cannot be sound and complete at the same time,
+%dataflow algorithms constitute an heuristic.
+%The evaluation of heuristics in a theoretic setting is difficult.
+%We do aim to show that 
+% TODO: A_2 is better than A_1, as both sound+one has less FP
