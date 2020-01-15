@@ -91,12 +91,12 @@ markers of the form $\top_n$.
 We will implicitly denote inital stores by $\sigma_0$.
 
 A tuple $(c, \sigma_0)$ of a program $c$ and initial store $\sigma_0$ 
-has \emph{dataflow from a source to a sink} if the derivation $\E$
+has \emph{dataflow from the source to a sink} if the derivation $\E$
 of $\langle c, \sigma_0 \rangle \downarrow \sigma'$ contains a 
 subderivation using rule \textsc{EC-Sink1}.
 A \emph{dataflow algorithm} $\A(c)$ computes, given a program $c$,
 if there exists an initial store $\sigma_0$ 
-such that $(c, \sigma_0)$ has dataflow from a source to a sink.
+such that $(c, \sigma_0)$ has dataflow from the source to a sink.
 
 A dataflow algorithm is \emph{sound} if for any tuple $(c, \sigma_0)$ that
 has dataflow it holds that $\A(c) = \text{HAS\_FLOW}$.
@@ -122,7 +122,7 @@ mean it is an interesting algorithm.
 To aid the construction of dataflow algorithms, we define the concept
 of a (directed) dataflow graph.
 Then we show that an algorithm that outputs HAS\_FLOW if 
-there exists a path from a source 
+there exists a path from the source 
 node to a sink node in a dataflow graph and NO\_FLOW otherwise
 is a sound dataflow algorithm.
 Furthermore, we introduce an algorithm to compute a dataflow graph.
@@ -193,10 +193,9 @@ Then we define the \emph{edge set} of the minimal dataflow graph as
 Even though the union is over an infinite set, the result is finite
 as $E \subseteq V \times V$ and $|V| < \infty$.
 
-We call a graph a \emph{dataflow graph} if it contains as sub-graph the 
-minimal dataflow graph.
-In practice, any dataflow graph will have the same node set as $G_{\text{min}}$,
-but a bigger edge set.
+We call a graph a \emph{dataflow graph} if it has the node set as the minimal
+dataflow graph and its edge set contains the edges of the minimal dataflow 
+graph.
 
 Let $\A_{G_\text{min}}(c)$ be the algorithm that takes the
 minimal dataflow graph $G_\text{min}(c)$ and outputs HAS\_FLOW if there 
@@ -205,31 +204,56 @@ $\textbf{source }a$ and a node $\textbf{sink }a$ such that there is a path in
 $G_\text{min}(c)$ from the source node to the sink node.
 If no such path exists, it outputs NO\_FLOW.
 
+
+
 \begin{theorem}
     The algorithm $\A_{G_\text{min}}(c)$ is a sound dataflow algorithm.
 \end{theorem}
 \begin{proof}
     Let $\sigma_0$ be an initial store such that $(c, \sigma_0)$ has dataflow.
-    If no such $\sigma_0$ exists, the proof is concluded.
+    If no such $\sigma_0$ exists, by the definition of soundness
+    the proof is concluded.
+
+    We will show that for any $\sigma_0$, the edges in $E^1_{\sigma_0}$
+    form a path from the source to a sink.
     TODO
 \end{proof}
 
 \begin{corollary}
+    \label{cor:dg-sound}
     For any dataflow graph $G(c)$ the algorithm $\A_{G}(c)$ is a sound
      dataflow algorithm.
 \end{corollary}
 \begin{proof}
     Remember that any dataflow graph contains the minimal dataflow graph as 
     subgraph. Thus for every pair $(c, \sigma_0)$ that has dataflow
-    there is a path from a source node to a sink node, 
+    there is a path from the source node to a sink node, 
     thus $\A$ reports flow by the preceeding theorem.
     It doesn't matter if $G$ has more nodes or edges for soundness.
 \end{proof}
 
+\begin{remark}
+    The \emph{minimal} dataflow graph gets name by being the minimal dataflow graph
+    among all dataflow graphs that are considered in this paper.
+    It should also be (by construction) the smallest graph $G$ on the node set 
+    such that $\A_G(c)$ is a sound dataflow algorithm.
+    However, we do not attempt to prove this property.
+\end{remark}
+
+\begin{remark}
+    Note that not all (sound) dataflow algorithms have the form $\A_G(c)$.
+    For example the trivially sound dataflow algorithm disagrees on the 
+    program $\textbf{skip}$ with any dataflow algorithm of the form 
+    $\A_G(c)$ - the trivially sound
+    dataflow algorithm outputs HAS\_FLOW, whereas
+    $A_G(\textbf{skip}) = \text{NO\_FLOW}$ because the node set contains
+    neither source nor sink.
+\end{remark}
+
 \subsection{The Dataflow Algorithm}
 TODO algorithm description for DFG algorithm.
 Then: Thm that that algorithm actually computes a superset of the edge set of 
-the DF graph, thus by corollary TODOLABEL 1.2 it is a sound dataflow algorithm.
+the DF graph, thus by~\autoref{cor:dg-sound} it is a sound dataflow algorithm.
 
 
 \subsection{A Path-Sensitive Dataflow Algorithm}

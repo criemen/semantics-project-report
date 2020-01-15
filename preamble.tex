@@ -9,6 +9,7 @@
 \bibliography{report}
 
 \usepackage{amsmath,amsthm}
+\usepackage{thmtools}
 \usepackage{libertine}
 \usepackage[libertine]{newtxmath}
 \usepackage{inconsolata}
@@ -39,7 +40,6 @@
 \usemintedstyle{github}
 \newminted{java}{linenos}
 \newmintinline[java]{java}{linenos}
-\providecommand*{\listingautorefname}{Listing}
 
 \usepackage{csquotes}
 
@@ -58,6 +58,13 @@
  
 \theoremstyle{remark}
 \newtheorem*{remark}{Remark}
+
+\providecommand*{\listingautorefname}{Listing}
+%\providecommand*{\corollaryautorefname}{Corollary}
+%%\providecommand*{\definitionautorefname}{Definition}
+%providecommand*{\lemmaautorefname}{Lemma}
+%\providecommand*{\remarkautorefname}{Remark}
+
 \urlstyle{rm}
 
 % Abstand obere Blattkante zur Kopfzeile ist 2.54cm - 15mm
