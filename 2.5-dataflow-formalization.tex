@@ -21,7 +21,10 @@ and call the resulting language dIMP (for dataflow IMP):
 \end{align*}
 We define the set $\tilde{\textbf{Z}} = \textbf{Z} \cup \{\top_n | n \in \textbf{Z}\}$.
 Stores are denoted with $\sigma \in \Sigma = \textbf{Loc} \to \tilde{\textbf{Z}}$.
-
+Furthermore, only up to one expression of the form $\textbf{source } a$ is allowed
+in a program.
+This technical restriction makes the later definition of a minimal dataflow graph
+easier. It could be lifted by indexing the $\top_n$ per source.
 
 The intuition here is that for all $n \in \textbf{Z}$, $\top_n$
 is a marker indicating that the value $n$ is tracked by the dataflow algorithm,
@@ -91,18 +94,15 @@ A tuple $(c, \sigma_0)$ of a program $c$ and initial store $\sigma_0$
 has \emph{dataflow from a source to a sink} if the derivation $\E$
 of $\langle c, \sigma_0 \rangle \downarrow \sigma'$ contains a 
 subderivation using rule \textsc{EC-Sink1}.
-
 A \emph{dataflow algorithm} $\A(c)$ computes, given a program $c$,
 if there exists an initial store $\sigma_0$ 
 such that $(c, \sigma_0)$ has dataflow from a source to a sink.
 
 A dataflow algorithm is \emph{sound} if for any tuple $(c, \sigma_0)$ that
 has dataflow it holds that $\A(c) = \text{HAS\_FLOW}$.
-
 A dataflow algorithm is \emph{complete} if $\A(c) = \text{HAS\_FLOW}$
 implies that there exists an initial store $\sigma_0$
  such that $(c, \sigma_0)$ has dataflow.
-
 A program $c$ for which there exists no initial store $\sigma_0$ such that 
 $(c, \sigma_0)$ has dataflow, but for which $\A(c) = \text{HAS\_FLOW}$ holds
 is called a \emph{false positive} of the algorithm.
@@ -112,7 +112,6 @@ sound and complete.
 In practice, a dataflow algorithm will be neither sound nor complete.
 However, in the theoretic section of this chapter, we are interested in 
 sound dataflow algorithms.
-
 The \emph{trivially sound dataflow algorithm} $\A_0(c) = \text{HAS\_FLOW}$ 
 is sound by definition, but not very interesting.
 We will not consider it further, but it is interesting to keep in mind,
@@ -121,14 +120,15 @@ mean it is an interesting algorithm.
 
 \subsection{The Dataflow Graph}
 To aid the construction of dataflow algorithms, we define the concept
-of a dataflow graph.
+of a (directed) dataflow graph.
 Then we show that an algorithm that outputs HAS\_FLOW if 
 there exists a path from a source 
 node to a sink node in a dataflow graph and NO\_FLOW otherwise
 is a sound dataflow algorithm.
 Furthermore, we introduce an algorithm to compute a dataflow graph.
 
-The \emph{node set} of the dataflow graph is defined on the syntactic structure
+The \emph{node set} $V$ of the \emph{minimal dataflow graph} $G_\text{min}(c)$
+is defined on the syntactic structure
 of $c$. It is a subset of the node set of the abstract syntax tree
 (every node knows about its location in the program text).
 Every (sub-)command of $c$, as well as any arithmetic expression $a$ in the 
@@ -141,39 +141,100 @@ from the first because it appears in another location), the command
 $x \coloneqq \bar{4} + y$, and the arithmetic expressions $\bar{4}+y$,
 $\bar{4}$ and $y$.
 
-A dataflow graph needs to contain at least the (directed) edges 
-as defined here:
+For every initial store $\sigma_0$, 
+let $\E$ be a bigstep derivation of $\langle c, \sigma_0 \rangle \downarrow \sigma'$.
+The edge set $E^0_{\sigma_0}$ contains the following edges:
 \begin{itemize}
-    \item  There exists an inital store $\sigma_0$ such that the
-    bigstep derivation $\E$ 
-    of $\langle c, \sigma_0 \rangle \downarrow \sigma'$
-    contains a subderivation
+    \item $\E$ contains a subderivation
     \begin{equation*}
-        \E_1 = \ddfrac{\langle a, \sigma \rangle \downarrow \top_n}
+        \E_1 = \textsc{EC-Assign1}\ddfrac{\overset{\E'}{\langle a, \sigma \rangle \downarrow \top_n}}
         {\langle X \coloneqq a, \sigma \rangle \downarrow
          \sigma[X \mapsto \top_n]}
     \end{equation*}
     Then there is an edge from $a$ to the node of $X \coloneqq a$.
-    This case includes both outgoing edges from sinks and variable reads
+    This case includes both outgoing edges from sources and variable reads
     of locations to which a tracked value was written to.
-    \item  There exists an inital store $\sigma_0$ such that the
-    bigstep derivation $\E$ 
-    of $\langle c, \sigma_0 \rangle \downarrow \sigma'$
-    contains a subderivation
+    \item $\E$ contains a subderivation
     \begin{equation*}
-        \E_2 = \ddfrac{\langle a, \sigma \rangle \downarrow \top_n}
+        \E_1 = \textsc{EC-Sink1}\ddfrac{\overset{\E'}{\langle a, \sigma \rangle \downarrow \top_n}}
         {\langle \textbf{sink }a, \sigma \rangle \downarrow
          \sigma}
     \end{equation*}
     Then there is an edge from $a$ to the node of $\textbf{sink }a$.
-    \item TODO connect variable stores and reads
-\end{itemize}
+    \item
+    $\E$ contains a subderivation
+    \begin{equation*}
+        \E_1 = \textsc{EA-Loc}\ddfrac{}
+        {\langle X, \sigma[X \mapsto \top_n] \rangle \downarrow \top_n}
+    \end{equation*}
+    and a subderivation
+    \begin{equation*}
+        \E_2 = \textsc{EC-Assign1}\ddfrac{\overset{\E'}{\langle a, \sigma' \rangle \downarrow \top_n}}
+        {\langle X \coloneqq a, \sigma' \rangle \downarrow
+         \sigma'[X \mapsto \top_n]}
+    \end{equation*}
+    Then there is an edge from the store $X \coloneqq a$ to the read node $X$ as 
+    refered to by $\E_1$.
+    Technical note: Here we exploit the fact that there is only one source ---
+    else this case could introduce edges between unrelated paths if two sources for the same 
+    $\sigma_0$ would evaluate to $\top_n$. Then the edge set would not be minimal
+    anymore.
 
-% TODO write more about dataflow graph algorithm+dataflow algorithm
-If there are more edges, soundness of the resulting dataflow algorithm
-is not a problem, it will just report more false positives.
-Even the trivially sound dataflow algorithm can be recovered by always
-providing a dataflow graph with at least one path from source to sink.
+\end{itemize}
+Based on that we define the (minimized) edge set $E^1_{\sigma_0}$
+that contains an edge from $E^0_{\sigma_0}$ iff it is part of a path 
+from a node of the form $\textbf{source }a$
+to a node of the form $\textbf{sink }a$.
+
+Then we define the \emph{edge set} of the minimal dataflow graph as
+\begin{equation*}
+    E = \bigcup_{\sigma_0} E^1_{\sigma_0}
+\end{equation*}
+Even though the union is over an infinite set, the result is finite
+as $E \subseteq V \times V$ and $|V| < \infty$.
+
+We call a graph a \emph{dataflow graph} if it contains as sub-graph the 
+minimal dataflow graph.
+In practice, any dataflow graph will have the same node set as $G_{\text{min}}$,
+but a bigger edge set.
+
+Let $\A_{G_\text{min}}(c)$ be the algorithm that takes the
+minimal dataflow graph $G_\text{min}(c)$ and outputs HAS\_FLOW if there 
+exists a node of the form 
+$\textbf{source }a$ and a node $\textbf{sink }a$ such that there is a path in 
+$G_\text{min}(c)$ from the source node to the sink node.
+If no such path exists, it outputs NO\_FLOW.
+
+\begin{theorem}
+    The algorithm $\A_{G_\text{min}}(c)$ is a sound dataflow algorithm.
+\end{theorem}
+\begin{proof}
+    Let $\sigma_0$ be an initial store such that $(c, \sigma_0)$ has dataflow.
+    If no such $\sigma_0$ exists, the proof is concluded.
+    TODO
+\end{proof}
+
+\begin{corollary}
+    For any dataflow graph $G(c)$ the algorithm $\A_{G}(c)$ is a sound
+     dataflow algorithm.
+\end{corollary}
+\begin{proof}
+    Remember that any dataflow graph contains the minimal dataflow graph as 
+    subgraph. Thus for every pair $(c, \sigma_0)$ that has dataflow
+    there is a path from a source node to a sink node, 
+    thus $\A$ reports flow by the preceeding theorem.
+    It doesn't matter if $G$ has more nodes or edges for soundness.
+\end{proof}
+
+\subsection{The Dataflow Algorithm}
+TODO algorithm description for DFG algorithm.
+Then: Thm that that algorithm actually computes a superset of the edge set of 
+the DF graph, thus by corollary TODOLABEL 1.2 it is a sound dataflow algorithm.
+
+
+\subsection{A Path-Sensitive Dataflow Algorithm}
+TODO: description of path-pruning, proof that the only pruned edges are not
+in the definition of the minimal dataflow graph
 
 %However, as a dataflow algorithm cannot be sound and complete at the same time,
 %dataflow algorithms constitute an heuristic.

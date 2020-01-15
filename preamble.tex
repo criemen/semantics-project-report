@@ -8,7 +8,7 @@
 \usepackage[style=alphabetic]{biblatex}
 \bibliography{report}
 
-\usepackage{amsmath}
+\usepackage{amsmath,amsthm}
 \usepackage{libertine}
 \usepackage[libertine]{newtxmath}
 \usepackage{inconsolata}
@@ -43,38 +43,21 @@
 
 \usepackage{csquotes}
 
-%\usepackage{titlesec}
-
-%\titlelabel{Question \thetitle:\ }
-
-%\setlength{\parskip}{1ex}
-%\setlength{\parindent}{0pt}
-%\setlength{\parfillskip}{30pt plus 1 fil}
 
 \usepackage{hyperref}
-%\hypersetup{pdftitle={Take-home Exam in Advanced Programming, B1-2019/2020},
-%            pdfsubject={Advanced Programming},
-%            pdfauthor={Andrzej Filinski <andrzej@diku.dk>,
-%              Ken Friis Larsen <kflarsen@diku.dk>},
-%            pdfkeywords={exam},
-%            pdfborder={0 0 0}}
-%\fancyhf{}%
-%\fancyhead[L]{\Large\textbf{Advanced Programming}}
-%\fancyhead[R]{\Large\textbf{DIKU, B1-2019/2020}}
 \def\headrulewidth{0mm}%
 \def\footrulewidth{0mm}%
-%\fancyfoot[C]{\thepage}
 \setlength{\headheight}{22pt}
 
-%\makeatletter
-%{
-% \catcode`\&=11
-% \gdef\color@&spot#1#2{%
-%  \ifdefined\spc@ir \else \spc@getir{\string\color@.}\fi
-%  \c@lor@arg{#2}%
-%  \edef#1{\spc@ir\space cs \spc@ir\space CS #2 sc #2 SC}}
-%}
 
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{lemma}[theorem]{Lemma}
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}[section]
+ 
+\theoremstyle{remark}
+\newtheorem*{remark}{Remark}
 \urlstyle{rm}
 
 % Abstand obere Blattkante zur Kopfzeile ist 2.54cm - 15mm
@@ -82,11 +65,6 @@
 
 % number equations with sections
 \numberwithin{equation}{section}
-
-% setup to ignore spacing in verbatim environments in math mode, so formatting does not break
-%\makeatletter
-%\newcommand{\verbmathspace}{\let\FV@Space\space}
-%\makeatother
 
 % a verbatim environment to my liking
 \DefineVerbatimEnvironment{codeverbatim}{Verbatim}{fontsize=\small,frame=single,gobble=8,commandchars=\\\{\},codes={\catcode`$=3\catcode`^=7\catcode`_=8\everymath\expandafter{\the\everymath\verbmathspace}}}
