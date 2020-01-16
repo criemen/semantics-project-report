@@ -242,8 +242,8 @@ graph.
     Let $(c, \sigma_0)$ be a tuple that has dataflow.
     Let $\E$ be the bigstep derivation of
     $\langle c, \sigma_0 \rangle \downarrow \sigma'$.
-    A \emph{store-read chain} in $\E$ of length $m$ is a list of tuples of the form
-    $(\E^1_i=\ddfrac{\overset{\E^0_i}{\langle a_i, \sigma \rangle \downarrow \top_n}}
+    A \emph{store-read chain} in $\E$ is a list of $m$ tuples of the form
+    $(\E^1_i=\ddfrac{\overset{\E^0_i}{\langle a_i, \sigma_i \rangle \downarrow \top_n}}
     {\langle X_i \coloneqq a_i, \sigma_i \rangle \downarrow \sigma_i[X_i \mapsto \top_n]},
     \E^2_i=\ddfrac{}{\langle X_i, \sigma_i' \rangle \downarrow \sigma_i'(X_i) = \top_n})$
     with $i \in \{1, \ldots, m\}$.
@@ -256,14 +256,19 @@ graph.
 \end{definition}
 
 \begin{lemma}
+    \label{lem:chain-to-graph}
     Any store-read-chain induces a path in $E^0_{\sigma_0}$ from the node 
     of the first store in the chain to the node of the last read in the chain.
+    Furthermore, there is an edge from the expression that the first store reads
+    to the first store.
 \end{lemma}
 \begin{proof}
     We proof the lemma by induction over the length of the store-read chain.\\
     \textbf{Base Case (m=1):}
     There is by definition of $\E^0_{\sigma_0}$
-    one edge of type (3) connecting the store and the read in the chain.\\
+    one edge of type (3) connecting the store and the read in the chain.
+    Furthermore, there is an edge of type (1) connecting the read-from expression
+    to the store.\\
     \textbf{Inductive Case:}
     Let $m \geq 1$ be fixed. By the IH, there is a path in $E^0_{\sigma_0}$
     corresponding to the chain of length $m-1$ from the first store in the chain 
@@ -271,17 +276,25 @@ graph.
     By definition of the chain, we have an edge of type (1) connecting 
     the read of $X_{m-1}$ to the store of $X_m$.
     Furthermore, again by definition of $\E^0_{\sigma_0}$
-    there is one edge of type (3) connecting the store of $X_m$ to the read of 
-    $X_m$.
+    there is one edge of type (3) connecting the store of $X_m$ to the
+    read of $X_m$.
 \end{proof}
 
 \begin{lemma}
-    For any read-store chain the derivations $\E^1_i$ are pairwise disjoint.
+    For any read-store chain the derivations $\E^1_i$ are pairwise 
+    disjoint.
+    The equality on subderivations of $\E$ includes not only the subderivations
+    to be equal as trees, but also their place in the tree $\E$.
+
+    TODO maybe except for i=1?
 \end{lemma}
 \begin{proof}
     Assume for contradiction there exists a read-store-chain of length $m$
     such that $\E^1_l = \E^1_k$ for $l \neq k$.
     W.l.o.g.\ we assume that $l < k$ holds.
+    If $l=1$ and it holds that $X_1 \coloneqq \textbf{source }a_0$, 
+    then $\E^1_l = \E^1_k$ is a contradiction to the fact that the 
+    \textbf{source} expression only appears once in the source.
     TODO
 \end{proof}
 \begin{remark}
@@ -290,14 +303,22 @@ graph.
     read-store chains is finite.
     By defining the obvious partial order induced by inclusion
     on the set of read-store-chains, we see that 
-    every read-store-chain can be extended to a maximal read-store-chain element.
+    every non-empty read-store-chain can be extended to a maximal 
+    read-store-chain.
 \end{remark}
 
 \begin{lemma}
+    \label{lem:max-store-read}
     Any maximal store-read-chain contains a store from the source as first store.
 \end{lemma}
 \begin{proof}
-    TODO, easy
+    We look at the derivation $\E^0_1$.
+    If $a = Y$ for some $Y \in \textbf{Loc}$, then the store-read-chain is not 
+    maximal, because it can be extended at the front by a tuple with a store to and a
+    read from $Y$.
+    The only other possibility for an arithmetic expression $a$ to evaluate to 
+    $\top_n$ is that it is of form $\textbf{source } a_0$.
+    This concludes the proof.
 \end{proof}
 
 
@@ -306,47 +327,36 @@ graph.
     If no such $\sigma_0$ exists, by the definition of soundness
     the proof is concluded.
 
-    \begin{claim}
-        The edges in $E^0_{\sigma_0}$ contain a path from the source to a sink.
-    \end{claim}
-    \begin{claimproof}
-        We proof the claim by induction over ????.
+    Let $\E$ be the bigstep derivation of
+    $\langle c, \sigma_0 \rangle \downarrow \sigma'$.
+    Because $(c, \sigma_0)$ has dataflow, there exists a derivation of the form 
+    \begin{equation*}
+        \E_1 = \textsc{EC-Sink1}\ddfrac
+        {\overset{\E_2}{\langle a, \sigma \rangle \downarrow \top_n}}
+        {\langle \textbf{sink } a, \sigma} \downarrow \sigma
+    \end{equation*}
+    There are two possibilities for the structure of a.\\
+    \textbf{Case 1:} $a = \textbf{source }a_0$\\
+    Then $E^0_{\sigma_0}$ contains an edge of type (2) that connects the source 
+    to a sink. This constitues a path from the source to a sink.\\
+    \textbf{Case 2:} $a = X$\\
+    Then $X$ is a variable read that evaluates to $\top_n$.
+    Because $\sigma_0(X) \neq \top_n$, there has to be a first store
+    of $X$ in $\E$.
+    The derivation of that store, together with the derivation of the read make 
+    up a store-read chain of length one.
+    This chain can be extended to a maximal chain, and 
+    by~\autoref{lem:max-store-read}, we know it starts with a store reading the
+    source.
+    Furthermore, by~\autoref{lem:chain-to-graph} we get a path in $E^0_{\sigma_0}$
+    from the source node to the read. The read is then connected by an edge
+    of type (2) to the sink, thus we have a path from the source to a sink in 
+    $E^0_{\sigma_0}$.
 
-        Let $\E$ be the bigstep derivation of
-        $\langle c, \sigma_0 \rangle \downarrow \sigma'$.
-        By the definition that $(c, \sigma_0)$ has dataflow, there exists a
-        subderivation of $\E$ that has shape
-        \begin{equation*} % Holds if 
-            \E^* = \textsc{EC-Sink1}
-            \ddfrac{\overset{\E_1}{\langle a, \sigma \rangle\downarrow \top_n}}
-            {\langle \textbf{sink } a, \sigma \rangle \downarrow \sigma}
-        \end{equation*}
-        By definition, there is an edge from $a$ to the sink $E^1_{\sigma_0}$.
-        Looking at the bigstep rules, $\E_1$ can have two shapes.\\
-        \textbf{Case 1:}
-        \begin{equation*}
-            \E_1 = \textsc{EA-Source}
-            \ddfrac{\overset{\E_2}{\langle a, \sigma \rangle \downarrow n}}
-            {\langle \textbf{source }a, \sigma \rangle \downarrow \top_n}
-        \end{equation*}
-        But then due to rule (1) there is an edge between the source and sink 
-        and we're done.\\
-        \textbf{Case 2:}
-        \begin{equation*}
-            \E_1 = \textsc{EA-Loc}\ddfrac{}
-            {\langle X, \sigma \rangle \downarrow \top_n}
-        \end{equation*}
-        By inspecting the bigstep rules we find that at least at one place,
-        $\E$ needs to contain a derivation of the form
-        \begin{equation*}
-            \E_2=\textsc{EC-Assign1}
-            \ddfrac{\overset{\E_3}{\langle a, \sigma\rangle \downarrow \top_n}}
-            {\langle X \coloneqq a, \sigma \rangle \downarrow \sigma[X \mapsto \top_n]}
-        \end{equation*}
-
-    \end{claimproof}
-    As $G_\text{min}(c)$ contains for any $\sigma_0$ the edges of $E^1_{\sigma_0}$,
-    this is enough to show the theorem.
+    In both cases we have shown that $E^0_{\sigma_0}$ contains a path from the 
+    source to a sink. Thus, $E^1_{\sigma_0}$ and in turn $E$ contain a path
+    from the source to a sink, and $\A_{G_\text{min}}(c) = \text{HAS\_FLOW}$.
+    This concludes the proof.
 \end{proof}
 
 \begin{corollary}
