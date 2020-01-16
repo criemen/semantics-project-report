@@ -207,6 +207,7 @@ If no such path exists, it outputs NO\_FLOW.
 
 
 \begin{theorem}
+    \label{thm:min-dg}
     The algorithm $\A_{G_\text{min}}(c)$ is a sound dataflow algorithm.
 \end{theorem}
 \begin{proof}
@@ -214,9 +215,14 @@ If no such path exists, it outputs NO\_FLOW.
     If no such $\sigma_0$ exists, by the definition of soundness
     the proof is concluded.
 
-    We will show that for any $\sigma_0$, the edges in $E^1_{\sigma_0}$
-    form a path from the source to a sink.
-    TODO
+    \begin{claim}
+        The edges in $E^1_{\sigma_0}$ form a path from the source to a sink.
+    \end{claim}
+    \begin{claimproof}
+        TODO a
+    \end{claimproof}
+    As $G_\text{min}(c)$ contains for any $\sigma_0$ the edges of $E^1_{\sigma_0}$,
+    this is enough to show the theorem.
 \end{proof}
 
 \begin{corollary}
@@ -228,8 +234,8 @@ If no such path exists, it outputs NO\_FLOW.
     Remember that any dataflow graph contains the minimal dataflow graph as 
     subgraph. Thus for every pair $(c, \sigma_0)$ that has dataflow
     there is a path from the source node to a sink node, 
-    thus $\A$ reports flow by the preceeding theorem.
-    It doesn't matter if $G$ has more nodes or edges for soundness.
+    thus $\A$ reports flow by~\autoref{thm:min-dg}.
+    It doesn't matter if $G$ has more edges for soundness.
 \end{proof}
 
 \begin{remark}
