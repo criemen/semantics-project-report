@@ -42,7 +42,7 @@
 \newmintinline[java]{java}{linenos}
 
 \usepackage{csquotes}
-
+\usepackage{etoolbox}
 
 \usepackage{hyperref}
 \def\headrulewidth{0mm}%
@@ -59,11 +59,27 @@
 \theoremstyle{remark}
 \newtheorem*{remark}{Remark}
 
+% Claim needs some special attention to look how I like them
+\newtheoremstyle{claimstyle}%
+{}{}{}{}{}%
+{}% punctuation between head and body
+{ }%space after theorem head; " " = normal interword space
+{\underline{\thmname{#1}\thmnumber{ #2}:}\thmnote{ #3}}%
+
+\theoremstyle{claimstyle}
+\newtheorem{claim}{Claim}
+% Reset claim counter for each proof
+\AtEndEnvironment{proof}{\setcounter{claim}{0}}
+
+% define claimproof environment that looks like I want it
+\newenvironment{claimproof}[1][\underline{\textnormal{\proofname}}]%
+{\proof[#1]%
+\renewcommand*\qedsymbol{\ensuremath{\blacksquare}}}
+{%
+\endproof%
+}
+
 \providecommand*{\listingautorefname}{Listing}
-%\providecommand*{\corollaryautorefname}{Corollary}
-%%\providecommand*{\definitionautorefname}{Definition}
-%providecommand*{\lemmaautorefname}{Lemma}
-%\providecommand*{\remarkautorefname}{Remark}
 
 \urlstyle{rm}
 
