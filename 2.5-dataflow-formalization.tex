@@ -189,7 +189,7 @@ The edge set $E^0_{\sigma_0}$ contains the following edges:
     $\E$ contains a subderivation
     \begin{equation*}
         \E_1 = \textsc{EA-Loc}\ddfrac{}
-        {\langle X, \sigma[X \mapsto \top_n] \rangle \downarrow \top_n}
+        {\langle X, \sigma \rangle \downarrow \top_n}
     \end{equation*}
     and a subderivation
     \begin{equation*}
@@ -197,6 +197,7 @@ The edge set $E^0_{\sigma_0}$ contains the following edges:
         {\langle X \coloneqq a, \sigma' \rangle \downarrow
          \sigma'[X \mapsto \top_n]}
     \end{equation*}
+    with $\sigma'(X) \neq \top_n$ (this prevents cyclic edges).
     Then there is an edge from the store $X \coloneqq a$ to the read node $X$ as 
     refered to by $\E_1$.
     Technical note: Here we exploit the fact that there is only one source ---
@@ -229,12 +230,78 @@ $G_\text{min}(c)$ from the source node to the sink node.
 If no such path exists, it outputs NO\_FLOW.
 
 
-
 \begin{theorem}
     \label{thm:min-dg}
     The algorithm $\A_{G_\text{min}}(c)$ is a sound dataflow algorithm.
 \end{theorem}
+In order to proof the theorem, we introduce the concept of store-read chains 
+and prove a couple of lemmas about them and their connection to the dataflow
+graph.
+
+\begin{definition}[Store-Read Chain]
+    Let $(c, \sigma_0)$ be a tuple that has dataflow.
+    Let $\E$ be the bigstep derivation of
+    $\langle c, \sigma_0 \rangle \downarrow \sigma'$.
+    A \emph{store-read chain} in $\E$ of length $m$ is a list of tuples of the form
+    $(\E^1_i=\ddfrac{\overset{\E^0_i}{\langle a_i, \sigma \rangle \downarrow \top_n}}
+    {\langle X_i \coloneqq a_i, \sigma_i \rangle \downarrow \sigma_i[X_i \mapsto \top_n]},
+    \E^2_i=\ddfrac{}{\langle X_i, \sigma_i' \rangle \downarrow \sigma_i'(X_i) = \top_n})$
+    with $i \in \{1, \ldots, m\}$.
+    $\E^0_i$, $\E^1_i$ and $\E^2_i$ are subderivations of $\E$.
+    Furthermore, we require that $\sigma_i(X) \neq \top_n$ (so we have a first store).
+    We also require that for $i \in \{1, \ldots, m-1\}$ it holds that 
+    $\E^0_{i+1}=\E^2_i$. This means that every store except the first one
+    in the chain is connected via the variable it reads from to the previous 
+    store in the chain.
+\end{definition}
+
+\begin{lemma}
+    Any store-read-chain induces a path in $E^0_{\sigma_0}$ from the node 
+    of the first store in the chain to the node of the last read in the chain.
+\end{lemma}
 \begin{proof}
+    We proof the lemma by induction over the length of the store-read chain.\\
+    \textbf{Base Case (m=1):}
+    There is by definition of $\E^0_{\sigma_0}$
+    one edge of type (3) connecting the store and the read in the chain.\\
+    \textbf{Inductive Case:}
+    Let $m \geq 1$ be fixed. By the IH, there is a path in $E^0_{\sigma_0}$
+    corresponding to the chain of length $m-1$ from the first store in the chain 
+    to the read of $X_{m-1}$ in the chain.
+    By definition of the chain, we have an edge of type (1) connecting 
+    the read of $X_{m-1}$ to the store of $X_m$.
+    Furthermore, again by definition of $\E^0_{\sigma_0}$
+    there is one edge of type (3) connecting the store of $X_m$ to the read of 
+    $X_m$.
+\end{proof}
+
+\begin{lemma}
+    For any read-store chain the derivations $\E^1_i$ are pairwise disjoint.
+\end{lemma}
+\begin{proof}
+    Assume for contradiction there exists a read-store-chain of length $m$
+    such that $\E^1_l = \E^1_k$ for $l \neq k$.
+    W.l.o.g.\ we assume that $l < k$ holds.
+    TODO
+\end{proof}
+\begin{remark}
+    This means that the read-store-chain does not contain any cycles.
+    Furthermore, as the derivation $\E$ is finite, this implies that the set of 
+    read-store chains is finite.
+    By defining the obvious partial order induced by inclusion
+    on the set of read-store-chains, we see that 
+    every read-store-chain can be extended to a maximal read-store-chain element.
+\end{remark}
+
+\begin{lemma}
+    Any maximal store-read-chain contains a store from the source as first store.
+\end{lemma}
+\begin{proof}
+    TODO, easy
+\end{proof}
+
+
+\begin{proof}[Proof Of~\autoref{thm:min-dg}]
     Let $\sigma_0$ be an initial store such that $(c, \sigma_0)$ has dataflow.
     If no such $\sigma_0$ exists, by the definition of soundness
     the proof is concluded.
@@ -249,7 +316,7 @@ If no such path exists, it outputs NO\_FLOW.
         $\langle c, \sigma_0 \rangle \downarrow \sigma'$.
         By the definition that $(c, \sigma_0)$ has dataflow, there exists a
         subderivation of $\E$ that has shape
-        \begin{equation*}
+        \begin{equation*} % Holds if 
             \E^* = \textsc{EC-Sink1}
             \ddfrac{\overset{\E_1}{\langle a, \sigma \rangle\downarrow \top_n}}
             {\langle \textbf{sink } a, \sigma \rangle \downarrow \sigma}
@@ -267,7 +334,14 @@ If no such path exists, it outputs NO\_FLOW.
         \textbf{Case 2:}
         \begin{equation*}
             \E_1 = \textsc{EA-Loc}\ddfrac{}
-            {\langle X, \sigma[X \mapsto \top_n] \rangle \downarrow \top_n}
+            {\langle X, \sigma \rangle \downarrow \top_n}
+        \end{equation*}
+        By inspecting the bigstep rules we find that at least at one place,
+        $\E$ needs to contain a derivation of the form
+        \begin{equation*}
+            \E_2=\textsc{EC-Assign1}
+            \ddfrac{\overset{\E_3}{\langle a, \sigma\rangle \downarrow \top_n}}
+            {\langle X \coloneqq a, \sigma \rangle \downarrow \sigma[X \mapsto \top_n]}
         \end{equation*}
 
     \end{claimproof}
