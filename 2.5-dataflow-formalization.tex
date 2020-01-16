@@ -80,43 +80,67 @@ for program execution.
 However, the difference will become obvious when defining dataflow.
 
 \subsection{Definition of Dataflow}
-A \emph{program} in IMP is a command $c$.
-Complex programs are expressed by using the recursive nature of
-the definition of commands.
+\begin{definition}[Program]
+    A \emph{program} in IMP is a command $c$.
+    Complex programs are expressed by using the recursive nature of
+    the definition of commands.
+\end{definition}
 
-An \emph{initial store} is a store $\sigma_0$ s.t.\ 
-$\forall X: \exists n: \sigma_0(X) = n$.
-This means that an initial store is not allowed to contain dataflow tracking 
-markers of the form $\top_n$.
-We will implicitly denote inital stores by $\sigma_0$.
+\begin{definition}[Initial Store]
+    An \emph{initial store} is a store $\sigma_0$ s.t.\ 
+    $\forall X: \exists n: \sigma_0(X) = n$.
+    This means that an initial store is not allowed to contain dataflow tracking 
+    markers of the form $\top_n$.
+    We will implicitly denote inital stores by $\sigma_0$.
+\end{definition}
 
-A tuple $(c, \sigma_0)$ of a program $c$ and initial store $\sigma_0$ 
-has \emph{dataflow from the source to a sink} if the derivation $\E$
-of $\langle c, \sigma_0 \rangle \downarrow \sigma'$ contains a 
-subderivation using rule \textsc{EC-Sink1}.
-A \emph{dataflow algorithm} $\A(c)$ computes, given a program $c$,
-if there exists an initial store $\sigma_0$ 
-such that $(c, \sigma_0)$ has dataflow from the source to a sink.
+\begin{definition}[Dataflow]
+    A tuple $(c, \sigma_0)$ of a program $c$ and initial store $\sigma_0$ 
+    has \emph{dataflow from the source to a sink} if the derivation $\E$
+    of $\langle c, \sigma_0 \rangle \downarrow \sigma'$ contains a 
+    subderivation using rule \textsc{EC-Sink1}.
+\end{definition}
+\begin{remark}
+    Note that a technicality of this definition is that only terminating programs
+(with $\sigma_0$) can have dataflow. 
+In a practical setting, this is not correct - a program could have
+interesting dataflow from a source to a sink, and then enter an infinite loop.
+However, there would be a (terminating) sub-program that we could analyze.
+\end{remark}
 
-A dataflow algorithm is \emph{sound} if for any tuple $(c, \sigma_0)$ that
-has dataflow it holds that $\A(c) = \text{HAS\_FLOW}$.
-A dataflow algorithm is \emph{complete} if $\A(c) = \text{HAS\_FLOW}$
-implies that there exists an initial store $\sigma_0$
- such that $(c, \sigma_0)$ has dataflow.
-A program $c$ for which there exists no initial store $\sigma_0$ such that 
-$(c, \sigma_0)$ has dataflow, but for which $\A(c) = \text{HAS\_FLOW}$ holds
-is called a \emph{false positive} of the algorithm.
+\begin{definition}[Dataflow Algorithm]
+    A \emph{dataflow algorithm} $\A(c)$ computes, given a program $c$,
+    if there exists an initial store $\sigma_0$ 
+    such that $(c, \sigma_0)$ has dataflow from the source to a sink.
+\end{definition}
 
-In general, it is impossible to construct a dataflow algorithm that is both 
-sound and complete.
-In practice, a dataflow algorithm will be neither sound nor complete.
-However, in the theoretic section of this chapter, we are interested in 
-sound dataflow algorithms.
-The \emph{trivially sound dataflow algorithm} $\A_0(c) = \text{HAS\_FLOW}$ 
-is sound by definition, but not very interesting.
-We will not consider it further, but it is interesting to keep in mind,
-because it shows that just showing that a dataflow algorithm is sound does not
-mean it is an interesting algorithm.
+\begin{definition}[Soundness]
+    A dataflow algorithm is \emph{sound} if for any tuple $(c, \sigma_0)$ that
+    has dataflow it holds that $\A(c) = \text{HAS\_FLOW}$.
+\end{definition}
+
+\begin{definition}[Completeness]
+    A dataflow algorithm is \emph{complete} if $\A(c) = \text{HAS\_FLOW}$
+    implies that there exists an initial store $\sigma_0$
+     such that $(c, \sigma_0)$ has dataflow.
+\end{definition}
+\begin{definition}[False Positive]
+    A program $c$ for which there exists no initial store $\sigma_0$ such that 
+    $(c, \sigma_0)$ has dataflow, but for which $\A(c) = \text{HAS\_FLOW}$ holds
+    is called a \emph{false positive} of the algorithm.
+\end{definition}
+\begin{remark}
+    In general, it is impossible to construct a dataflow algorithm that is both 
+    sound and complete.
+    In practice, a dataflow algorithm will be neither sound nor complete.
+    However, in the theoretic section of this chapter, we are interested in 
+    sound dataflow algorithms.
+    The \emph{trivially sound dataflow algorithm} $\A_0(c) = \text{HAS\_FLOW}$ 
+    is sound by definition, but not very interesting.
+    We will not consider it further, but it is interesting to keep in mind,
+    because it shows that just showing that a dataflow algorithm is sound does not
+    mean it is an interesting algorithm.    
+\end{remark}
 
 \subsection{The Dataflow Graph}
 To aid the construction of dataflow algorithms, we define the concept
@@ -144,7 +168,7 @@ $\bar{4}$ and $y$.
 For every initial store $\sigma_0$, 
 let $\E$ be a bigstep derivation of $\langle c, \sigma_0 \rangle \downarrow \sigma'$.
 The edge set $E^0_{\sigma_0}$ contains the following edges:
-\begin{itemize}
+\begin{enumerate}
     \item $\E$ contains a subderivation
     \begin{equation*}
         \E_1 = \textsc{EC-Assign1}\ddfrac{\overset{\E'}{\langle a, \sigma \rangle \downarrow \top_n}}
@@ -179,8 +203,8 @@ The edge set $E^0_{\sigma_0}$ contains the following edges:
     else this case could introduce edges between unrelated paths if two sources for the same 
     $\sigma_0$ would evaluate to $\top_n$. Then the edge set would not be minimal
     anymore.
+\end{enumerate}
 
-\end{itemize}
 Based on that we define the (minimized) edge set $E^1_{\sigma_0}$
 that contains an edge from $E^0_{\sigma_0}$ iff it is part of a path 
 from a node of the form $\textbf{source }a$
@@ -216,10 +240,36 @@ If no such path exists, it outputs NO\_FLOW.
     the proof is concluded.
 
     \begin{claim}
-        The edges in $E^1_{\sigma_0}$ form a path from the source to a sink.
+        The edges in $E^0_{\sigma_0}$ contain a path from the source to a sink.
     \end{claim}
     \begin{claimproof}
-        TODO a
+        We proof the claim by induction over ????.
+
+        Let $\E$ be the bigstep derivation of
+        $\langle c, \sigma_0 \rangle \downarrow \sigma'$.
+        By the definition that $(c, \sigma_0)$ has dataflow, there exists a
+        subderivation of $\E$ that has shape
+        \begin{equation*}
+            \E^* = \textsc{EC-Sink1}
+            \ddfrac{\overset{\E_1}{\langle a, \sigma \rangle\downarrow \top_n}}
+            {\langle \textbf{sink } a, \sigma \rangle \downarrow \sigma}
+        \end{equation*}
+        By definition, there is an edge from $a$ to the sink $E^1_{\sigma_0}$.
+        Looking at the bigstep rules, $\E_1$ can have two shapes.\\
+        \textbf{Case 1:}
+        \begin{equation*}
+            \E_1 = \textsc{EA-Source}
+            \ddfrac{\overset{\E_2}{\langle a, \sigma \rangle \downarrow n}}
+            {\langle \textbf{source }a, \sigma \rangle \downarrow \top_n}
+        \end{equation*}
+        But then due to rule (1) there is an edge between the source and sink 
+        and we're done.\\
+        \textbf{Case 2:}
+        \begin{equation*}
+            \E_1 = \textsc{EA-Loc}\ddfrac{}
+            {\langle X, \sigma[X \mapsto \top_n] \rangle \downarrow \top_n}
+        \end{equation*}
+
     \end{claimproof}
     As $G_\text{min}(c)$ contains for any $\sigma_0$ the edges of $E^1_{\sigma_0}$,
     this is enough to show the theorem.
