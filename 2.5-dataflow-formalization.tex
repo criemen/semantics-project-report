@@ -1,5 +1,5 @@
 % !TEX root = main.tex
-\section{Formalization of Dataflow with IMP}
+\section{Formalization of Dataflow with dIMP}
 
 In this section, we are going to formalize what we mean by dataflow,
 give a simple algorithm for computing dataflow and proving it is sound.
@@ -104,8 +104,10 @@ However, the difference will become obvious when defining dataflow.
     Note that a technicality of this definition is that only terminating programs
 (with $\sigma_0$) can have dataflow. 
 In a practical setting, this is not correct - a program could have
-interesting dataflow from a source to a sink, and then enter an infinite loop.
-However, there would be a (terminating) sub-program that we could analyze.
+interesting dataflow from a source to a sink, and then enter an infinite loop,
+However, there would be a (terminating) sub-program that we could analyze
+(basically, a program that stops as soon as the sink with a tracked value
+is encountered).
 \end{remark}
 
 \begin{definition}[Dataflow Algorithm]
@@ -133,27 +135,36 @@ However, there would be a (terminating) sub-program that we could analyze.
     In general, it is impossible to construct a dataflow algorithm that is both 
     sound and complete.
     In practice, a dataflow algorithm will be neither sound nor complete.
-    However, in the theoretic section of this chapter, we are interested in 
+    However, in the theoretical setting of this chapter, we are interested in 
     sound dataflow algorithms.
     The \emph{trivially sound dataflow algorithm} $\A_0(c) = \text{HAS\_FLOW}$ 
     is sound by definition, but not very interesting.
     We will not consider it further, but it is interesting to keep in mind,
     because it shows that just showing that a dataflow algorithm is sound does not
-    mean it is an interesting algorithm.    
+    mean it is useful.    
 \end{remark}
 
 \subsection{The Dataflow Graph}
 To aid the construction of dataflow algorithms, we define the concept
-of a (directed) dataflow graph.
+of a dataflow graph.
 Then we show that an algorithm that outputs HAS\_FLOW if 
 there exists a path from the source 
-node to a sink node in a dataflow graph and NO\_FLOW otherwise
+node to a sink node in a dataflow graph %and NO\_FLOW otherwise
 is a sound dataflow algorithm.
 Furthermore, we introduce an algorithm to compute a dataflow graph.
 
+The dataflow graph is computed upon an SSA form of the program.
+Thus, it may contain assignments of the form $X \coloneqq \phi(a_1, a_2)$.
+We will assume that for any given store $\sigma$ the derivation only contains 
+the assignment with an evaluated $\phi$ function, as to not overload the notation.
+Furthermore, the dataflow graph defined on an SSA form of the program can easily 
+be transformed to a dataflow graph defined on the regular program.
+The minimal dataflow graph is directed and may, depending on the 
+program structure, contain cycles.
+
 The \emph{node set} $V$ of the \emph{minimal dataflow graph} $G_\text{min}(c)$
 is defined on the syntactic structure
-of $c$. It is a subset of the node set of the abstract syntax tree
+of the SSA form of $c$. It is a subset of the node set of the abstract syntax tree
 (every node knows about its location in the program text).
 Every (sub-)command of $c$, as well as any arithmetic expression $a$ in the 
 program is a node in the dataflow graph.
@@ -164,6 +175,7 @@ $\textbf{skip}; x \coloneqq \bar{4} + y$, the second \textbf{skip} (that is diff
 from the first because it appears in another location), the command
 $x \coloneqq \bar{4} + y$, and the arithmetic expressions $\bar{4}+y$,
 $\bar{4}$ and $y$.
+
 
 For every initial store $\sigma_0$, 
 let $\E$ be a bigstep derivation of $\langle c, \sigma_0 \rangle \downarrow \sigma'$.
@@ -199,19 +211,22 @@ The edge set $E^0_{\sigma_0}$ contains the following edges:
     \end{equation*}
     with $\sigma'(X) \neq \top_n$ (this prevents cyclic edges).
     Then there is an edge from the store $X \coloneqq a$ to the read node $X$ as 
-    refered to by $\E_1$.
-    Technical note: Here we exploit the fact that there is only one source ---
+    refered to by $\E_1$.\\
+    Technical note 1: Here we exploit the fact that there is only one source ---
     else this case could introduce edges between unrelated paths if two sources for the same 
     $\sigma_0$ would evaluate to $\top_n$. Then the edge set would not be minimal
-    anymore.
+    anymore.\\
+    Technical note 2: Because the program is in SSA, edges from a store to a read 
+    are in execution-order. A read has an incoming edge from a store only if the 
+    store happens before the read in the program.
 \end{enumerate}
 
 Based on that we define the (minimized) edge set $E^1_{\sigma_0}$
-that contains an edge from $E^0_{\sigma_0}$ iff it is part of a path 
-from a node of the form $\textbf{source }a$
-to a node of the form $\textbf{sink }a$.
+that contains an edge from $E^0_{\sigma_0}$ iff it is part of any path 
+from a node of the form $\textbf{source }a_0$
+to a node of the form $\textbf{sink }a_1$.
 
-Then we define the \emph{edge set} of the minimal dataflow graph as
+Then we define the \emph{edge set} $E$ of the minimal dataflow graph as
 \begin{equation*}
     E = \bigcup_{\sigma_0} E^1_{\sigma_0}
 \end{equation*}
@@ -234,9 +249,7 @@ If no such path exists, it outputs NO\_FLOW.
     \label{thm:min-dg}
     The algorithm $\A_{G_\text{min}}(c)$ is a sound dataflow algorithm.
 \end{theorem}
-In order to proof the theorem, we introduce the concept of store-read chains 
-and prove a couple of lemmas about them and their connection to the dataflow
-graph.
+In order to prove the theorem, we introduce the concept of store-read chains.
 
 \begin{definition}[Store-Read Chain]
     Let $(c, \sigma_0)$ be a tuple that has dataflow.
@@ -248,12 +261,28 @@ graph.
     \E^2_i=\ddfrac{}{\langle X_i, \sigma_i' \rangle \downarrow \sigma_i'(X_i) = \top_n})$
     with $i \in \{1, \ldots, m\}$.
     $\E^0_i$, $\E^1_i$ and $\E^2_i$ are subderivations of $\E$.
-    Furthermore, we require that $\sigma_i(X) \neq \top_n$ (so we have a first store).
-    We also require that for $i \in \{1, \ldots, m-1\}$ it holds that 
-    $\E^0_{i+1}=\E^2_i$. This means that every store except the first one
-    in the chain is connected via the variable it reads from to the previous 
-    store in the chain.
+    We require that the following holds:
+    \begin{enumerate}
+        \item $\sigma_i(X) \neq \top_n$ (so we have a first store). 
+        \item For $i \in \{1, \ldots, m-1\}$ it holds that 
+        $\E^0_{i+1}=\E^2_i$. This means that every store except the first one
+        in the chain is connected via the variable it reads from to the previous 
+        store in the chain.
+        \item Repeating tuples are not allowed in the list, all tuples have to 
+        be pairwise disjoint --- equality on subderivations of $\E$ includes
+        placement in $\E$, not just equality of the subderivation trees.
+    \end{enumerate}
 \end{definition}
+
+\begin{remark}
+    By definition a read-store-chain does not contain any cycles.
+    As the derivation $\E$ is finite, this implies that the set of 
+    read-store chains is finite.
+    By defining the obvious partial order induced by inclusion
+    on the set of read-store-chains, we see that 
+    every non-empty read-store-chain can be extended to a maximal 
+    read-store-chain.
+\end{remark}
 
 \begin{lemma}
     \label{lem:chain-to-graph}
@@ -279,33 +308,6 @@ graph.
     there is one edge of type (3) connecting the store of $X_m$ to the
     read of $X_m$.
 \end{proof}
-
-\begin{lemma}
-    For any read-store chain the derivations $\E^1_i$ are pairwise 
-    disjoint.
-    The equality on subderivations of $\E$ includes not only the subderivations
-    to be equal as trees, but also their place in the tree $\E$.
-
-    TODO maybe except for i=1?
-\end{lemma}
-\begin{proof}
-    Assume for contradiction there exists a read-store-chain of length $m$
-    such that $\E^1_l = \E^1_k$ for $l \neq k$.
-    W.l.o.g.\ we assume that $l < k$ holds.
-    If $l=1$ and it holds that $X_1 \coloneqq \textbf{source }a_0$, 
-    then $\E^1_l = \E^1_k$ is a contradiction to the fact that the 
-    \textbf{source} expression only appears once in the source.
-    TODO
-\end{proof}
-\begin{remark}
-    This means that the read-store-chain does not contain any cycles.
-    Furthermore, as the derivation $\E$ is finite, this implies that the set of 
-    read-store chains is finite.
-    By defining the obvious partial order induced by inclusion
-    on the set of read-store-chains, we see that 
-    every non-empty read-store-chain can be extended to a maximal 
-    read-store-chain.
-\end{remark}
 
 \begin{lemma}
     \label{lem:max-store-read}
@@ -375,9 +377,10 @@ graph.
 \begin{remark}
     The \emph{minimal} dataflow graph gets name by being the minimal dataflow graph
     among all dataflow graphs that are considered in this paper.
-    It should also be (by construction) the smallest graph $G$ on the node set 
-    such that $\A_G(c)$ is a sound dataflow algorithm.
-    However, we do not attempt to prove this property.
+    It is not the smallest graph $G$ on the node set 
+    such that $\A_G(c)$ is a sound dataflow algorithm,
+    because $G_\text{min}$ contains back-edges for loops that would, strictly
+    speaking, not be necessary to make $\A_G(c)$ a sound dataflow algorithm.
 \end{remark}
 
 \begin{remark}
@@ -390,15 +393,62 @@ graph.
     neither source nor sink.
 \end{remark}
 
-\subsection{The Dataflow Algorithm}
-TODO algorithm description for DFG algorithm.
-Then: Thm that that algorithm actually computes a superset of the edge set of 
-the DF graph, thus by~\autoref{cor:dg-sound} it is a sound dataflow algorithm.
+\subsection{An Algorithm to Compute A Dataflow Graph}
+In this section we describe an algorithm $\B(c) = G$ that computes a dataflow 
+graph $G$. We then prove that this algorithm indeed
+computes a dataflow graph, and, using~\autoref{cor:dg-sound},
+$\A_G(c)$ is a sound dataflow algorithm.
+
+\subsubsection*{The Algorithm}
+Given a program $c$ in SSA form, the algorithm computes
+the edge set $E$ as a least fixed point iteration.
+The following recursive rules are used:\\
+\textbf{Base Case:} Start at the expression $\textbf{source }a_0$.
+If it is used in either the context $X \coloneqq \textbf{source }a_0$
+or $\textbf{sink }(\textbf{source }a_0)$ then add an edge from the node for the
+source to the node of the store.\\
+\textbf{Recursive Case:} For any store node $X \coloneqq a_0$, enumerate all uses (traverse
+the def-use-chain of the SSA form). Add edges to all uses that are themselves
+either stores or \textbf{sink} commands of the form $\textbf{sink } X$.
+Note that stores of form $Z \coloneqq \phi(X, Y)$ get an incoming edge from $X$,
+if the definition of $X$ itself has an incoming edge.
+
+The fixed point iteration stops eventually as the set of possible edges is
+finite. Furthermore, if the program doesn't contain a \textbf{source} expression,
+the edge set will be empty.
+
+TODO: Add a second pass, like in QL, that starts at the sink nodes and thus
+filters out edges that don't lead to any sink.
+
+\subsubsection*{Soundness Proof}
+\begin{theorem}
+    The algorithm $\B(c) = G$ computes a dataflow graph, and thus 
+    $\A_G(c)$ is a sound dataflow algorithm.
+\end{theorem}
+\begin{proof}
+    Because of~\autoref{cor:dg-sound}, we only need to show that $\B(c)$ is 
+    a dataflow graph.
+    To do that, we show that for $G=(V, E)$, for all initial stores $\sigma_0$,
+    all edges in $E^0_{\sigma_0}$ (as in the definition of the minimal dataflow
+    graph) are contained in the set $E$.
+
+    Let $\sigma_0$ be an initial store.
+    Let $e$ be an edge in $E^0_{\sigma_0}$.\\
+    \textbf{Case 1:} $e$ is an edge of type (1).\\
+    Then the end node of $e$
+    has form $X \coloneqq a$.
+    Then there are two cases for the structure of $a$.\\
+    \textbf{Subcase 1:} $a = \textbf{source }a_0$.
+    Then there is a corresponding edge in $E$ per the base case of the recursive
+    definition of $E$.\\
+    \textbf{Subcase 2:} $a = Y$ for some variable $Y \neq X$ (remember, we have 
+    a SSA form)
+\end{proof}
 
 
 \subsection{A Path-Sensitive Dataflow Algorithm}
 TODO: description of path-pruning, proof that the only pruned edges are not
-in the definition of the minimal dataflow graph
+in the definition of the minimal dataflow graph, thus it is still sound
 
 %However, as a dataflow algorithm cannot be sound and complete at the same time,
 %dataflow algorithms constitute an heuristic.
