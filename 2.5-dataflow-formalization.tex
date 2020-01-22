@@ -30,58 +30,153 @@ The intuition here is that for all $n \in \textbf{Z}$, $\top_n$
 is a marker indicating that the value $n$ is tracked by the dataflow algorithm,
 and all tracked values originate at the source (see the semantics below).
 The command $\textbf{sink } a$ is a special marker for the dataflow sink.
+It aborts the program via an exception if a tracked value reaches the sink.
+This ensures termination for all programs that have dataflow.
 In real programs, the dataflow source would likely be a procedure reading input,
 i.e.\ from a terminal, and the dataflow sink would likely be a procedure 
 printing the data to a terminal, or otherwise communicating with the outside world.
 Note that stores can now contain both regular integers as variable values,
 as well as dataflow-tracked values.
 
-The judgements are extended as follows:
+The judgements are modified as follows:
 
-Judgment $\langle a, \sigma \rangle \downarrow n$:
+Judgment $\langle a, \sigma \rangle \downarrow n$ is extended by:
 \begin{align*}
     \textsc{EA-Source}\ddfrac{\langle a, \sigma \rangle \downarrow n}
     {\langle \textbf{source }a, \sigma \rangle \downarrow \top_n}
     \qquad     
-    \textsc{EA-Untracking}\ddfrac{\langle a, \sigma \rangle \downarrow \top_n}
+    \textsc{EA-Untrack}\ddfrac{\langle a, \sigma \rangle \downarrow \top_n}
     {\langle a, \sigma \rangle \downarrow n}
 \end{align*}
 
 
 
 
-Judgment $\langle c, \sigma \rangle \downarrow \sigma'$:
+The Judgment $\langle c, \sigma \rangle \downarrow \sigma'$ is replaced by 
+$\langle c, (\sigma, s) \rangle \downarrow (\sigma', s')$, were $s, s' \in \{n, e\}$.
+$s$ denotes an exception state, where $n$ indicates normal program execution and $e$
+indicates that an exception happened.
+Exceptions are thrown when a dataflow-tracked value reaches a sink, the program
+is then aborted. The exception cannot be catched.
 \begin{align*}
-    &\textsc{EC-Sink1}\ddfrac{\langle a, \sigma \rangle\downarrow \top_n}
-    {\langle \textbf{sink } a, \sigma \rangle \downarrow \sigma}\\
+    &\textsc{EC-Sink1}
+    \ddfrac{\langle a, \sigma \rangle\downarrow \top_n}
+    {\langle \textbf{sink } a, (\sigma, s) \rangle \downarrow (\sigma, e)}\\
     &\textsc{EC-Sink2}\ddfrac{\langle a, \sigma\rangle \downarrow n}
-    {\langle \textbf{sink } a, \sigma \rangle \downarrow \sigma}
-    (\text{Only if $\langle a, \sigma\rangle$ doesn't evaluate to $\top_n$, too})
+    {\langle \textbf{sink } a, (\sigma, s) \rangle \downarrow (\sigma, s)}
+    (\text{Only if $\langle a, \sigma\rangle$ doesn't evaluate to $\top_n$, too})\\
+    &\textsc{EC-Exception}\ddfrac{}
+    {\langle c, (\sigma, e) \rangle \downarrow (\sigma, e)}
 \end{align*}
 
 The rule \textsc{EC-Assign} is removed and replaced by:
 \begin{align*}
     &\textsc{EC-Assign1}\ddfrac{\langle a, \sigma\rangle \downarrow \top_n}
-    {\langle X \coloneqq a, \sigma \rangle \downarrow \sigma[X \mapsto \top_n]}\\
-    &\textsc{EC-Assign2}\ddfrac{\langle a, \sigma \rangle \downarrow n}
-    {\langle X \coloneqq a, \sigma \rangle \downarrow \sigma[X \mapsto n]}
-     (\text{Only if $\langle a, \sigma\rangle$ doesn't evaluate to $\top_n$, too})
+    {\langle X \coloneqq a, (\sigma, n) \rangle \downarrow (\sigma[X \mapsto \top_n], n)}\\
+    &\textsc{EC-Assign2}\ddfrac{\overset{\E_0}{\langle a, \sigma \rangle \downarrow n}}
+    {\langle X \coloneqq a, (\sigma, n) \rangle \downarrow (\sigma[X \mapsto n], n)}
+     (\text{Only if $\E_0$ doesn't use rule \textsc{EA-Untrack} as last rule})
 \end{align*}
+All other rules are modified to only apply when the exception state $s$ is $n$.
+The exception state of $n$ is preserved by all commands not reproduced here.
 
 Note that the side-conditions on \textsc{EC-Sink2} and \textsc{EC-Assign2}
 ensure that all derivations are unique.
-Furthermore, the rule \textsc{EA-Untracking} ensures that whenever the value of
+Furthermore, the rule \textsc{EA-Untrack} ensures that whenever the value of
 a tracked arithmetic expression is used in a non-value-preserving operation,
 the value is not tracked anymore.
 This applies even to operations like addition with 0 or multiplication with 1,
-that are value-preserving special cases of non-value-preserving operations.
-The \textbf{sink} command has the same semantics as \textbf{skip} 
-for program execution.
-However, the difference will become obvious when defining dataflow.
+
+\subsection{Syntax and Semantic of SSA-dIMP}
+To facilitate the dataflow analysis, we describe a SSA form on dIMP with a concrete
+syntax and semantic.
+We do not describe how to transform a dIMP program to a SSA-dIMP program, but 
+refer the reader to the literature, where different SSA construction algorithms are
+described. (TODO cite). Furthermore, there are correctness proofs of SSA construction
+available (TODO).
+
+The syntax for boolean and arithmetic expressions in SSA-dIMP is the same as in dIMP.
+However, the command syntax changes.
+\begin{align*}
+    c \Coloneqq &\textbf{skip} | X \coloneqq a| c_0; c_1 | (\textbf{if } b \textbf{ then }c_0
+    \textbf{ else }c_1);[X = \Phi(Y, Z)] |\\
+    &\textbf{while }[X = \Phi(Y, Z)]; b\textbf{ do } c_0 | \textbf{sink } a\\
+\end{align*}
+At every point where possibly $\Phi$ nodes are placed in the control flow graph
+of a dIMP program, the syntax of SSA-dIMP has an explicit list of $\Phi$ nodes.
+That list can be empty.
+
+A program in SSA-dIMP is only valid if it conforms to the SSA properties.
+Thus, every variable definition dominates all of the uses of the variable, and
+the number of $\Phi$ nodes in the program is minimal.
+The easiest way to achieve this is to run a SSA construction algorithm on a dIMP program.
+It is a gap in the provided proofs that we do not show that every dIMP program
+can be transformed in a valid SSA-dIMP program (especially, we omit showing that
+$\Phi$ nodes will be placed exactly at the places they are allowed in the syntax
+of SSA-dIMP).
+We also require that the first argument for $\Phi$ nodes for \textbf{if} commands
+corresponds to the variable after executing the \textbf{true} branch, and the second argument to that
+of the variable after executing the \textbf{false} branch.
+For \textbf{while} commands, the first argument to the $\Phi$ node is the value
+before executing $c_0$ the first time, and the second argument is the value 
+after executing the loop body.
+TODO something about use of initial values, as they cannot have a definition
+
+The only rules replaced from the dIMP semantics are the ones for \textbf{if} and 
+\textbf{while}.
+\begin{landscape}
+    The new rules are the following:
+    \begin{align*}
+        &\textsc{EC-IfT}
+        \ddfrac{\langle b, \sigma \rangle \downarrow \textbf{true}
+        \qquad\langle c_0, (\sigma, n) \rangle \downarrow (\sigma', n)}
+        {\langle (\textbf{if }b\textbf{ then } c_0 \textbf{ else }c_1);
+        [X_1= \Phi(Y_1, Z_1), \ldots, X_n = \Phi(Y_n, Z_n)], (\sigma, n) \rangle
+        \downarrow (\sigma'[X_1 \mapsto Y_1, \ldots, X_n \mapsto Y_n], n)}\\
+        &\textsc{EC-IfF}
+        \ddfrac{\langle b, \sigma \rangle \downarrow \textbf{false}
+        \qquad\langle c_1, (\sigma, n) \rangle  \downarrow (\sigma', n)}
+        {\langle (\textbf{if }b\textbf{ then } c_0 \textbf{ else }c_1);
+        [X_1= \Phi(Y_1, Z_1), \ldots, X_n = \Phi(Y_n, Z_n)], (\sigma, n) \rangle
+        \downarrow (\sigma'[X_1 \mapsto Z_1, \ldots, X_n \mapsto Z_n], n)}\\
+        &\textsc{EC-WhileF0}\ddfrac
+        {\langle b, \sigma[X_1 \mapsto Y_1, \ldots, X_n \mapsto Y_n] \rangle \downarrow \textbf{false}}
+        {\langle \textbf{while }[X_1= \Phi(Y_1, Z_1), \ldots, X_n = \Phi(Y_n, Z_n)];
+        b \textbf{ do } c_0, (\sigma, n) 
+        \downarrow (\sigma[X_1 \mapsto Y_1, \ldots, X_n \mapsto Y_n], n)}\\
+        &\textsc{EC-WhileT0}\ddfrac
+        {\langle b, \sigma[X_1 \mapsto Y_1, \ldots, X_n \mapsto Y_n] \rangle \downarrow \textbf{true}
+        \quad \langle c_0, (\sigma[X_1 \mapsto Y_1, \ldots, X_n \mapsto Y_n], n) \rangle \downarrow (\sigma'', n)
+        \quad \overset{\E_0}{\textbf{while }[X_1= \Phi(Y_1, Z_1), \ldots];%, X_n = \Phi(Y_n, Z_n)];
+        b \textbf{ do } c_0, (\sigma'', n) \rangle \downarrow (\sigma', n) }}
+        {\langle \textbf{while }[X_1= \Phi(Y_1, Z_1), \ldots, X_n = \Phi(Y_n, Z_n)];
+        b \textbf{ do } c_0, (\sigma, n) 
+        \downarrow }\\
+        &\text{(if $\E_0$ uses either \textsc{EC-WhileF+} or \textsc{EC-WhileT+} as last rule)}\\
+        &\textsc{EC-WhileF+}\ddfrac
+        {\langle b, \sigma[X_1 \mapsto Z_1, \ldots, X_n \mapsto Z_n] \rangle \downarrow \textbf{false}}
+        {\langle \textbf{while }[X_1= \Phi(Y_1, Z_1), \ldots, X_n = \Phi(Y_n, Z_n)];
+        b \textbf{ do } c_0, (\sigma, n) 
+        \downarrow (\sigma[X_1 \mapsto Z_1, \ldots, X_n \mapsto Z_n], n)}\\
+        &\textsc{EC-WhileT+}\ddfrac
+        {\langle b, \sigma[X_1 \mapsto Z_1, \ldots, X_n \mapsto Z_n] \rangle \downarrow \textbf{true}
+        \quad \langle c_0, (\sigma[X_1 \mapsto Z_1, \ldots, X_n \mapsto Z_n], n) \rangle \downarrow (\sigma'', n)
+        \quad \overset{\E_0}{\textbf{while }[X_1= \Phi(Y_1, Z_1), \ldots];%, X_n = \Phi(Y_n, Z_n)];
+        b \textbf{ do } c_0, (\sigma'', n) \rangle \downarrow (\sigma', n) }}
+        {\langle \textbf{while }[X_1= \Phi(Y_1, Z_1), \ldots, X_n = \Phi(Y_n, Z_n)];
+        b \textbf{ do } c_0, (\sigma, n) 
+        \downarrow }\\
+        &\text{(if $\E_0$ uses either \textsc{EC-WhileF+} or \textsc{EC-WhileT+} as last rule)}\\
+    \end{align*}
+    They ensure that the first execution of a while loop uses the variables as defined before
+    the loop executes, and after that the variables are used that the loop body 
+    defined.
+    Unfortunately this makes the semantics more complicated.
+\end{landscape}
 
 \subsection{Definition of Dataflow}
 \begin{definition}[Program]
-    A \emph{program} in IMP is a command $c$.
+    A \emph{program} in dIMP is a command $c$.
     Complex programs are expressed by using the recursive nature of
     the definition of commands.
 \end{definition}
@@ -96,19 +191,10 @@ However, the difference will become obvious when defining dataflow.
 
 \begin{definition}[Dataflow]
     A tuple $(c, \sigma_0)$ of a program $c$ and initial store $\sigma_0$ 
-    has \emph{dataflow from the source to a sink} if the derivation $\E$
-    of $\langle c, \sigma_0 \rangle \downarrow \sigma'$ contains a 
-    subderivation using rule \textsc{EC-Sink1}.
+    has \emph{dataflow from the source to a sink} if
+    $\langle c, (\sigma_0, n) \rangle \downarrow (\sigma', e)$ holds.
+    This means that the program terminates with a dataflow exception.
 \end{definition}
-\begin{remark}
-    Note that a technicality of this definition is that only terminating programs
-(with $\sigma_0$) can have dataflow. 
-In a practical setting, this is not correct - a program could have
-interesting dataflow from a source to a sink, and then enter an infinite loop,
-However, there would be a (terminating) sub-program that we could analyze
-(basically, a program that stops as soon as the sink with a tracked value
-is encountered).
-\end{remark}
 
 \begin{definition}[Dataflow Algorithm]
     A \emph{dataflow algorithm} $\A(c)$ computes, given a program $c$,
@@ -443,6 +529,11 @@ filters out edges that don't lead to any sink.
     definition of $E$.\\
     \textbf{Subcase 2:} $a = Y$ for some variable $Y \neq X$ (remember, we have 
     a SSA form)
+    TODO\\
+    \textbf{Case 2:} $e$ is an edge of type (2).\\
+    TODO\\
+    \textbf{Case 3:} $e$ is an edge of type (3).\\
+    TODO
 \end{proof}
 
 
