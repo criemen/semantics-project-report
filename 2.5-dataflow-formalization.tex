@@ -12,35 +12,6 @@ presentation and semantics of IMP.
 We assume that the reader is familiar with the syntax and semantics of IMP
 as presented in section 2.1 of~\cite{sat}.
 
-\subsection{Syntax and Semantic of dIMP}
-We extend the syntax of IMP a little bit
-and call the resulting language dIMP (for dataflow IMP):
-\begin{align*}
-    &a \Coloneqq \dots | \textbf{source } a\\
-    &c \Coloneqq \dots | \textbf{sink } a\\
-\end{align*}
-We define the set $\tilde{\textbf{Z}} =\{n^f | n \in \textbf{Z}, f \in \{\textbf{c}, \textbf{t}\}\}$.
-Stores are denoted with $\sigma \in \Sigma = \textbf{Loc} \dashrightarrow \tilde{\textbf{Z}}$.
-Note that stores are partial function from locations to the set of tagged integer
-values.
-A further restriction on allowed programs is that only up to one expression
-of the form $\textbf{source } a$ is allowed in a program.
-This technical restriction makes the later definition of a minimal dataflow graph
-easier.
-TODO check again if still needed
-
-The intuition here is that for all $n \in \textbf{Z}$, 
-each value is tagged by either \textbf{c} for clean or \textbf{t} for being tracked
-as having dataflow.
-A tracked value originates from the source, and is preserved by value-preserving
-operations (see the semantics below).
-The command $\textbf{sink } a$ is a special marker for the dataflow sink.
-It aborts the program via an exception if a tracked value reaches the sink.
-This ensures termination for all programs that have dataflow.
-In real programs, the dataflow source would likely be a procedure reading input,
-i.e.\ from a terminal, and the dataflow sink would likely be a procedure 
-printing the data to a terminal, or otherwise communicating with the outside world.
-
 % expr, store, result
 \newcommand{\bigstep}[3]{\langle #1, #2 \rangle \downarrow #3}
 % name, requirement, result
@@ -50,8 +21,10 @@ printing the data to a terminal, or otherwise communicating with the outside wor
 \newcommand{\clean}[1][n]{#1^\textbf{c}}
 \newcommand{\tracked}[1][n]{#1^\textbf{t}}
 \newcommand{\flagged}[1][n]{#1^f}
-\newcommand{\source}[1][a]{\textbf{source }{#1}}
-\newcommand{\sink}[1][a]{\textbf{sink }{#1}}
+\newcommand{\source}[1]{\textbf{source }{#1}}
+\newcommand{\defaultsource}{\source{a}}
+\newcommand{\sink}[1]{\textbf{sink }{#1}}
+\newcommand{\defaultsink}{\sink{a}}
 \newcommand{\excstore}[1][\sigma]{\hat{#1}}
 \newcommand{\Loc}{\textbf{Loc}}
 \newcommand{\partialf}{\dashrightarrow}
@@ -68,13 +41,45 @@ printing the data to a terminal, or otherwise communicating with the outside wor
 \newcommand{\defaultwhile}{\whilecmd{b}{c_0}}
 \newcommand{\storecmd}[2]{{#1} \coloneqq {#2}}
 \newcommand{\defaultstore}{\storecmd{X}{a}}
+\newcommand{\phistore}[3]{{#1} \coloneqq \Phi({#2}, {#3})}
+\newcommand{\defaultphi}{\phistore{X_1}{Y_1}{Z_1}, \ldots}
+\newcommand{\ssaif}[4]{(\textbf{if }{#1} \textbf{ then }{#2}\textbf{ else }{#3});[{#4}]}
+\newcommand{\defaultssaif}{\ssaif{b}{c_0}{c_1}{\defaultphi}}
+\newcommand{\ssawhile}[3]{\textbf{while }[#3];{#1} \textbf{ do } {#2}}
+\newcommand{\defaultssawhile}{\ssawhile{b}{c_0}{\defaultphi}}
 
-\newcommand{\ssaif}[4]{\textbf{if }{#1} \textbf{ then }{#2}\textbf{ else }{#3}}
+\subsection{Syntax and Semantic of dIMP}
+We extend the syntax of IMP a little bit
+and call the resulting language dIMP (for dataflow IMP):
+\begin{align*}
+    &a \Coloneqq \dots | \defaultsource\\
+    &c \Coloneqq \dots | \defaultsink\\
+\end{align*}
+We define the set $\tilde{\textbf{Z}} =\{\flagged{} | n \in \textbf{Z}, f \in \{\textbf{c}, \textbf{t}\}\}$.
+Stores are denoted with $\store \in \Sigma = \Loc \to \tilde{\textbf{Z}}$.
+Stores are function from locations to the set of tagged integer
+values.
+A further restriction on allowed programs is that only up to one expression
+of the form $\textbf{source } a$ is allowed in a program.
+This technical restriction makes the later definition of a minimal dataflow graph
+easier.
+TODO check again if still needed
 
+The intuition here is that for all $n \in \textbf{Z}$, 
+each value is tagged by either \textbf{c} for clean or \textbf{t} for being tracked
+as having dataflow.
+A tracked value originates from the source, and is preserved by value-preserving
+operations (see the semantics below).
+The command $\defaultsink$ is a special marker for the dataflow sink.
+It aborts the program via an exception if a tracked value reaches the sink.
+This ensures termination for all programs that have dataflow.
+In real programs, the dataflow source would likely be a procedure reading input,
+i.e.\ from a terminal, and the dataflow sink would likely be a procedure 
+printing the data to a terminal, or otherwise communicating with the outside world.
 
 
 There is a new judgment of the form 
-$\bigstep{a}{\sigma}{n^f}$:
+$\bigstep{a}{\sigma}{\flagged{}}$:
 \begin{align*}
     &\bsrule{EA-Num}{}{\bigstep{\literalint}{\store}{\clean}} \qquad
     \bsrule{EA-Loc}{}{\bigstep{X}{\store}{\store(X)}}\qquad
@@ -94,12 +99,9 @@ $\bigstep{a}{\sigma}{n^f}$:
     {\bigstep{\source}{\store}{\tracked{}}}
 \end{align*}
 
-
-
-
 The Judgment $\langle c, \sigma \rangle \downarrow \sigma'$ is replaced by 
 $\bigstep{c}{\sigma}{\excstore'}$
-where $\excstore{}: \Loc \partialf \StoreDomain \sqcup \exception$.
+where $\excstore{}: \Loc \to \StoreDomain \sqcup \exception$.
 The state $\exception$ indicates that an exception was thrown.
 Exceptions are thrown when a dataflow-tracked value reaches a sink, the program
 is then aborted.
@@ -107,11 +109,11 @@ Exceptions in dIMP cannot be caught.
 
 \begin{align*}
     &\bsrule{EC-SinkExc}{\bigstep{a}{\store}{\tracked{}}}
-    {\bigstep{\sink}{\store}{\exception}} \qquad
+    {\bigstep{\defaultsink}{\store}{\exception}} \qquad
     \bsrule{EC-Sink}{\bigstep{a}{\store}{\clean{}}}
-    {\bigstep{\sink}{\store}{\store}} \qquad
+    {\bigstep{\defaultsink}{\store}{\store}} \qquad
     \bsrule{EC-Skip}{}{\bigstep{\skipcmd}{\store}{\store}}\\
-    &\bsrule{EC-SeqExc1}{\bigstep{c_0}{\sigma}{\exception}}
+    &\bsrule{EC-SeqExc}{\bigstep{c_0}{\sigma}{\exception}}
     {\bigstep{\defaultseq}{\store}{\exception}} \qquad
     \bsrule{EC-Seq}{\bigstep{c_0}{\sigma}{\store''} \qquad \bigstep{c_1}{\store''}{\excstore'}}
     {\bigstep{\defaultseq}{\store}{\excstore'}}\\
@@ -134,10 +136,10 @@ The judgement operations for booleans are kept as in IMP.
 To support them, we introduce a judgement of the form
 $\langle a, \sigma \rangle \downarrow n$:
 \begin{align*}
-    \textsc{EA-ToPlainNum}\ddfrac{\langle a, \sigma \rangle \downarrow n^f}
+    \textsc{EA-ToPlainNum}\ddfrac{\langle a, \sigma \rangle \downarrow \flagged{}}
     {\langle a, \sigma \rangle \downarrow n}
 \end{align*}
-{\color{red} Andrzej: This is a questionable design choice,
+{\color{red} @Andrzej: This is a questionable design choice,
  solely to avoid further texing}
 
 \subsection{Syntax and Semantic of SSA-dIMP}
@@ -151,32 +153,33 @@ available (TODO).
 The syntax for boolean and arithmetic expressions in SSA-dIMP is the same as in dIMP.
 However, the command syntax changes.
 \begin{align*}
-    c \Coloneqq &\skipcmd \mid \defaultstore \mid \defaultseq \mid (\textbf{if } b \textbf{ then }c_0
-    \textbf{ else }c_1);[X = \Phi(Y, Z)] \mid\\
-    &\textbf{while }[X = \Phi(Y, Z)]; b\textbf{ do } c_0 \mid \sink \\
+    c \Coloneqq &\skipcmd \mid \defaultsink \mid \defaultstore \mid \defaultseq 
+    \mid \defaultssaif\\
+    \mid &\defaultssawhile \\
 \end{align*}
-At every point where possibly $\Phi$ nodes are placed in the control flow graph
+At every point where $\Phi$ nodes can placed in the control flow graph
 of a dIMP program, the syntax of SSA-dIMP has an explicit list of $\Phi$ nodes.
 That list can be empty.
 
 A program in SSA-dIMP is only valid if it conforms to the SSA properties.
-Thus, every variable definition dominates all of the uses of the variable, and
-the number of $\Phi$ nodes in the program is minimal.
+Thus, every variable definition dominates all of the uses of the variable.
+%, and the number of $\Phi$ nodes in the program is minimal.
 The easiest way to achieve this is to run a SSA construction algorithm on a dIMP program.
 It is a gap in the provided proofs that we do not show that every dIMP program
 can be transformed in a valid SSA-dIMP program (especially, we omit showing that
 $\Phi$ nodes will be placed exactly at the places they are allowed in the syntax
 of SSA-dIMP).
 We also require that the first argument for $\Phi$ nodes for \textbf{if} commands
-corresponds to the variable after executing the \textbf{true} branch, and the second argument to that
-of the variable after executing the \textbf{false} branch.
+corresponds to the variable after executing the \btrue branch, and the second argument to that
+of the variable after executing the \bfalse branch.
 For \textbf{while} commands, the first argument to the $\Phi$ node is the value
 before executing $c_0$ the first time, and the second argument is the value 
 after executing the loop body.
 TODO something about use of initial values, as they cannot have a definition
 
-The only rules replaced from the dIMP semantics are the ones for \textbf{if} and 
-\textbf{while}.
+TODO write something about which rules are replaced
+%The only rules replaced from the dIMP semantics are the ones for \textbf{if} and 
+%\textbf{while}.
 \begin{landscape}
     The new rules are the following:
     \begin{align*}
