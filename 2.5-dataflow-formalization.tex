@@ -19,77 +19,130 @@ and call the resulting language dIMP (for dataflow IMP):
     &a \Coloneqq \dots | \textbf{source } a\\
     &c \Coloneqq \dots | \textbf{sink } a\\
 \end{align*}
-We define the set $\tilde{\textbf{Z}} = \textbf{Z} \cup \{\top_n | n \in \textbf{Z}\}$.
-Stores are denoted with $\sigma \in \Sigma = \textbf{Loc} \to \tilde{\textbf{Z}}$.
-Furthermore, only up to one expression of the form $\textbf{source } a$ is allowed
-in a program.
+We define the set $\tilde{\textbf{Z}} =\{n^f | n \in \textbf{Z}, f \in \{\textbf{c}, \textbf{t}\}\}$.
+Stores are denoted with $\sigma \in \Sigma = \textbf{Loc} \dashrightarrow \tilde{\textbf{Z}}$.
+Note that stores are partial function from locations to the set of tagged integer
+values.
+A further restriction on allowed programs is that only up to one expression
+of the form $\textbf{source } a$ is allowed in a program.
 This technical restriction makes the later definition of a minimal dataflow graph
-easier. It could be lifted by indexing the $\top_n$ per source.
+easier.
+TODO check again if still needed
 
-The intuition here is that for all $n \in \textbf{Z}$, $\top_n$
-is a marker indicating that the value $n$ is tracked by the dataflow algorithm,
-and all tracked values originate at the source (see the semantics below).
+The intuition here is that for all $n \in \textbf{Z}$, 
+each value is tagged by either \textbf{c} for clean or \textbf{t} for being tracked
+as having dataflow.
+A tracked value originates from the source, and is preserved by value-preserving
+operations (see the semantics below).
 The command $\textbf{sink } a$ is a special marker for the dataflow sink.
 It aborts the program via an exception if a tracked value reaches the sink.
 This ensures termination for all programs that have dataflow.
 In real programs, the dataflow source would likely be a procedure reading input,
 i.e.\ from a terminal, and the dataflow sink would likely be a procedure 
 printing the data to a terminal, or otherwise communicating with the outside world.
-Note that stores can now contain both regular integers as variable values,
-as well as dataflow-tracked values.
 
-The judgements are modified as follows:
+% expr, store, result
+\newcommand{\bigstep}[3]{\langle #1, #2 \rangle \downarrow #3}
+% name, requirement, result
+\newcommand{\bsrule}[3]{\textsc{#1:}\ddfrac{#2}{#3}}
+\newcommand{\literalint}[1][n]{\bar{#1}}
+\newcommand{\store}[1][\sigma]{#1}
+\newcommand{\clean}[1][n]{#1^\textbf{c}}
+\newcommand{\tracked}[1][n]{#1^\textbf{t}}
+\newcommand{\flagged}[1][n]{#1^f}
+\newcommand{\source}[1][a]{\textbf{source }{#1}}
+\newcommand{\sink}[1][a]{\textbf{sink }{#1}}
+\newcommand{\excstore}[1][\sigma]{\hat{#1}}
+\newcommand{\Loc}{\textbf{Loc}}
+\newcommand{\partialf}{\dashrightarrow}
+\newcommand{\StoreDomain}{\tilde{Z}}
+\newcommand{\exception}{\textbf{exc}}
+\newcommand{\skipcmd}{\textbf{skip}}
+\newcommand{\seq}[2]{{#1}; {#2}}
+\newcommand{\defaultseq}{\seq{c_0}{c_1}}
+\newcommand{\ifcmd}[3]{\textbf{if }{#1} \textbf{ then }{#2}\textbf{ else }{#3}}
+\newcommand{\defaultif}{\ifcmd{b}{c_0}{c_1}}
+\newcommand{\btrue}{\textbf{true}}
+\newcommand{\bfalse}{\textbf{false}}
+\newcommand{\whilecmd}[2]{\textbf{while }{#1} \textbf{ do } {#2}}
+\newcommand{\defaultwhile}{\whilecmd{b}{c_0}}
+\newcommand{\storecmd}[2]{{#1} \coloneqq {#2}}
+\newcommand{\defaultstore}{\storecmd{X}{a}}
 
-Judgment $\langle a, \sigma \rangle \downarrow n$ is extended by:
+\newcommand{\ssaif}[4]{\textbf{if }{#1} \textbf{ then }{#2}\textbf{ else }{#3}}
+
+
+
+There is a new judgment of the form 
+$\bigstep{a}{\sigma}{n^f}$:
 \begin{align*}
-    \textsc{EA-Source}\ddfrac{\langle a, \sigma \rangle \downarrow n}
-    {\langle \textbf{source }a, \sigma \rangle \downarrow \top_n}
-    \qquad     
-    \textsc{EA-Untrack}\ddfrac{\langle a, \sigma \rangle \downarrow \top_n}
-    {\langle a, \sigma \rangle \downarrow n}
+    &\bsrule{EA-Num}{}{\bigstep{\literalint}{\store}{\clean}} \qquad
+    \bsrule{EA-Loc}{}{\bigstep{X}{\store}{\store(X)}}\qquad
+    \bsrule{EA-Plus}
+    {\bigstep{a_0}{\store}{\flagged[n_0]}
+    \qquad \bigstep{a_1}{\store}{\flagged[n_1]}}
+    {\bigstep{a_0+a_1}{\store}{\clean[(n_0+n_1)]}}\\
+    &\bsrule{EA-Minus}
+    {\bigstep{a_0}{\store}{\flagged[n_0]}
+    \qquad \bigstep{a_1}{\store}{\flagged[n_1]}}
+    {\bigstep{a_0-a_1}{\store}{\clean[(n_0-n_1)]}} \qquad
+    \bsrule{EA-Times}
+    {\bigstep{a_0}{\store}{\flagged[n_0]}
+    \qquad \bigstep{a_1}{\store}{\flagged[n_1]}}
+    {\bigstep{a_0 \times a_1}{\store}{\clean[(n_0 \times n_1)]}}\\
+    &\bsrule{EA-Source}{\bigstep{a}{\store}{\flagged}}
+    {\bigstep{\source}{\store}{\tracked{}}}
 \end{align*}
 
 
 
 
 The Judgment $\langle c, \sigma \rangle \downarrow \sigma'$ is replaced by 
-$\langle c, (\sigma, s) \rangle \downarrow (\sigma', s')$, were $s, s' \in \{n, e\}$.
-$s$ denotes an exception state, where $n$ indicates normal program execution and $e$
-indicates that an exception happened.
+$\bigstep{c}{\sigma}{\excstore'}$
+where $\excstore{}: \Loc \partialf \StoreDomain \sqcup \exception$.
+The state $\exception$ indicates that an exception was thrown.
 Exceptions are thrown when a dataflow-tracked value reaches a sink, the program
-is then aborted. The exception cannot be catched.
+is then aborted.
+Exceptions in dIMP cannot be caught.
+
 \begin{align*}
-    &\textsc{EC-Sink1}
-    \ddfrac{\langle a, \sigma \rangle\downarrow \top_n}
-    {\langle \textbf{sink } a, (\sigma, s) \rangle \downarrow (\sigma, e)}\\
-    &\textsc{EC-Sink2}\ddfrac{\langle a, \sigma\rangle \downarrow n}
-    {\langle \textbf{sink } a, (\sigma, s) \rangle \downarrow (\sigma, s)}
-    (\text{Only if $\langle a, \sigma\rangle$ doesn't evaluate to $\top_n$, too})\\
-    &\textsc{EC-Exception}\ddfrac{}
-    {\langle c, (\sigma, e) \rangle \downarrow (\sigma, e)}
+    &\bsrule{EC-SinkExc}{\bigstep{a}{\store}{\tracked{}}}
+    {\bigstep{\sink}{\store}{\exception}} \qquad
+    \bsrule{EC-Sink}{\bigstep{a}{\store}{\clean{}}}
+    {\bigstep{\sink}{\store}{\store}} \qquad
+    \bsrule{EC-Skip}{}{\bigstep{\skipcmd}{\store}{\store}}\\
+    &\bsrule{EC-SeqExc1}{\bigstep{c_0}{\sigma}{\exception}}
+    {\bigstep{\defaultseq}{\store}{\exception}} \qquad
+    \bsrule{EC-Seq}{\bigstep{c_0}{\sigma}{\store''} \qquad \bigstep{c_1}{\store''}{\excstore'}}
+    {\bigstep{\defaultseq}{\store}{\excstore'}}\\
+    &\bsrule{EC-IfT}{\bigstep{b}{\store}{\btrue}\qquad \bigstep{c_0}{\store}{\excstore'}}
+    {\bigstep{\defaultif}{\store}{\excstore'}} \qquad
+    \bsrule{EC-IfF}{\bigstep{b}{\store}{\bfalse}\qquad \bigstep{c_1}{\store}{\excstore'}}
+    {\bigstep{\defaultif}{\store}{\excstore'}}\\
+    &\bsrule{EC-WhileF}{\bigstep{b}{\sigma}{\bfalse}}
+    {\bigstep{\defaultwhile}{\store}{\store}} \qquad
+    \bsrule{EC-WhileTExc}{\bigstep{b}{\sigma}{\btrue} \qquad \bigstep{c_0}{\store}{\exception}}
+    {\bigstep{\defaultwhile}{\store}{\exception}}\\
+    &\bsrule{EC-WhileT}{\bigstep{b}{\sigma}{\btrue} \qquad \bigstep{c_0}{\store}{\store''}\qquad
+    \bigstep{\defaultwhile}{\store''}{\excstore'}}
+    {\bigstep{\defaultwhile}{\store}{\excstore'}}\\
+    &\bsrule{EC-Assign}{\bigstep{a}{\store}{\flagged{}}}
+    {\bigstep{\defaultstore}{\store}{\store{}[X \mapsto \flagged{}]}}
 \end{align*}
 
-The rule \textsc{EC-Assign} is removed and replaced by:
+The judgement operations for booleans are kept as in IMP.
+To support them, we introduce a judgement of the form
+$\langle a, \sigma \rangle \downarrow n$:
 \begin{align*}
-    &\textsc{EC-Assign1}\ddfrac{\langle a, \sigma\rangle \downarrow \top_n}
-    {\langle X \coloneqq a, (\sigma, n) \rangle \downarrow (\sigma[X \mapsto \top_n], n)}\\
-    &\textsc{EC-Assign2}\ddfrac{\overset{\E_0}{\langle a, \sigma \rangle \downarrow n}}
-    {\langle X \coloneqq a, (\sigma, n) \rangle \downarrow (\sigma[X \mapsto n], n)}
-     (\text{Only if $\E_0$ doesn't use rule \textsc{EA-Untrack} as last rule})
+    \textsc{EA-ToPlainNum}\ddfrac{\langle a, \sigma \rangle \downarrow n^f}
+    {\langle a, \sigma \rangle \downarrow n}
 \end{align*}
-All other rules are modified to only apply when the exception state $s$ is $n$.
-The exception state of $n$ is preserved by all commands not reproduced here.
-
-Note that the side-conditions on \textsc{EC-Sink2} and \textsc{EC-Assign2}
-ensure that all derivations are unique.
-Furthermore, the rule \textsc{EA-Untrack} ensures that whenever the value of
-a tracked arithmetic expression is used in a non-value-preserving operation,
-the value is not tracked anymore.
-This applies even to operations like addition with 0 or multiplication with 1,
+{\color{red} Andrzej: This is a questionable design choice,
+ solely to avoid further texing}
 
 \subsection{Syntax and Semantic of SSA-dIMP}
 To facilitate the dataflow analysis, we describe a SSA form on dIMP with a concrete
-syntax and semantic.
+syntax and semantics.
 We do not describe how to transform a dIMP program to a SSA-dIMP program, but 
 refer the reader to the literature, where different SSA construction algorithms are
 described. (TODO cite). Furthermore, there are correctness proofs of SSA construction
@@ -98,9 +151,9 @@ available (TODO).
 The syntax for boolean and arithmetic expressions in SSA-dIMP is the same as in dIMP.
 However, the command syntax changes.
 \begin{align*}
-    c \Coloneqq &\textbf{skip} | X \coloneqq a| c_0; c_1 | (\textbf{if } b \textbf{ then }c_0
-    \textbf{ else }c_1);[X = \Phi(Y, Z)] |\\
-    &\textbf{while }[X = \Phi(Y, Z)]; b\textbf{ do } c_0 | \textbf{sink } a\\
+    c \Coloneqq &\skipcmd \mid \defaultstore \mid \defaultseq \mid (\textbf{if } b \textbf{ then }c_0
+    \textbf{ else }c_1);[X = \Phi(Y, Z)] \mid\\
+    &\textbf{while }[X = \Phi(Y, Z)]; b\textbf{ do } c_0 \mid \sink \\
 \end{align*}
 At every point where possibly $\Phi$ nodes are placed in the control flow graph
 of a dIMP program, the syntax of SSA-dIMP has an explicit list of $\Phi$ nodes.
