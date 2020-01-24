@@ -14,6 +14,7 @@ as presented in section 2.1 of~\cite{sat}.
 
 % expr, store, result
 \newcommand{\bigstep}[3]{\langle #1, #2 \rangle \downarrow #3}
+\newcommand{\bigstepw}[3]{\langle #1, #2 \rangle \downarrow^w #3}
 % name, requirement, result
 \newcommand{\bsrule}[3]{\textsc{#1:}\ddfrac{#2}{#3}}
 \newcommand{\literalint}[1][n]{\bar{#1}}
@@ -47,6 +48,12 @@ as presented in section 2.1 of~\cite{sat}.
 \newcommand{\defaultssaif}{\ssaif{b}{c_0}{c_1}{\defaultphi}}
 \newcommand{\ssawhile}[3]{\textbf{while }[#3];{#1} \textbf{ do } {#2}}
 \newcommand{\defaultssawhile}{\ssawhile{b}{c_0}{\defaultphi}}
+\newcommand{\dunion}{\sqcup}
+\newcommand{\storeassign}[2]{{#1} \dunion [{#2}]}
+\newcommand{\leftphi}[1]{X_1 \mapsto {#1}(Y_1), \ldots}
+\newcommand{\rightphi}[1]{X_1 \mapsto {#1}(Z_1), \ldots}
+\newcommand{\leftstoreassign}[2]{\storeassign{#1}{\leftphi{#2}}}
+\newcommand{\rightstoreassign}[2]{\storeassign{#1}{\rightphi{#2}}}
 
 \subsection{Syntax and Semantic of dIMP}
 We extend the syntax of IMP a little bit
@@ -101,7 +108,7 @@ $\bigstep{a}{\sigma}{\flagged{}}$:
 
 The Judgment $\langle c, \sigma \rangle \downarrow \sigma'$ is replaced by 
 $\bigstep{c}{\sigma}{\excstore'}$
-where $\excstore{}: \Loc \to \StoreDomain \sqcup \exception$.
+where $\excstore{}: \Loc \to \StoreDomain \dunion \exception$.
 The state $\exception$ indicates that an exception was thrown.
 Exceptions are thrown when a dataflow-tracked value reaches a sink, the program
 is then aborted.
@@ -177,58 +184,75 @@ before executing $c_0$ the first time, and the second argument is the value
 after executing the loop body.
 TODO something about use of initial values, as they cannot have a definition
 
-TODO write something about which rules are replaced
-%The only rules replaced from the dIMP semantics are the ones for \textbf{if} and 
-%\textbf{while}.
+Stores are now partial functions $\store : \Sigma \partialf \Loc$ to indicate that
+variables have to be defined before they can be read.
+Furthermore, when updating a store, we now use the syntax 
+$\store \dunion [X \mapsto \flagged{}]$ to indicate that the store $\store$ did not
+contain the variable $X$ before.
+
 \begin{landscape}
-    The new rules are the following:
-    \begin{align*}
-        &\textsc{EC-IfT}
-        \ddfrac{\langle b, \sigma \rangle \downarrow \textbf{true}
-        \qquad\langle c_0, (\sigma, n) \rangle \downarrow (\sigma', n)}
-        {\langle (\textbf{if }b\textbf{ then } c_0 \textbf{ else }c_1);
-        [X_1= \Phi(Y_1, Z_1), \ldots, X_n = \Phi(Y_n, Z_n)], (\sigma, n) \rangle
-        \downarrow (\sigma'[X_1 \mapsto Y_1, \ldots, X_n \mapsto Y_n], n)}\\
-        &\textsc{EC-IfF}
-        \ddfrac{\langle b, \sigma \rangle \downarrow \textbf{false}
-        \qquad\langle c_1, (\sigma, n) \rangle  \downarrow (\sigma', n)}
-        {\langle (\textbf{if }b\textbf{ then } c_0 \textbf{ else }c_1);
-        [X_1= \Phi(Y_1, Z_1), \ldots, X_n = \Phi(Y_n, Z_n)], (\sigma, n) \rangle
-        \downarrow (\sigma'[X_1 \mapsto Z_1, \ldots, X_n \mapsto Z_n], n)}\\
-        &\textsc{EC-WhileF0}\ddfrac
-        {\langle b, \sigma[X_1 \mapsto Y_1, \ldots, X_n \mapsto Y_n] \rangle \downarrow \textbf{false}}
-        {\langle \textbf{while }[X_1= \Phi(Y_1, Z_1), \ldots, X_n = \Phi(Y_n, Z_n)];
-        b \textbf{ do } c_0, (\sigma, n) 
-        \downarrow (\sigma[X_1 \mapsto Y_1, \ldots, X_n \mapsto Y_n], n)}\\
-        &\textsc{EC-WhileT0}\ddfrac
-        {\langle b, \sigma[X_1 \mapsto Y_1, \ldots, X_n \mapsto Y_n] \rangle \downarrow \textbf{true}
-        \quad \langle c_0, (\sigma[X_1 \mapsto Y_1, \ldots, X_n \mapsto Y_n], n) \rangle \downarrow (\sigma'', n)
-        \quad \overset{\E_0}{\textbf{while }[X_1= \Phi(Y_1, Z_1), \ldots];%, X_n = \Phi(Y_n, Z_n)];
-        b \textbf{ do } c_0, (\sigma'', n) \rangle \downarrow (\sigma', n) }}
-        {\langle \textbf{while }[X_1= \Phi(Y_1, Z_1), \ldots, X_n = \Phi(Y_n, Z_n)];
-        b \textbf{ do } c_0, (\sigma, n) 
-        \downarrow }\\
-        &\text{(if $\E_0$ uses either \textsc{EC-WhileF+} or \textsc{EC-WhileT+} as last rule)}\\
-        &\textsc{EC-WhileF+}\ddfrac
-        {\langle b, \sigma[X_1 \mapsto Z_1, \ldots, X_n \mapsto Z_n] \rangle \downarrow \textbf{false}}
-        {\langle \textbf{while }[X_1= \Phi(Y_1, Z_1), \ldots, X_n = \Phi(Y_n, Z_n)];
-        b \textbf{ do } c_0, (\sigma, n) 
-        \downarrow (\sigma[X_1 \mapsto Z_1, \ldots, X_n \mapsto Z_n], n)}\\
-        &\textsc{EC-WhileT+}\ddfrac
-        {\langle b, \sigma[X_1 \mapsto Z_1, \ldots, X_n \mapsto Z_n] \rangle \downarrow \textbf{true}
-        \quad \langle c_0, (\sigma[X_1 \mapsto Z_1, \ldots, X_n \mapsto Z_n], n) \rangle \downarrow (\sigma'', n)
-        \quad \overset{\E_0}{\textbf{while }[X_1= \Phi(Y_1, Z_1), \ldots];%, X_n = \Phi(Y_n, Z_n)];
-        b \textbf{ do } c_0, (\sigma'', n) \rangle \downarrow (\sigma', n) }}
-        {\langle \textbf{while }[X_1= \Phi(Y_1, Z_1), \ldots, X_n = \Phi(Y_n, Z_n)];
-        b \textbf{ do } c_0, (\sigma, n) 
-        \downarrow }\\
-        &\text{(if $\E_0$ uses either \textsc{EC-WhileF+} or \textsc{EC-WhileT+} as last rule)}\\
-    \end{align*}
-    They ensure that the first execution of a while loop uses the variables as defined before
-    the loop executes, and after that the variables are used that the loop body 
-    defined.
-    Unfortunately this makes the semantics more complicated.
+The judgment for booleans and arithmetic expressions does not change.
+As before, we use $\excstore{}$ to denote partial functions
+$\excstore{}: \Loc \partialf \StoreDomain \dunion \exception$.
+
+For while loops, we introduce a special judgment of the form $\bigstepw{c}{\sigma, \sigma''}{\excstore'{}}$:
+\begin{align*}
+    &\bsrule{EW-WhileF}{\bigstep{b}{\store''}{\bfalse}}
+    {\bigstepw{\defaultssawhile}{\store, \store''}{\store''}}\\
+    &\bsrule{EW-WhileTExc}{\bigstep{b}{\store''}{\btrue} \qquad 
+    \bigstep{c_0}{\store''}{\exception}}
+    {\bigstepw{\defaultssawhile}{\store, \store''}{\exception}}\\
+    &\bsrule{EW-WhileT}{\bigstep{b}{\store''}{\btrue} \qquad 
+    \bigstep{c_0}{\store''}{\store'''} \qquad 
+    \bigstepw{\defaultssawhile}{\store, \rightstoreassign{\store}{\store'''}}{\excstore'}}
+    {\bigstepw{\defaultssawhile}{\store, \store''}{\excstore'}}\\
+ \end{align*}
+
+We have the following rules for the judgment $\bigstep{c}{\store}{\excstore{}}$
+and $\excstore{}: \Loc \partialf \StoreDomain \dunion \exception$:
+\begin{align*}
+    &\bsrule{EC-WhileF}{\bigstep{b}{\leftstoreassign{\store}{\store}}{\bfalse}}
+    {\bigstep{\defaultssawhile}{\sigma}{\leftstoreassign{\store}{\store}}}\\
+    &\bsrule{EC-WhileTExc}{\bigstep{b}{\leftstoreassign{\store}{\store}}{\btrue} \qquad 
+    \bigstep{c_0}{\leftstoreassign{\store}{\store}}{\exception}}
+    {\bigstep{\defaultssawhile}{\sigma}{\exception}}\\
+    &\bsrule{EC-WhileT}{\bigstep{b}{\leftstoreassign{\store}{\store}}{\btrue} \quad 
+    \bigstep{c_0}{\leftstoreassign{\store}{\store}}{\store''} \quad
+    \bigstepw{\defaultssawhile}{\store, \rightstoreassign{\store}{\store''}}{\excstore'}}
+    {\bigstep{\defaultssawhile}{\store}{\excstore'}}\\
+\end{align*}
 \end{landscape}
+\begin{align*}
+    &\bsrule{EC-SinkExc}{\bigstep{a}{\store}{\tracked{}}}
+    {\bigstep{\defaultsink}{\store}{\exception}} \qquad
+    \bsrule{EC-Sink}{\bigstep{a}{\store}{\clean{}}}
+    {\bigstep{\defaultsink}{\store}{\store}} \qquad
+    \bsrule{EC-Skip}{}{\bigstep{\skipcmd}{\store}{\store}}\\
+    &\bsrule{EC-SeqExc}{\bigstep{c_0}{\sigma}{\exception}}
+    {\bigstep{\defaultseq}{\store}{\exception}} \qquad
+    \bsrule{EC-Seq}{\bigstep{c_0}{\sigma}{\store''} \qquad \bigstep{c_1}{\store''}{\excstore'}}
+    {\bigstep{\defaultseq}{\store}{\excstore'}}\\
+    &\bsrule{EC-IfTExc}{\bigstep{b}{\store}{\btrue}\qquad \bigstep{c_0}{\store}{\exception}}
+    {\bigstep{\defaultssaif}{\store}{\exception}}\\
+    &\bsrule{EC-IfFExc}{\bigstep{b}{\store}{\bfalse}\qquad \bigstep{c_1}{\store}{\exception}}
+    {\bigstep{\defaultssaif}{\store}{\exception}}\\
+    &\bsrule{EC-IfT}{\bigstep{b}{\store}{\btrue}\qquad \bigstep{c_0}{\store}{\store'}}
+    {\bigstep{\defaultssaif}{\store}{\leftstoreassign{\store}{\store'} }}\\
+    &\bsrule{EC-IfF}{\bigstep{b}{\store}{\bfalse}\qquad \bigstep{c_1}{\store}{\store'}}
+    {\bigstep{\defaultssaif}{\store}{\rightstoreassign{\store}{\store'} }}\\
+    &\bsrule{EC-Assign}{\bigstep{a}{\store}{\flagged{}}}
+    {\bigstep{\defaultstore}{\store}{\storeassign{\store}{X \mapsto \flagged{}]}}}\\
+    &\bsrule{EC-WhileF}{\bigstep{b}{\leftstoreassign{\store}{\store}}{\bfalse}}
+    {\bigstep{\defaultssawhile}{\sigma}{\leftstoreassign{\store}{\store}}}\\
+    &\bsrule{EC-WhileTExc}{\bigstep{b}{\leftstoreassign{\store}{\store}}{\btrue} \qquad 
+    \bigstep{c_0}{\leftstoreassign{\store}{\store}}{\exception}}
+    {\bigstep{\defaultssawhile}{\sigma}{\exception}}\\
+    &\bsrule{EC-WhileT}{\bigstep{b}{\leftstoreassign{\store}{\store}}{\btrue} \qquad 
+    \bigstep{c_0}{\leftstoreassign{\store}{\store}}{\store''} \qquad
+    \bigstepw{\defaultssawhile}{\rightstoreassign{\store}{\store''}}{\excstore}}
+    {\bigstep{\defaultssawhile}{\sigma}{\excstore'}}\\
+\end{align*}
+
 
 \subsection{Definition of Dataflow}
 \begin{definition}[Program]
