@@ -14,7 +14,7 @@ as presented in section 2.1 of~\cite{sat}.
 
 % expr, store, result
 \newcommand{\bigstep}[3]{\langle #1, #2 \rangle \downarrow #3}
-\newcommand{\bigstepw}[3]{\langle #1, #2 \rangle \downarrow^w #3}
+\newcommand{\bigstepw}[4]{\langle #1, #2, #3 \rangle \downarrow^w #4}
 % name, requirement, result
 \newcommand{\bsrule}[3]{\textsc{#1:}\ddfrac{#2}{#3}}
 \newcommand{\literalint}[1][n]{\bar{#1}}
@@ -27,6 +27,7 @@ as presented in section 2.1 of~\cite{sat}.
 \newcommand{\sink}[1]{\textbf{sink }{#1}}
 \newcommand{\defaultsink}{\sink{a}}
 \newcommand{\excstore}[1][\sigma]{\hat{#1}}
+\newcommand{\initialstore}[1][\sigma]{\tilde{#1}}
 \newcommand{\Loc}{\textbf{Loc}}
 \newcommand{\partialf}{\dashrightarrow}
 \newcommand{\StoreDomain}{\tilde{Z}}
@@ -194,20 +195,19 @@ contain the variable $X$ before.
 The judgment for booleans and arithmetic expressions does not change.
 As before, we use $\excstore{}$ to denote partial functions
 $\excstore{}: \Loc \partialf \StoreDomain \dunion \exception$.
-
 For while loops, we introduce a special judgment of the form $\bigstepw{c}{\sigma, \sigma''}{\excstore'{}}$:
 \begin{align*}
     &\bsrule{EW-WhileF}{\bigstep{b}{\store''}{\bfalse}}
-    {\bigstepw{\defaultssawhile}{\store, \store''}{\store''}}\\
+    {\bigstepw{\defaultssawhile}{\store}{\store''}{\store''}}\\
     &\bsrule{EW-WhileTExc}{\bigstep{b}{\store''}{\btrue} \qquad 
     \bigstep{c_0}{\store''}{\exception}}
-    {\bigstepw{\defaultssawhile}{\store, \store''}{\exception}}\\
+    {\bigstepw{\defaultssawhile}{\store}{\store''}{\exception}}\\
     &\bsrule{EW-WhileT}{\bigstep{b}{\store''}{\btrue} \qquad 
     \bigstep{c_0}{\store''}{\store'''} \qquad 
-    \bigstepw{\defaultssawhile}{\store, \rightstoreassign{\store}{\store'''}}{\excstore'}}
-    {\bigstepw{\defaultssawhile}{\store, \store''}{\excstore'}}\\
+    \bigstepw{\defaultssawhile}{\store}{\rightstoreassign{\store}{\store'''}}{\excstore'}}
+    {\bigstepw{\defaultssawhile}{\store}{\store''}{\excstore'}}\\
  \end{align*}
-
+\\
 We have the following rules for the judgment $\bigstep{c}{\store}{\excstore{}}$
 and $\excstore{}: \Loc \partialf \StoreDomain \dunion \exception$:
 \begin{align*}
@@ -216,9 +216,9 @@ and $\excstore{}: \Loc \partialf \StoreDomain \dunion \exception$:
     &\bsrule{EC-WhileTExc}{\bigstep{b}{\leftstoreassign{\store}{\store}}{\btrue} \qquad 
     \bigstep{c_0}{\leftstoreassign{\store}{\store}}{\exception}}
     {\bigstep{\defaultssawhile}{\sigma}{\exception}}\\
-    &\bsrule{EC-WhileT}{\bigstep{b}{\leftstoreassign{\store}{\store}}{\btrue} \quad 
-    \bigstep{c_0}{\leftstoreassign{\store}{\store}}{\store''} \quad
-    \bigstepw{\defaultssawhile}{\store, \rightstoreassign{\store}{\store''}}{\excstore'}}
+    &\bsrule{EC-WhileT}{\bigstep{b}{\leftstoreassign{\store}{\store}}{\btrue} \  
+    \bigstep{c_0}{\leftstoreassign{\store}{\store}}{\store''} \ 
+    \bigstepw{\defaultssawhile}{\store}{\rightstoreassign{\store}{\store''}}{\excstore'}}
     {\bigstep{\defaultssawhile}{\store}{\excstore'}}\\
 \end{align*}
 \end{landscape}
@@ -242,16 +242,19 @@ and $\excstore{}: \Loc \partialf \StoreDomain \dunion \exception$:
     {\bigstep{\defaultssaif}{\store}{\rightstoreassign{\store}{\store'} }}\\
     &\bsrule{EC-Assign}{\bigstep{a}{\store}{\flagged{}}}
     {\bigstep{\defaultstore}{\store}{\storeassign{\store}{X \mapsto \flagged{}]}}}\\
-    &\bsrule{EC-WhileF}{\bigstep{b}{\leftstoreassign{\store}{\store}}{\bfalse}}
-    {\bigstep{\defaultssawhile}{\sigma}{\leftstoreassign{\store}{\store}}}\\
-    &\bsrule{EC-WhileTExc}{\bigstep{b}{\leftstoreassign{\store}{\store}}{\btrue} \qquad 
-    \bigstep{c_0}{\leftstoreassign{\store}{\store}}{\exception}}
-    {\bigstep{\defaultssawhile}{\sigma}{\exception}}\\
-    &\bsrule{EC-WhileT}{\bigstep{b}{\leftstoreassign{\store}{\store}}{\btrue} \qquad 
-    \bigstep{c_0}{\leftstoreassign{\store}{\store}}{\store''} \qquad
-    \bigstepw{\defaultssawhile}{\rightstoreassign{\store}{\store''}}{\excstore}}
-    {\bigstep{\defaultssawhile}{\sigma}{\excstore'}}\\
 \end{align*}
+
+In order to correctly model the execution of $Phi$ nodes for \textbf{while} commands,
+a second judgment is set up.
+The regular command judmenent only evaluates the first execution of the loop body
+(if any), where the variables are populated by the values as defined before the loop.
+Then it delegates to a special while-command-judgement that evaluates all other 
+loop executions, evaluating the $\Phi$ nodes with the store of the previous loop 
+iteration.
+Furthermore, the special while judgment takes two stores, as it both needs to evaluate
+the condition $b$ in a store with evaluated $\Phi$ nodes, and it also needs to have
+the store \emph{before} the while loop executed, so all the variable definitions are,
+in fact, not defined on th store yet.
 
 
 \subsection{Definition of Dataflow}
@@ -259,42 +262,42 @@ and $\excstore{}: \Loc \partialf \StoreDomain \dunion \exception$:
     A \emph{program} in dIMP is a command $c$.
     Complex programs are expressed by using the recursive nature of
     the definition of commands.
+    Any program in dIMP can be transformed to be a program in SSA-dIMP.
 \end{definition}
 
 \begin{definition}[Initial Store]
-    An \emph{initial store} is a store $\sigma_0$ s.t.\ 
-    $\forall X: \exists n: \sigma_0(X) = n$.
-    This means that an initial store is not allowed to contain dataflow tracking 
-    markers of the form $\top_n$.
-    We will implicitly denote inital stores by $\sigma_0$.
+    An \emph{initial store} is a store $\initialstore$ s.t.\ 
+    $\forall X: \exists n^c: \initialstore(X) = \clean{}$.
+    This means that in an initial store all values are flagged as being clean.
+    We will implicitly denote inital stores by $\initialstore$.
 \end{definition}
 
 \begin{definition}[Dataflow]
-    A tuple $(c, \sigma_0)$ of a program $c$ and initial store $\sigma_0$ 
+    A tuple $(c, \initialstore)$ of a program $c$ and initial store $\initialstore{}$ 
     has \emph{dataflow from the source to a sink} if
-    $\langle c, (\sigma_0, n) \rangle \downarrow (\sigma', e)$ holds.
+    $\bigstep{c}{\initialstore{}}{\exception}$ holds.
     This means that the program terminates with a dataflow exception.
 \end{definition}
 
 \begin{definition}[Dataflow Algorithm]
     A \emph{dataflow algorithm} $\A(c)$ computes, given a program $c$,
-    if there exists an initial store $\sigma_0$ 
-    such that $(c, \sigma_0)$ has dataflow from the source to a sink.
+    if there exists an initial store $\initialstore{}$ 
+    such that $(c, \initialstore)$ has dataflow from the source to a sink.
 \end{definition}
 
 \begin{definition}[Soundness]
-    A dataflow algorithm is \emph{sound} if for any tuple $(c, \sigma_0)$ that
+    A dataflow algorithm is \emph{sound} if for any tuple $(c, \initialstore)$ that
     has dataflow it holds that $\A(c) = \text{HAS\_FLOW}$.
 \end{definition}
 
 \begin{definition}[Completeness]
     A dataflow algorithm is \emph{complete} if $\A(c) = \text{HAS\_FLOW}$
-    implies that there exists an initial store $\sigma_0$
-     such that $(c, \sigma_0)$ has dataflow.
+    implies that there exists an initial store $\initialstore$
+     such that $(c, \initialstore)$ has dataflow.
 \end{definition}
 \begin{definition}[False Positive]
-    A program $c$ for which there exists no initial store $\sigma_0$ such that 
-    $(c, \sigma_0)$ has dataflow, but for which $\A(c) = \text{HAS\_FLOW}$ holds
+    A program $c$ for which there exists no initial store $\initialstore$ such that 
+    $(c, \initialstore)$ has dataflow, but for which $\A(c) = \text{HAS\_FLOW}$ holds
     is called a \emph{false positive} of the algorithm.
 \end{definition}
 \begin{remark}
@@ -311,6 +314,97 @@ and $\excstore{}: \Loc \partialf \StoreDomain \dunion \exception$:
 \end{remark}
 
 \subsection{The Dataflow Graph}
+To aid the construction of dataflow algorithms, we define the concept
+of a dataflow graph.
+The dataflow graph is computed upon an SSA form of the program.
+
+\begin{definition}[Dataflow Graph]
+    The \emph{node set} $V$ of a \emph{dataflow graph} $G(c)$
+    is defined on the syntactic structure
+    of the SSA-dIMP program $c$. It is a subset of the node set of the abstract syntax tree
+    (every node knows about its location in the program text).
+    Every (sub-)command of $c$, as well as any arithmetic expression $a$ in the 
+    program is a node in the dataflow graph.
+    For example for
+    $c = \textbf{skip}; (\textbf{skip}; x \coloneqq \bar{4} + y)$
+    the node set consists of $c$ itself, the first \textbf{skip}, the command 
+    $\textbf{skip}; x \coloneqq \bar{4} + y$, the second \textbf{skip} (that is different 
+    from the first because it appears in another location), the command
+    $x \coloneqq \bar{4} + y$, and the arithmetic expressions $\bar{4}+y$,
+    $\bar{4}$ and $y$.
+
+    We call a graph $G(c)$ a \emph{dataflow graph} for $c$ if, should an initial store
+    $\initialstore{}$ exist such that $(c, \initialstore{})$ has dataflow,
+    there exists a path from a node of the form $\defaultsource$ to a node of 
+    the form $\defaultsink$ in $G$.
+\end{definition}
+
+\begin{definition}[Dataflow Algorithm]
+    We define the algorithm $\A_{G}(c)$ that takes a dataflow graph $G(c)$
+    and outputs HAS\_FLOW if there exists a path from a node of the form \defaultsource
+    to a node of the form \defaultsink, and NO\_FLOW otherwise.
+\end{definition}
+\begin{remark}
+    By the definition of a dataflow graph, $\A_G(c)$ is a sound dataflow algorithm.
+\end{remark}
+
+\subsection{A Dataflow Algorithm}
+In this section we describe an algorithm $\B(c) = G$ that computes a 
+graph $G$ for $c$. We then prove that this algorithm indeed
+computes a dataflow graph and thus $\A_G(c)$ is a sound dataflow algorithm.
+
+\subsubsection*{The Algorithm}
+Given a program $c$ in SSA-dIMP, the algorithm computes
+the edge set $E$ as a least fixed point iteration.
+The following recursive rules are used:\\
+\textbf{Base Case:} Start at the expression $\textbf{source }a_0$.
+If it is used in either the context $X \coloneqq \textbf{source }a_0$
+or $\textbf{sink }(\textbf{source }a_0)$ then add an edge from the node for the
+source to the node of the store/sink.\\
+\textbf{Recursive Case:} For any store node $X \coloneqq a_0$ with an incoming edge
+in the dataflow graph, enumerate all uses (traverse
+the def-use-chain of the SSA form). Add edges from the store to all reads that of $X$,
+if the read is done inside a $\Phi$ node, a store or a sink.
+
+The fixed point iteration stops eventually as the set of possible edges is
+finite. Furthermore, if the program doesn't contain a \textbf{source} expression,
+the edge set will be empty.
+
+TODO: Add a second pass, like in QL, that starts at the sink nodes and thus
+filters out edges that don't lead to any sink.
+
+\subsubsection*{Soundness Proof}
+\begin{theorem}
+    The algorithm $\B(c) = G$ computes a dataflow graph, and thus 
+    $\A_G(c)$ is a sound dataflow algorithm.
+\end{theorem}
+
+
+\begin{definition}[Store-Read Chain]
+    Let $(c, \sigma_0)$ be a tuple that has dataflow.
+    Let $\E$ be the bigstep derivation of
+    $\langle c, \sigma_0 \rangle \downarrow \sigma'$.
+    A \emph{store-read chain} in $\E$ is a list of $m$ tuples of the form
+    $(\E^1_i=\ddfrac{\overset{\E^0_i}{\langle a_i, \sigma_i \rangle \downarrow \top_n}}
+    {\langle X_i \coloneqq a_i, \sigma_i \rangle \downarrow \sigma_i[X_i \mapsto \top_n]},
+    \E^2_i=\ddfrac{}{\langle X_i, \sigma_i' \rangle \downarrow \sigma_i'(X_i) = \top_n})$
+    with $i \in \{1, \ldots, m\}$.
+    $\E^0_i$, $\E^1_i$ and $\E^2_i$ are subderivations of $\E$.
+    We require that the following holds:
+    \begin{enumerate}
+        \item $\sigma_i(X) \neq \top_n$ (so we have a first store). 
+        \item For $i \in \{1, \ldots, m-1\}$ it holds that 
+        $\E^0_{i+1}=\E^2_i$. This means that every store except the first one
+        in the chain is connected via the variable it reads from to the previous 
+        store in the chain.
+        \item Repeating tuples are not allowed in the list, all tuples have to 
+        be pairwise disjoint --- equality on subderivations of $\E$ includes
+        placement in $\E$, not just equality of the subderivation trees.
+    \end{enumerate}
+\end{definition}
+
+
+\subsection{IGNORE: The Dataflow Graph}
 To aid the construction of dataflow algorithms, we define the concept
 of a dataflow graph.
 Then we show that an algorithm that outputs HAS\_FLOW if 
@@ -559,7 +653,7 @@ In order to prove the theorem, we introduce the concept of store-read chains.
     neither source nor sink.
 \end{remark}
 
-\subsection{An Algorithm to Compute A Dataflow Graph}
+\subsection{IGNORE: An Algorithm to Compute A Dataflow Graph}
 In this section we describe an algorithm $\B(c) = G$ that computes a dataflow 
 graph $G$. We then prove that this algorithm indeed
 computes a dataflow graph, and, using~\autoref{cor:dg-sound},
@@ -617,7 +711,7 @@ filters out edges that don't lead to any sink.
 \end{proof}
 
 
-\subsection{A Path-Sensitive Dataflow Algorithm}
+\subsection{IGNORE: A Path-Sensitive Dataflow Algorithm}
 TODO: description of path-pruning, proof that the only pruned edges are not
 in the definition of the minimal dataflow graph, thus it is still sound
 
