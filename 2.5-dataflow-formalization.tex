@@ -14,9 +14,12 @@ as presented in section 2.1 of~\cite{sat}.
 
 % expr, store, result
 \newcommand{\bigstep}[3]{\langle #1, #2 \rangle \downarrow #3}
+\newcommand{\bigstepderiv}[4]{\overset{#1}{\langle #2, #3 \rangle \downarrow #4}}
 \newcommand{\bigstepw}[4]{\langle #1, #2, #3 \rangle \downarrow^w #4}
+\newcommand{\bigsteppl}[4]{\langle #1, #2, #3 \rangle \downarrow^{\Phi_1} #4}
+\newcommand{\bigsteppr}[4]{\langle #1, #2, #3 \rangle \downarrow^{\Phi_2} #4}
 % name, requirement, result
-\newcommand{\bsrule}[3]{\textsc{#1:}\ddfrac{#2}{#3}}
+\newcommand{\bsrule}[3]{\textsc{#1}\ddfrac{#2}{#3}}
 \newcommand{\literalint}[1][n]{\bar{#1}}
 \newcommand{\store}[1][\sigma]{#1}
 \newcommand{\clean}[1][n]{#1^\textbf{c}}
@@ -44,11 +47,13 @@ as presented in section 2.1 of~\cite{sat}.
 \newcommand{\storecmd}[2]{{#1} \coloneqq {#2}}
 \newcommand{\defaultstore}{\storecmd{X}{a}}
 \newcommand{\phistore}[3]{{#1} \coloneqq \Phi({#2}, {#3})}
+\newcommand{\philist}{\Phi_{list}}
 \newcommand{\defaultphi}{\phistore{X_1}{Y_1}{Z_1}, \ldots}
-\newcommand{\ssaif}[4]{(\textbf{if }{#1} \textbf{ then }{#2}\textbf{ else }{#3});[{#4}]}
-\newcommand{\defaultssaif}{\ssaif{b}{c_0}{c_1}{\defaultphi}}
-\newcommand{\ssawhile}[3]{\textbf{while }[#3];{#1} \textbf{ do } {#2}}
-\newcommand{\defaultssawhile}{\ssawhile{b}{c_0}{\defaultphi}}
+\newcommand{\defaultphilist}{\philist}
+\newcommand{\ssaif}[4]{(\textbf{if }{#1} \textbf{ then }{#2}\textbf{ else }{#3});{#4}}
+\newcommand{\defaultssaif}{\ssaif{b}{c_0}{c_1}{\defaultphilist}}
+\newcommand{\ssawhile}[3]{\textbf{while }#3;{#1} \textbf{ do } {#2}}
+\newcommand{\defaultssawhile}{\ssawhile{b}{c_0}{\defaultphilist}}
 \newcommand{\dunion}{\sqcup}
 \newcommand{\storeassign}[2]{{#1} \dunion [{#2}]}
 \newcommand{\leftphi}[1]{X_1 \mapsto {#1}(Y_1), \ldots}
@@ -161,13 +166,17 @@ available (TODO).
 The syntax for boolean and arithmetic expressions in SSA-dIMP is the same as in dIMP.
 However, the command syntax changes.
 \begin{align*}
-    c \Coloneqq &\skipcmd \mid \defaultsink \mid \defaultstore \mid \defaultseq 
+    c \Coloneqq &\:\skipcmd \mid \defaultsink \mid \defaultstore \mid \defaultseq 
     \mid \defaultssaif\\
-    \mid &\defaultssawhile \\
+    &\mid \defaultssawhile \\
+    \Phi_{list} \Coloneqq &\:[] \mid \Phi_{node} : \philist\\
+    \Phi_{node} \Coloneqq &\:X \coloneqq \Phi(X, Y)
 \end{align*}
 At every point where $\Phi$ nodes can placed in the control flow graph
 of a dIMP program, the syntax of SSA-dIMP has an explicit list of $\Phi$ nodes.
-That list can be empty.
+The abstract syntax is given in the normal functional nil/cons list style.
+We also write $[X_1 \coloneqq \Phi(Y_1, Z_1), \ldots]$
+for a list of $\Phi$ nodes.
 
 A program in SSA-dIMP is only valid if it conforms to the SSA properties.
 Thus, every variable definition dominates all of the uses of the variable.
@@ -191,10 +200,27 @@ Furthermore, when updating a store, we now use the syntax
 $\store \dunion [X \mapsto \flagged{}]$ to indicate that the store $\store$ did not
 contain the variable $X$ before.
 
-\begin{landscape}
 The judgment for booleans and arithmetic expressions does not change.
 As before, we use $\excstore{}$ to denote partial functions
 $\excstore{}: \Loc \partialf \StoreDomain \dunion \exception$.
+For $\Phi$ nodes, we introduce to judgements - one that evaluates them to the first argument,
+and on that evaluates them to the second argument.
+They are of the form $\bigsteppl{\philist}{\sigma}{\sigma'}{\sigma''}$ 
+and $\bigsteppr{\philist}{\sigma}{\sigma'}{\sigma''}$,
+where the evaluation of $\philist$ with the variables from $\sigma'$
+is combined with the variables in the store $\sigma$.
+\begin{align*}
+    &\bsrule{E$\Phi_1$-Empty}{}{\bigsteppl{[]}{\store}{\store'}{\store}}\\
+    &\bsrule{E$\Phi_1$-Assgn}
+    {\bigsteppl{\defaultphilist}{\store}{\store'}{\store''}}
+    {\bigsteppl{\phistore{X_1}{Y_1}{Z_1} : \defaultphilist}{\store}{\store'}{\store'' \dunion [X_1 \mapsto \store'(Y_1)]}}\\
+    &\bsrule{E$\Phi_2$-Empty}{}{\bigsteppr{[]}{\store}{\store'}{\store}}\\
+    &\bsrule{E$\Phi_2$-Assgn}
+    {\bigsteppr{\defaultphilist}{\store}{\store'}{\store''}}
+    {\bigsteppr{\phistore{X_1}{Y_1}{Z_1} : \defaultphilist}{\store}{\store'}{\store'' \dunion [X_1 \mapsto \store'(Z_1)]}}\\
+\end{align*}
+
+\begin{landscape}
 For while loops, we introduce a special judgment of the form $\bigstepw{c}{\sigma, \sigma''}{\excstore'{}}$:
 \begin{align*}
     &\bsrule{EW-WhileF}{\bigstep{b}{\store''}{\bfalse}}
@@ -211,13 +237,16 @@ For while loops, we introduce a special judgment of the form $\bigstepw{c}{\sigm
 We have the following rules for the judgment $\bigstep{c}{\store}{\excstore{}}$
 and $\excstore{}: \Loc \partialf \StoreDomain \dunion \exception$:
 \begin{align*}
-    &\bsrule{EC-WhileF}{\bigstep{b}{\leftstoreassign{\store}{\store}}{\bfalse}}
-    {\bigstep{\defaultssawhile}{\sigma}{\leftstoreassign{\store}{\store}}}\\
-    &\bsrule{EC-WhileTExc}{\bigstep{b}{\leftstoreassign{\store}{\store}}{\btrue} \qquad 
-    \bigstep{c_0}{\leftstoreassign{\store}{\store}}{\exception}}
+    &\bsrule{EC-WhileF}{\bigsteppl{\philist}{\store}{\store}{\store'} \qquad
+        \bigstep{b}{\sigma'}{\bfalse}}
+    {\bigstep{\defaultssawhile}{\store}{\store'}}\\
+    &\bsrule{EC-WhileTExc}{\bigsteppl{\philist}{\store}{\store}{\store'} \qquad
+    \bigstep{b}{\store'}{\btrue} \qquad 
+    \bigstep{c_0}{\store'}{\exception}}
     {\bigstep{\defaultssawhile}{\sigma}{\exception}}\\
-    &\bsrule{EC-WhileT}{\bigstep{b}{\leftstoreassign{\store}{\store}}{\btrue} \  
-    \bigstep{c_0}{\leftstoreassign{\store}{\store}}{\store''} \ 
+    &\bsrule{EC-WhileT}{\bigsteppl{\philist}{\store}{\store}{\store''} \ 
+        \bigstep{b}{\store''}{\btrue} \  
+    \bigstep{c_0}{\store''}{\store'''} \ 
     \bigstepw{\defaultssawhile}{\store}{\rightstoreassign{\store}{\store''}}{\excstore'}}
     {\bigstep{\defaultssawhile}{\store}{\excstore'}}\\
 \end{align*}
@@ -337,6 +366,8 @@ The dataflow graph is computed upon an SSA form of the program.
     $\initialstore{}$ exist such that $(c, \initialstore{})$ has dataflow,
     there exists a path from a node of the form $\defaultsource$ to a node of 
     the form $\defaultsink$ in $G$.
+    
+    TODO ssa phi nodes are missing
 \end{definition}
 
 \begin{definition}[Dataflow Algorithm]
@@ -370,29 +401,33 @@ The fixed point iteration stops eventually as the set of possible edges is
 finite. Furthermore, if the program doesn't contain a \textbf{source} expression,
 the edge set will be empty.
 
+TODO phi nodes should get better treatment
 TODO: Add a second pass, like in QL, that starts at the sink nodes and thus
 filters out edges that don't lead to any sink.
 
 \subsubsection*{Soundness Proof}
 \begin{theorem}
+    \label{thm:df-soundness}
     The algorithm $\B(c) = G$ computes a dataflow graph, and thus 
     $\A_G(c)$ is a sound dataflow algorithm.
 \end{theorem}
 
-
 \begin{definition}[Store-Read Chain]
-    Let $(c, \sigma_0)$ be a tuple that has dataflow.
+    Let $(c, \initialstore{})$ be a tuple that has dataflow.
     Let $\E$ be the bigstep derivation of
-    $\langle c, \sigma_0 \rangle \downarrow \sigma'$.
+    $\bigstep{c}{\initialstore{}}{\exception}$.
     A \emph{store-read chain} in $\E$ is a list of $m$ tuples of the form
-    $(\E^1_i=\ddfrac{\overset{\E^0_i}{\langle a_i, \sigma_i \rangle \downarrow \top_n}}
-    {\langle X_i \coloneqq a_i, \sigma_i \rangle \downarrow \sigma_i[X_i \mapsto \top_n]},
-    \E^2_i=\ddfrac{}{\langle X_i, \sigma_i' \rangle \downarrow \sigma_i'(X_i) = \top_n})$
+    \begin{equation*}
+        (\E^1_i=\bsrule{EC-Assign}
+        {\bigstepderiv{\E^0_i}{a_i}{\sigma_i}{\flagged{}}}
+        {\bigstep{\storecmd{X_i}{a_i}}{\store_i}{\store_i \dunion [X_i \mapsto \flagged{}]}},
+        \E^2_i=\bsrule{EA-Loc}{}
+        {\bigstep{X_i}{\store_i'}{\store_i'(X_i) = \flagged{}}})    
+    \end{equation*}
     with $i \in \{1, \ldots, m\}$.
     $\E^0_i$, $\E^1_i$ and $\E^2_i$ are subderivations of $\E$.
     We require that the following holds:
     \begin{enumerate}
-        \item $\sigma_i(X) \neq \top_n$ (so we have a first store). 
         \item For $i \in \{1, \ldots, m-1\}$ it holds that 
         $\E^0_{i+1}=\E^2_i$. This means that every store except the first one
         in the chain is connected via the variable it reads from to the previous 
@@ -401,8 +436,21 @@ filters out edges that don't lead to any sink.
         be pairwise disjoint --- equality on subderivations of $\E$ includes
         placement in $\E$, not just equality of the subderivation trees.
     \end{enumerate}
+    Because the program is in SSA form, store-read chains TODO are they cycle-free?
 \end{definition}
+\begin{lemma}
+    Given a tuple $(c, \initialstore{})$ that has dataflow, every node
+    of a variable read of $X$ with a
+    derivation $\bsrule{EA-Loc}{}{\bigstep{X}{\sigma}{\flagged{}}}$
+    has an incoming edge in the graph computed by $\B$.
+\end{lemma}
+\begin{proof}
+    TODO
+\end{proof}
 
+\begin{proof}[Proof of~\autoref{thm:df-soundness}]
+    Case distinction, apply lemma
+\end{proof}
 
 \subsection{IGNORE: The Dataflow Graph}
 To aid the construction of dataflow algorithms, we define the concept
