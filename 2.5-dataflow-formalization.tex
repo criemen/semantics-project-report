@@ -390,20 +390,25 @@ computes a dataflow graph and thus $\A_G(c)$ is a sound dataflow algorithm.
 Given a program $c$ in SSA-dIMP, the algorithm computes
 the edge set $E$ as a least fixed point iteration.
 The following recursive rules are used:\\
-\textbf{Base Case:} Start at the expression $\textbf{source }a_0$.
+\textbf{Base Case:} Start at an expression $\textbf{source }a_0$.
 If it is used in either the context $X \coloneqq \textbf{source }a_0$
 or $\textbf{sink }(\textbf{source }a_0)$ then add an edge from the node for the
 source to the node of the store/sink.\\
-\textbf{Recursive Case:} For any store node $X \coloneqq a_0$ with an incoming edge
+\textbf{Recursive Case 1:} For any store node $X \coloneqq a_0$ or
+$\Phi$ node $\phistore{X}{Y}{Z}$ with an incoming edge
 in the dataflow graph, enumerate all uses (traverse
-the def-use-chain of the SSA form). Add edges from the store to all reads that of $X$,
-if the read is done inside a $\Phi$ node, a store or a sink.
+the def-use-chain of the SSA form). Add edges from the store (or $\Phi$ node)
+to all reads of $X$.
+Reads are either arithmetic expressions reading from that variable,
+or $\Phi$-nodes where one of the two possible variables is $X$.\\
+\textbf{Recursive Case 2:} For any sink node of the form $\sink{X}$,
+where the node for the variable read $X$ has an incoming edge, connect 
+the read of $X$ with an edge to the node of the sink.
 
 The fixed point iteration stops eventually as the set of possible edges is
 finite. Furthermore, if the program doesn't contain a \textbf{source} expression,
 the edge set will be empty.
 
-TODO phi nodes should get better treatment
 TODO: Add a second pass, like in QL, that starts at the sink nodes and thus
 filters out edges that don't lead to any sink.
 
@@ -439,19 +444,43 @@ filters out edges that don't lead to any sink.
         placement in $\E$, not just equality of the subderivation trees.
     \end{enumerate}
     Because the program is in SSA form, store-read chains TODO are they cycle-free?
+    TODO $\Phi$ nodes are not addressed here yet
 \end{definition}
 \begin{lemma}
-    Given a tuple $(c, \initialstore{})$ that has dataflow, every node
-    of a variable read of $X$ with a
-    derivation $\bsrule{EA-Loc}{}{\bigstep{X}{\sigma}{\flagged{}}}$
-    has an incoming edge in the graph computed by $\B$.
+    Let $(c, \initialstore{})$ be a tuple that has dataflow.
+    Let $G$ be the graph computed by $\B$.
+    Then there is a path
+    from a source to every node of a variable read of $X$ that has a
+    derivation $\bsrule{EA-Loc}{}{\bigstep{X}{\sigma}{\flagged{}}}$.
+    
 \end{lemma}
 \begin{proof}
     TODO
 \end{proof}
 
 \begin{proof}[Proof of~\autoref{thm:df-soundness}]
-    Case distinction, apply lemma
+    Because $(c, \initialstore{})$ has dataflow, the program contains a $\sink{}$
+    command that evaluates to $\exception$.
+    We proof the theorem by case distinction over the structure of that $\sink{}$
+    command.\\
+    \textbf{Case 1:}
+    The $\sink{}$ has form $\sink{(\source{ a_0})}$.
+    Then, by the base case of the algorithm there is a path from a source node
+    to a sink node in the graph.\\
+    \textbf{Case 2:}
+    The $\sink{}$ has form $\sink{X}$.
+    As we know that $\bigstep{\sink{X}}{\sigma}{\exception}$ holds, we know that
+    we have a bigstep derivation
+    \begin{align*}
+        \bsrule{EC-SinkExc}
+        {\bsrule{EA-Loc}{}{\bigstep{X}{\sigma}{\flagged{}}}}
+        {\bigstep{\sink{X}}{\sigma}{\exception}}
+    \end{align*}
+    Then, by the lemma (TODO) we get a path from the source to the variable read.
+    By the recursive case 2, we get an edge from the variable read to the sink.
+    Thus, we have a path from a source to the sink
+    This concludes the proof, as there are no other forms a sink command evaluating 
+    to $\exception$ can take.
 \end{proof}
 
 \subsection{IGNORE: The Dataflow Graph}
