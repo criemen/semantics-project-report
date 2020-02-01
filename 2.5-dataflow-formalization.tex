@@ -209,11 +209,11 @@ where the evaluation of $\philist$ with the variables from $\sigma'$
 is combined with the variables in the store $\sigma$.
 \begin{align*}
     &\bsrule{E$\Phi_1$-Empty}{}{\bigsteppl{[]}{\store}{\store''}{\store}}\\
-    &\bsrule{E$\Phi_1$-Assgn}
+    &\bsrule{E$\Phi_1$-Assign}
     {\bigsteppl{\defaultphilist}{\store}{\store''}{\store'}}
     {\bigsteppl{\phistore{X_1}{Y_1}{Z_1} : \defaultphilist}{\store}{\store''}{\storeassign{\store'}{X_1 \mapsto \store''(Y_1)}}}\\
     &\bsrule{E$\Phi_2$-Empty}{}{\bigsteppr{[]}{\store}{\store''}{\store}}\\
-    &\bsrule{E$\Phi_2$-Assgn}
+    &\bsrule{E$\Phi_2$-Assign}
     {\bigsteppr{\defaultphilist}{\store}{\store''}{\store'}}
     {\bigsteppr{\phistore{X_1}{Y_1}{Z_1} : \defaultphilist}{\store}{\store''}{\storeassign{\store'}{X_1 \mapsto \store''(Z_1)}}}\\
 \end{align*}
@@ -433,6 +433,40 @@ filters out edges that don't lead to any sink.
     \end{equation*}
     with $i \in \{1, \ldots, m\}$.
     $\E^0_i$, $\E^1_i$ and $\E^2_i$ are subderivations of $\E$.
+    Furthermore, we require that the $\E^1_i$ are of one of the following forms:\\
+    \textbf{Case 1:}\\
+    \begin{align*}
+        \E^1_i=\bsrule{EC-Assign}
+        {\bigstepderiv{\E^0_i}{a_i}{\sigma_i}{\flagged{}}}
+        {\bigstep{\storecmd{X_i}{a_i}}{\store_i}
+        {\store_i \dunion [X_i \mapsto \flagged{}]}}
+    \end{align*}
+    If $i \in \{1, \ldots, m-1\}$, it has to hold that 
+        $\E^0_{i+1}=\E^2_i$. This means that every store except the first one
+        in the chain is connected via the variable it reads from to the previous 
+        store in the chain. TODO think about explicit reads for phi nodes.
+        TODO adjust\\
+    \textbf{Case 2:}\\
+    \begin{align*}
+        \E^1_i=\bsrule{E$\Phi_1$-Assign}
+        {\overset{\E^0_i}{\bigsteppl{\defaultphilist}{\store}{\store''}{\store'}}}
+        {\bigsteppl{\phistore{X_i}{Y_i}{Z_i} : \defaultphilist}{\store}{\store''}{\storeassign{\store'}{X_i \mapsto \store''(Y_i)}}}\\
+    \end{align*}
+     AND TODO\\
+     \textbf{Case 3:}\\
+     TODO
+    %\begin{align*}
+    %    \E^1_i=\bsrule{E$\Phi_2$-Assign}
+    %    {\bigsteppr{\defaultphilist}{\store}{\store''}{\store'}}
+    %    {\bigsteppr{\phistore{X_i}{Y_i}{Z_i} : \defaultphilist}{\store}{\store''}{\storeassign{\store'}{X_1 \mapsto \store''(Z_1)}}}\\
+    %\end{align*}
+
+    Also, TODO bla 
+    \begin{align*}
+        \E^2_i=\bsrule{EA-Loc}{}
+        {\bigstep{X_i}{\store_i'}{\store_i'(X_i) = \flagged{}}}
+    \end{align*}
+
     We require that the following holds:
     \begin{enumerate}
         \item For $i \in \{1, \ldots, m-1\}$ it holds that 
@@ -446,6 +480,18 @@ filters out edges that don't lead to any sink.
     Because the program is in SSA form, store-read chains TODO are they cycle-free?
     TODO $\Phi$ nodes are not addressed here yet
 \end{definition}
+
+\begin{lemma}
+    Let $(c, \initialstore{})$ be a tuple that has dataflow.
+    Let $G$ be the graph computed by $\B$.
+    Then for every store-read-chain in $(c, \initialstore{})$ 
+    there is a path from in $G$ from the first store to the last read.
+\end{lemma}
+\begin{proof}
+    TODO
+\end{proof}
+
+
 \begin{lemma}
     Let $(c, \initialstore{})$ be a tuple that has dataflow.
     Let $G$ be the graph computed by $\B$.
@@ -454,9 +500,6 @@ filters out edges that don't lead to any sink.
     derivation $\bsrule{EA-Loc}{}{\bigstep{X}{\sigma}{\flagged{}}}$.
     
 \end{lemma}
-\begin{proof}
-    TODO
-\end{proof}
 
 \begin{proof}[Proof of~\autoref{thm:df-soundness}]
     Because $(c, \initialstore{})$ has dataflow, the program contains a $\sink{}$
@@ -482,7 +525,7 @@ filters out edges that don't lead to any sink.
     This concludes the proof, as there are no other forms a sink command evaluating 
     to $\exception$ can take.
 \end{proof}
-
+\iffalse
 \subsection{IGNORE: The Dataflow Graph}
 To aid the construction of dataflow algorithms, we define the concept
 of a dataflow graph.
@@ -799,3 +842,4 @@ in the definition of the minimal dataflow graph, thus it is still sound
 %The evaluation of heuristics in a theoretic setting is difficult.
 %We do aim to show that 
 % TODO: A_2 is better than A_1, as both sound+one has less FP
+\fi
