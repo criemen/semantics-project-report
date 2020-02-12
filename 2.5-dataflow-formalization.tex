@@ -473,8 +473,8 @@ filters out edges that don't lead to any sink.
     variable $X_i$.
     Furthermore, we require that the tuples are connected in the following way:
     
-    For $i \in \{1, \ldots, m-1\}$ the store described by the derivation
-    $\E^1_{i+1}$ reads the variable $X_i$.
+    For $i \in \{1, \ldots, m-1\}$ the read of $X_i$ in $\E^2_i$ is used in the store
+    $\E^1_{i+1}$.
     Thus, if $\E^2_i$ uses \textsc{EA-Loc} (case 2.1), we require that $\E^1_{i+1}$ uses case 1,
     and that $\E^0_{i+1} = \E^2_i$.
     If $\E^2_i$ uses case 2.2 or 2.3 (i.e. the read of $X_i$ is in a $\Phi$-node), we require
