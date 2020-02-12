@@ -481,33 +481,6 @@ filters out edges that don't lead to any sink.
     $\E^2_i = \E^1_{i+1}$.
     This is because the \textsc{E$\Phi$-Assign} rules represents both a read and a store
     in the same rule.
-    
-    For $i \in \{1, \ldots, m-1\}$ we have that the store described by the derivation
-    $\E^1_{i+1}$ reads the variable $X_i$.
-    If $\E^1_{i+1}$ uses \textsc{EC-Assign}, we have that 
-    $$\E^2_i = \bsrule{EA-Loc}{}{\bigstep{X_i}{\store}{\store(X_i)}}$$
-    If $\E^1_{i+1}$ uses case 2, we require that the $\Phi$ node is of form
-    $X_{i+1} = \Phi(X_i, Z_{i+1})$.
-    In case 3, the $\Phi$ node has to be of form $\Phi(Y_{i+1}, X_i)$.
-
-    A $\Phi$-node is both a read and a store of a variable.
-    Thus we require that if $\E^2_i$ is of case 2 or 3 (i.e. a read of a variable in a $\Phi$ node)
-    that $\E^2_i = \E^1_{i+1}$.
-    This means that a read of the tracked value in a $\Phi$ node is represented as a store in the next element of the 
-    store-read chain.
-    
-    We require that the following holds:
-    \begin{enumerate}
-        \item For $i \in \{1, \ldots, m-1\}$ it holds that 
-        $\E^0_{i+1}=\E^2_i$. This means that every store except the first one
-        in the chain is connected via the variable it reads from to the previous 
-        store in the chain.
-        \item Repeating tuples are not allowed in the list, all tuples have to 
-        be pairwise disjoint --- equality on subderivations of $\E$ includes
-        placement in $\E$, not just equality of the subderivation trees.
-    \end{enumerate}
-    Because the program is in SSA form, store-read chains TODO are they cycle-free?
-    TODO $\Phi$ nodes are not addressed here yet
 \end{definition}
 
 \begin{lemma}
