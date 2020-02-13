@@ -70,11 +70,9 @@ We define the set $\tilde{\textbf{Z}} =\{\flagged{} | n \in \textbf{Z}, f \in \{
 Stores are denoted with $\store \in \Sigma = \Loc \to \tilde{\textbf{Z}}$.
 Stores are function from locations to the set of tagged integer
 values.
-A further restriction on allowed programs is that only up to one expression
+A further restriction on valid programs is that only up to one expression
 of the form $\textbf{source } a$ is allowed in a program.
-This technical restriction makes the later definition of a minimal dataflow graph
-easier.
-TODO check again if still needed
+This is a technical restriction, making the proof later easier.
 
 The intuition here is that for all $n \in \textbf{Z}$, 
 each value is tagged by either \textbf{c} for clean or \textbf{t} for being tracked
@@ -356,7 +354,7 @@ The dataflow graph is computed upon an SSA form of the program.
     (every node knows about its location in the program text).
     Every (sub-)command of $c$, as well as any arithmetic expression $a$ in the 
     program is a node in the dataflow graph.
-    Furthermore, every $\Phi$ node in the program is also a node in the dataflow
+    Furthermore, every $\Phi$-node in the program is also a node in the dataflow
     graph.
     For example for
     $c = \textbf{skip}; (\textbf{skip}; x \coloneqq \bar{4} + y)$
@@ -397,11 +395,13 @@ source to the node of the store/sink.\\
 \textbf{Recursive Case 1:} For any store node $X \coloneqq a_0$ or
 $\Phi$ node $\phistore{X}{Y}{Z}$ with an incoming edge
 in the dataflow graph, enumerate all uses (traverse
-the def-use-chain of the SSA form). Add edges from the store (or $\Phi$ node)
+the def-use-chain of the SSA form). Add edges from the store (or $\Phi$-node)
 to all reads of $X$.
 Reads are either arithmetic expressions reading from that variable,
 or $\Phi$-nodes where one of the two possible variables is $X$.\\
-\textbf{Recursive Case 2:} For any sink node of the form $\sink{X}$,
+\textbf{Recursive Case 2:} For any variable read $Y$ with an incoming edge that appears in an 
+assignment, i.e. in $X \coloneqq Y$, add an edge from $Y$ to the node of the assignment.
+\textbf{Recursive Case 3:} For any sink node of the form $\sink{X}$,
 where the node for the variable read $X$ has an incoming edge, connect 
 the read of $X$ with an edge to the node of the sink.
 
@@ -409,8 +409,8 @@ The fixed point iteration stops eventually as the set of possible edges is
 finite. Furthermore, if the program doesn't contain a \textbf{source} expression,
 the edge set will be empty.
 
-TODO: Add a second pass, like in QL, that starts at the sink nodes and thus
-filters out edges that don't lead to any sink.
+%TODO: Add a second pass, like in QL, that starts at the sink nodes and thus
+%filters out edges that don't lead to any sink.
 
 \subsubsection*{Soundness Proof}
 \begin{theorem}
@@ -420,6 +420,7 @@ filters out edges that don't lead to any sink.
 \end{theorem}
 
 \begin{definition}[Store-Read Chain]
+    {\color{red}TODO fix all the store indices to not overlap unless needed}
     Let $(c, \initialstore{})$ be a tuple that has dataflow.
     Let $\E$ be the bigstep derivation of
     $\bigstep{c}{\initialstore{}}{\exception}$.
@@ -433,40 +434,40 @@ filters out edges that don't lead to any sink.
     \textbf{Case 1.1:}\\
     \begin{align*}
         \E^1_i=\bsrule{EC-Assign}
-        {\bigstepderiv{\E^0_i}{a_i}{\sigma_i}{\flagged{}}}
+        {\bigstepderiv{\E^0_i}{a_i}{\sigma_i}{\tracked{}}}
         {\bigstep{\storecmd{X_i}{a_i}}{\store_i}
-        {\store_i \dunion [X_i \mapsto \flagged{}]}}
+        {\store_i \dunion [X_i \mapsto \tracked{}]}}
     \end{align*}
     \textbf{Case 1.2:}\\
     \begin{align*}
         \E^1_i=\bsrule{E$\Phi_1$-Assign}
-        {\overset{\E^0_i}{\bigsteppl{\defaultphilist}{\store}{\store''}{\store'}}}
-        {\bigsteppl{\phistore{X_i}{Y_i}{Z_i} : \defaultphilist}{\store}{\store''}{\storeassign{\store'}{X_i \mapsto \store''(Y_i)}}}\\
-    \end{align*}\\
+        {\overset{\E^0_i}{\bigsteppl{\defaultphilist}{\store_i}{\store_i''}{\store_i'}}}
+        {\bigsteppl{\phistore{X_i}{Y_i}{Z_i} : \defaultphilist}{\store_i}{\store_i''}{\storeassign{\store_i'}{X_i \mapsto \store_i''(Y_i)}}}\\
+    \end{align*} and $\store_i''(Y_i) = \tracked{}$.\\
      \textbf{Case 1.3:}\\
      \begin{align*}
         \E^1_i=\bsrule{E$\Phi_2$-Assign}
         {\overset{\E^0_i}{\bigsteppr{\defaultphilist}{\store}{\store''}{\store'}}}
         {\bigsteppr{\phistore{X_i}{Y_i}{Z_i} : \defaultphilist}{\store}{\store''}{\storeassign{\store'}{X_i \mapsto \store''(Z_i)}}}\\
-    \end{align*}\\
+    \end{align*} and $\store''(Z_i) = \tracked{}$.\\
     We require that the derivations $\E^2_i$ are of one of the following forms:\\
     \textbf{Case 2.1:}\\
     \begin{align*}
         \E^2_i=\bsrule{EA-Loc}{}
-        {\bigstep{X_i}{\store_i'}{\store_i'(X_i) = \flagged{}}}
+        {\bigstep{X_i}{\store_i'}{\store_i'(X_i) = \tracked{}}}
     \end{align*}\\
     \textbf{Case 2.2:}\\
     \begin{align*}
         \E^2_i=\bsrule{E$\Phi_1$-Assign}
         {\overset{\E^3_i}{\bigsteppl{\defaultphilist}{\store}{\store''}{\store'}}}
         {\bigsteppl{\phistore{X_{i+1}}{X_i}{Z_{i+1}} : \defaultphilist}{\store}{\store''}{\storeassign{\store'}{X_{i+1} \mapsto \store''(X_i)}}}\\
-    \end{align*}\\
+    \end{align*} and $\store''(X_i) = \tracked{}$.\\
     \textbf{Case 2.3:}\\
     \begin{align*}
         \E^2_i=\bsrule{E$\Phi_2$-Assign}
         {\overset{\E^3_i}{\bigsteppr{\defaultphilist}{\store}{\store''}{\store'}}}
         {\bigsteppr{\phistore{X_{i+1}}{Y_{i+1}}{X_i} : \defaultphilist}{\store}{\store''}{\storeassign{\store'}{X_{i+1} \mapsto \store''(X_i)}}}\\
-    \end{align*}
+    \end{align*} and $\store''(X_i) = \tracked{}$.
 
     Thus, the first element in the tuple is the derivation of a store into the variable
     $X_i$, and the second element in the tuple is the derivation of some read of the 
@@ -475,7 +476,7 @@ filters out edges that don't lead to any sink.
     
     For $i \in \{1, \ldots, m-1\}$ the read of $X_i$ in $\E^2_i$ is used in the store
     $\E^1_{i+1}$.
-    Thus, if $\E^2_i$ uses \textsc{EA-Loc} (case 2.1), we require that $\E^1_{i+1}$ uses case 1,
+    Thus, if $\E^2_i$ uses \textsc{EA-Loc} (case 2.1), we require that $\E^1_{i+1}$ uses case 1.1,
     and that $\E^0_{i+1} = \E^2_i$.
     If $\E^2_i$ uses case 2.2 or 2.3 (i.e. the read of $X_i$ is in a $\Phi$-node), we require
     $\E^2_i = \E^1_{i+1}$.
@@ -483,30 +484,70 @@ filters out edges that don't lead to any sink.
     in the same rule.
 \end{definition}
 
+\begin{definition}[Minimal Store-Read-Chain]
+    %Let $m$ be the length of a store-read-chain.
+    We define a partial order on store-read chains.
+    Let $C_1 = [(\E^1_i, \E^2_i)]$ and $C_2 = [(\tilde{\E}^1_j, \tilde{\E}^2_j)]$ for $i \in \{1, \ldots, m\}$ and
+    $j \in \{1, \ldots, \tilde{m}\}$ be two store-read-chains.
+    Two store-read-chains are only comparable if they start with the same store and 
+    end in the same read (i.e. $\E^1_0 = \tilde{\E}^1_0$ and $\E^2_m = \tilde{\E}^2_{\tilde{m}}$).
+    Then $C_1 \leq C_2$ iff $m \leq \tilde{m}$, i.e.\ the store-read-chains are ordered by length.
+    This is obviously a partial order on store-read chains.
+    As lengths of store-read-chains are positive integers, a minimal element always exist.
+\end{definition}
+
 \begin{lemma}
     Let $(c, \initialstore{})$ be a tuple that has dataflow.
     Let $G$ be the graph computed by $\B$.
-    Then for every store-read-chain in $(c, \initialstore{})$ 
-    there is a path from in $G$ from the first store to the last read.
+    Then for every minimal store-read-chain in $(c, \initialstore{})$ where $\E^1_1$ is a derivation of
+    the expression $X_1 \coloneqq \source{a_0}$,
+    there is a path from in $G$ from the first store to the last read in the chain.
+    \label{lem:store-read-chain-path}
 \end{lemma}
 \begin{proof}
-    TODO
-\end{proof}
+    We prove the lemma by induction over $m$.
+    In the base case we have $m=1$, so there is one tuple in the store-read-chain.
+    We know that the store is of type 1.1. By the recursive case 1 of the algorithm,
+    there is an edge from the store to the read in $G$, as by the base case of the algorithm, there
+    is an incoming edge from the source to the store.
 
+    \emph{Inductive Case:} Let $C$ be a minimal store-read-chain of length $m+1$.
+    By the induction hypothesis, we get a path from the first store to the read 
+    with derivation $\E^2_m$.
+    We continue with a case distinction to show that there is an edge from the read 
+    represented by $\E^2_m$ to the store represented by $\E^1_{m+1}$:
+    
+    If $\E^2_m$ is of type 2.1, then we know that $\E^1_{m+1}$ is of type 1.1 and $\E^0_{m+1} = \E^2_m$ holds.
+    Furthermore, by the induction hypothesis the read represented by $\E^2_m$ has an incoming edge.
+    Thus, by $\E^0_{m+1} = \E^2_m$ and by the recursive case 2 of the algorithm, we have 
+    an edge from the variable read to the store.
+    If $\E^2_m$ is of type 2.2 or 2.3, we know that $\E^2_m = \E^1_{m+1}$ by definition.
+    Thus, no edge from the store to the read is needed in $G$, as they are represented by the same node.
+
+    Furthermore, we have an edge from the store represented by $\E^1_{m+1}$ to the read represented by 
+    the derivation $\E^2_{m+1}$ by recursive case 1 of the algorithm,
+    as the recursive case traverses all uses of the store $\E^1_{m+1}$, and either it is a regular variable read 
+    (then $\E^2_{m+1}$ is of type 2.1), or it is $\Phi$-node (then $\E^2_{m+1}$ is of type 2.2 or 2.3).
+
+    This concludes the proof of the lemma.
+\end{proof}
 
 \begin{lemma}
     Let $(c, \initialstore{})$ be a tuple that has dataflow.
-    Let $G$ be the graph computed by $\B$.
-    Then there is a path
-    from a source to every node of a variable read of $X$ that has a
-    derivation $\bsrule{EA-Loc}{}{\bigstep{X}{\sigma}{\flagged{}}}$.
-    
+    Then there exists a store-read-chain 
+    from every expression of form $X \coloneqq \source{a_0}$ to every 
+    derivation of form $\bsrule{EA-Loc}{}{\bigstep{Y}{\sigma}{\tracked{}}}$.
+    \label{lem:store-read-chain-existence}
 \end{lemma}
-
+\begin{proof}
+    TODO - statement is in my opinion quite obvious, a formal argument needs to be provided nonetheless.
+    An inductive proof providing a construction of a (minimal) store-read-chain should be doable.
+\end{proof}
+    
 \begin{proof}[Proof of~\autoref{thm:df-soundness}]
     Because $(c, \initialstore{})$ has dataflow, the program contains a $\sink{}$
     command that evaluates to $\exception$.
-    We proof the theorem by case distinction over the structure of that $\sink{}$
+    We prove the theorem by case distinction over the structure of that $\sink{}$
     command.\\
     \textbf{Case 1:}
     The $\sink{}$ has form $\sink{(\source{ a_0})}$.
@@ -518,11 +559,15 @@ filters out edges that don't lead to any sink.
     we have a bigstep derivation
     \begin{align*}
         \bsrule{EC-SinkExc}
-        {\bsrule{EA-Loc}{}{\bigstep{X}{\sigma}{\flagged{}}}}
+        {\bsrule{EA-Loc}{}{\bigstep{X}{\sigma}{\tracked{}}}}
         {\bigstep{\sink{X}}{\sigma}{\exception}}
     \end{align*}
-    Then, by the lemma (TODO) we get a path from the source to the variable read.
-    By the recursive case 2, we get an edge from the variable read to the sink.
+    Because $\sigma(X) = \tracked{}$, there exists a $\source{a_0}$ somewhere in the program.
+    By~\autoref{lem:store-read-chain-existence} we get a (minimal) store-read-chain from the source 
+    to the read of the variable in the sink.
+    Thus, by the\~autoref{lem:store-read-chain-path} and the base case of the algorithm, 
+    we get a path in $G$ from the source to the variable read.
+    By the recursive case 3, we get an edge from the variable read to the sink.
     Thus, we have a path from a source to the sink
     This concludes the proof, as there are no other forms a sink command evaluating 
     to $\exception$ can take.
