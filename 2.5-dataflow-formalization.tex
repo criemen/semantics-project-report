@@ -18,8 +18,12 @@ as presented in section 2.1 of~\cite{sat}.
 \newcommand{\bigstepw}[4]{\langle #1, #2, #3 \rangle \downarrow^w #4}
 \newcommand{\bigsteppl}[4]{\langle #1, #2, #3 \rangle \downarrow^{\Phi1} #4}
 \newcommand{\bigsteppr}[4]{\langle #1, #2, #3 \rangle \downarrow^{\Phi2} #4}
+\newcommand{\typestep}[3]{#1 \vdash {#2}: #3}
+\newcommand{\typestmt}[2]{#1 \vdash {#2}}
 % name, requirement, result
 \newcommand{\bsrule}[3]{\textsc{#1}\ddfrac{#2}{#3}}
+\let\rule\undefined
+\newcommand{\rule}[3]{\textsc{#1}\ddfrac{#2}{#3}}
 \newcommand{\literalint}[1][n]{\bar{#1}}
 \newcommand{\store}[1][\sigma]{#1}
 \newcommand{\clean}[1][n]{#1^\textbf{c}}
@@ -38,6 +42,7 @@ as presented in section 2.1 of~\cite{sat}.
 \newcommand{\skipcmd}{\textbf{skip}}
 \newcommand{\seq}[2]{{#1}; {#2}}
 \newcommand{\defaultseq}{\seq{c_0}{c_1}}
+\newcommand{\defaultssaseq}{\seq{s_0}{s_1}}
 \newcommand{\ifcmd}[3]{\textbf{if }{#1} \textbf{ then }{#2}\textbf{ else }{#3}}
 \newcommand{\defaultif}{\ifcmd{b}{c_0}{c_1}}
 \newcommand{\btrue}{\textbf{true}}
@@ -46,14 +51,15 @@ as presented in section 2.1 of~\cite{sat}.
 \newcommand{\defaultwhile}{\whilecmd{b}{c_0}}
 \newcommand{\storecmd}[2]{{#1} \coloneqq {#2}}
 \newcommand{\defaultstore}{\storecmd{X}{a}}
-\newcommand{\phistore}[3]{{#1} \coloneqq \Phi({#2}, {#3})}
+\newcommand{\phistore}[3]{{#1} \coloneqq \varphi({#2}, {#3})}
 \newcommand{\philist}{\Phi_{list}}
 \newcommand{\defaultphi}{\phistore{X_1}{Y_1}{Z_1}, \ldots}
-\newcommand{\defaultphilist}{\philist}
-\newcommand{\ssaif}[4]{(\textbf{if }{#1} \textbf{ then }{#2}\textbf{ else }{#3});{#4}}
-\newcommand{\defaultssaif}{\ssaif{b}{c_0}{c_1}{\defaultphilist}}
+\newcommand{\defaultphilist}{[\defaultphi]}
+\newcommand{\defaultphilistn}{[\defaultphi, \phistore{X_n}{Y_n}{Z_n}]}
+\newcommand{\ssaif}[4]{\textbf{if }{#1} \textbf{ then }{#2}\textbf{ else }{#3};{#4}}
+\newcommand{\defaultssaif}{\ssaif{b}{s_0}{s_1}{\defaultphilist}}
 \newcommand{\ssawhile}[3]{\textbf{while }#3;{#1} \textbf{ do } {#2}}
-\newcommand{\defaultssawhile}{\ssawhile{b}{c_0}{\defaultphilist}}
+\newcommand{\defaultssawhile}{\ssawhile{b}{s_0}{\defaultphilist}}
 \newcommand{\dunion}{\sqcup}
 \newcommand{\storeassign}[2]{{#1} \dunion [{#2}]}
 \newcommand{\leftphi}[1]{X_1 \mapsto {#1}(Y_1), \ldots}
@@ -162,11 +168,11 @@ available (TODO).
 The syntax for boolean and arithmetic expressions in SSA-dIMP is the same as in dIMP.
 However, the command syntax changes.
 \begin{align*}
-    c \Coloneqq &\:\skipcmd \mid \defaultsink \mid \defaultstore \mid \defaultseq 
+    s \Coloneqq &\:\skipcmd \mid \defaultsink \mid \defaultstore \mid \defaultssaseq 
     \mid \defaultssaif\\
     &\mid \defaultssawhile \\
     \philist \Coloneqq &\:[] \mid \Phi_{node} : \philist\\
-    \Phi_{node} \Coloneqq &\:X \coloneqq \Phi(X, Y)
+    \Phi_{node} \Coloneqq &\:X \coloneqq \varphi(Y, Z)
 \end{align*}
 At every point where $\Phi$ nodes can placed in the control flow graph
 of a dIMP program, the syntax of SSA-dIMP has an explicit list of $\Phi$ nodes.
@@ -183,12 +189,60 @@ can be transformed in a valid SSA-dIMP program (especially, we omit showing that
 $\Phi$ nodes will be placed exactly at the places they are allowed in the syntax
 of SSA-dIMP).
 We also require that the first argument for $\Phi$ nodes for \textbf{if} commands
-corresponds to the variable after executing the \btrue branch, and the second argument to that
-of the variable after executing the \bfalse branch.
+corresponds to the variable after executing the \btrue{} branch, and the second argument to that
+of the variable after executing the \bfalse{} branch.
 For \textbf{while} commands, the first argument to the $\Phi$ node is the value
 before executing $c_0$ the first time, and the second argument is the value 
 after executing the loop body.
 TODO something about use of initial values, as they cannot have a definition
+
+TODO subsection or something
+To ensure that a program suffices the SSA property, i.e.\ that every definition dominates its use,
+we require sets $\Gamma$, $\Delta$ of variable names fulfilling the following rules:
+
+Judgement \fbox{$\typestmt{\Gamma}{a}$}:
+\begin{align*}
+    &\rule{SSA-Num}{}{\typestmt{\Gamma}{n}}\qquad
+    \rule{SSA-Loc}{}{\typestmt{\Gamma}{X}}\text{($X \in \Gamma$)}\qquad
+    \rule{SSA-Source}{\typestmt{\Gamma}{a}}{\typestmt{\Gamma}{\source{a}}}\\
+    &\rule{SSA-Plus}{\typestmt{\Gamma}{a_0}\qquad\typestmt{\Gamma}{a_1}}
+    {\typestmt{\Gamma}{a_0+a_1}}\quad
+    \rule{SSA-Minus}{\typestmt{\Gamma}{a_0}\qquad\typestmt{\Gamma}{a_1}}
+    {\typestmt{\Gamma}{a_0-a_1}}\quad
+    \rule{SSA-Times}{\typestmt{\Gamma}{a_0}\qquad\typestmt{\Gamma}{a_1}}
+    {\typestmt{\Gamma}{a_0 \times a_1}}
+\end{align*}
+Judgement \fbox{$\typestmt{\Gamma}{b}$}:
+\begin{align*}
+    &\rule{SSA-Eq}{\typestmt{\Gamma}{a_0}\qquad \typestmt{\Gamma}{a_1}}
+    {\typestmt{\Gamma}{a_0 = a_1}}\qquad
+    \rule{SSA-Leq}{\typestmt{\Gamma}{a_0}\qquad \typestmt{\Gamma}{a_1}}
+    {\typestmt{\Gamma}{a_0 \leq a_1}}\qquad
+    \rule{SSA-Neg}{\typestmt{\Gamma}{b}}
+    {\typestmt{\Gamma}{\neg b}}\\
+    &\rule{SSA-And}{\typestmt{\Gamma}{b_1}\qquad\typestmt{\Gamma}{b_2}}
+    {\typestmt{\Gamma}{b_1 \land b_2}}\\
+\end{align*}
+Judgement \fbox{$\typestep{\Gamma;\Delta_0;\Delta_1}{\defaultphilist}{\Delta}$}:
+\begin{align*}
+    &\rule{SSA-$\varphi$}{}{\typestep{\Gamma;\Delta_0;\Delta_1}{\defaultphilistn}{X_1, \ldots, X_n}}\\
+    &\text{(if for $i \in \{1, \ldots, n\}: Y_i \in \Gamma \cup \Delta_0 \land Z_i \in \Gamma \cup \Delta_1$)}
+\end{align*}
+Judgement \fbox{$\typestep{\Gamma}{s}{\Delta}$}:
+\begin{align*}
+    &\rule{SSA-Sink}{\typestmt{\Gamma}{a}}{\typestep{\Gamma}{\sink{a}}{\emptyset}}\qquad
+    \rule{SSA-Skip}{}{\typestep{\Gamma}{\skipcmd}{\emptyset}}\\
+    &\rule{SSA-Assign}{\typestmt{\Gamma}{a}}{\typestep{\Gamma}{\defaultstore}{\{X\}}} \text{($X \notin \Gamma$)}\\
+    &\rule{SSA-Seq}{\typestep{\Gamma}{s_0}{\Delta_0}\qquad
+    \typestep{\Gamma \cup \Delta_0}{s_1}{\Delta_1}}{\typestep{\Gamma}{\defaultseq}{\Delta_0 \cup \Delta_1}}\\
+    &\rule{SSA-If}{\typestmt{\Gamma}{b}\qquad\typestep{\Gamma}{s_0}{\Delta_0}\qquad \typestep{\Gamma}{s_1}{\Delta_1}\qquad
+    \typestep{\Gamma;\Delta_0;\Delta_1}{\defaultphilist}{\Delta}}
+    {\typestep{\Gamma}{\defaultssaif}{\Delta}}\\
+    &\rule{SSA-While}{\typestep{\Gamma;\emptyset;\Delta_1}{\defaultphilist}{\Delta}\qquad
+    \typestmt{\Gamma \cup \Delta}{b}\qquad\typestep{\Gamma \cup \Delta}{s_0}{\Delta_1}}
+    {\typestep{\Gamma}{\defaultssawhile}{\Delta}}
+\end{align*}
+
 
 Stores are now partial functions $\store : \Sigma \partialf \Loc$ to indicate that
 variables have to be defined before they can be read.
