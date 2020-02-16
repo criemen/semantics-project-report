@@ -26,9 +26,12 @@ as presented in section 2.1 of~\cite{sat}.
 \newcommand{\rule}[3]{\textsc{#1}\ddfrac{#2}{#3}}
 \newcommand{\literalint}[1][n]{\bar{#1}}
 \newcommand{\store}[1][\sigma]{#1}
-\newcommand{\clean}[1][n]{#1^\textbf{c}}
-\newcommand{\tracked}[1][n]{#1^\textbf{t}}
-\newcommand{\flagged}[1][n]{#1^f}
+%\newcommand{\clean}[1][n]{#1^\textbf{c}}
+%\newcommand{\tracked}[1][n]{#1^\textbf{t}}
+%\newcommand{\flagged}[1][n]{#1^f}
+\NewDocumentCommand{\clean}{O{n}+o}{#1[\textbf{c}\IfValueT{#2}{_#2}]}
+\NewDocumentCommand{\tracked}{O{n}+o}{#1[\textbf{t}\IfValueT{#2}{_#2}]}
+\NewDocumentCommand{\flagged}{O{n}+o}{#1[{f}\IfValueT{#2}{_#2}]}
 \newcommand{\source}[1]{\textbf{source }{#1}}
 \newcommand{\defaultsource}{\source{a}}
 \newcommand{\sink}[1]{\textbf{sink }{#1}}
@@ -36,7 +39,7 @@ as presented in section 2.1 of~\cite{sat}.
 \newcommand{\excstore}[1][\sigma]{\hat{#1}}
 \newcommand{\initialstore}[1][\sigma]{\tilde{#1}}
 \newcommand{\Loc}{\textbf{Loc}}
-\newcommand{\partialf}{\dashrightarrow}
+\newcommand{\partialf}{\rightharpoonup} %{\dashrightarrow}
 \newcommand{\StoreDomain}{\tilde{Z}}
 \newcommand{\exception}{\textbf{exc}}
 \newcommand{\skipcmd}{\textbf{skip}}
@@ -87,7 +90,7 @@ A tracked value originates from the source, and is preserved by value-preserving
 operations (see the semantics below).
 The command $\defaultsink$ is a special marker for the dataflow sink.
 It aborts the program via an exception if a tracked value reaches the sink.
-This ensures termination for all programs that have dataflow.
+%This ensures termination for all programs that have dataflow.
 In real programs, the dataflow source would likely be a procedure reading input,
 i.e.\ from a terminal, and the dataflow sink would likely be a procedure 
 printing the data to a terminal, or otherwise communicating with the outside world.
@@ -99,24 +102,24 @@ There is a new judgment of the form
     &\bsrule{EA-Num}{}{\bigstep{\literalint}{\store}{\clean}} \qquad
     \bsrule{EA-Loc}{}{\bigstep{X}{\store}{\store(X)}}\qquad
     \bsrule{EA-Plus}
-    {\bigstep{a_0}{\store}{\flagged[n_0]}
-    \qquad \bigstep{a_1}{\store}{\flagged[n_1]}}
+    {\bigstep{a_0}{\store}{\flagged[n_0][0]}
+    \qquad \bigstep{a_1}{\store}{\flagged[n_1][1]}}
     {\bigstep{a_0+a_1}{\store}{\clean[(n_0+n_1)]}}\\
     &\bsrule{EA-Minus}
-    {\bigstep{a_0}{\store}{\flagged[n_0]}
-    \qquad \bigstep{a_1}{\store}{\flagged[n_1]}}
+    {\bigstep{a_0}{\store}{\flagged[n_0][0]}
+    \qquad \bigstep{a_1}{\store}{\flagged[n_1][1]}}
     {\bigstep{a_0-a_1}{\store}{\clean[(n_0-n_1)]}} \qquad
     \bsrule{EA-Times}
-    {\bigstep{a_0}{\store}{\flagged[n_0]}
-    \qquad \bigstep{a_1}{\store}{\flagged[n_1]}}
+    {\bigstep{a_0}{\store}{\flagged[n_0][0]}
+    \qquad \bigstep{a_1}{\store}{\flagged[n_1][1]}}
     {\bigstep{a_0 \times a_1}{\store}{\clean[(n_0 \times n_1)]}}\\
     &\bsrule{EA-Source}{\bigstep{a}{\store}{\flagged}}
-    {\bigstep{\source}{\store}{\tracked{}}}
+    {\bigstep{\source}{\store}{\tracked}}
 \end{align*}
 
 The Judgment $\langle c, \sigma \rangle \downarrow \sigma'$ is replaced by 
 $\bigstep{c}{\sigma}{\excstore'}$
-where $\excstore{}: \Loc \to \StoreDomain \dunion \exception$.
+where $\excstore{}: (\Loc \to \StoreDomain) \cup \{\exception\}$.
 The state $\exception$ indicates that an exception was thrown.
 Exceptions are thrown when a dataflow-tracked value reaches a sink, the program
 is then aborted.
@@ -148,15 +151,8 @@ Judgement \fbox{$\bigstep{c}{\sigma}{\excstore'}$}:
     {\bigstep{\defaultstore}{\store}{\store{}[X \mapsto \flagged{}]}}
 \end{align*}
 
-The judgement operations for booleans are kept as in IMP.
-To support them, we introduce a judgement of the form
-$\langle a, \sigma \rangle \downarrow n$:
-\begin{align*}
-    \textsc{EA-ToPlainNum}\ddfrac{\langle a, \sigma \rangle \downarrow \flagged{}}
-    {\langle a, \sigma \rangle \downarrow n}
-\end{align*}
-{\color{red} @Andrzej: This is a questionable design choice,
- solely to avoid further texing}
+The judgement operations for booleans are modified to ignore the tracked-flag and work
+just as in IMP. This is analoguous to how $\textsc{EA-Plus}$ etc.\ work.
 
 \subsection{Syntax of SSA-dIMP}
 To facilitate the dataflow analysis, we describe a SSA form on dIMP with a concrete
@@ -260,7 +256,7 @@ contain the variable $X$ before.
 
 The judgment for booleans and arithmetic expressions does not change.
 As before, we use $\excstore{}$ to denote partial functions
-$\excstore{}: \Loc \partialf \StoreDomain \dunion \exception$.
+$\excstore{}: \Loc (\partialf \StoreDomain) \cup \{\exception\}$.
 For $\Phi$ nodes, we introduce to judgements - one that evaluates them to the first argument,
 and on that evaluates them to the second argument.
 They are of the form $\bigsteppl{\philist}{\sigma}{\sigma'}{\sigma''}$ 
@@ -296,7 +292,7 @@ For while loops, we introduce a special judgment of the form $\bigstepw{c}{\sigm
  \end{align*}
 \\
 We have the following rules for the judgment $\bigstep{c}{\store}{\excstore{}}$
-and $\excstore{}: \Loc \partialf \StoreDomain \dunion \exception$:
+and $\excstore{}: (\Loc \partialf \StoreDomain) \cup \{\exception\}$:
 \begin{align*}
     &\bsrule{EC-WhileF}{\bigsteppl{\philist}{\store}{\store}{\store'} \qquad
         \bigstep{b}{\sigma'}{\bfalse}}
