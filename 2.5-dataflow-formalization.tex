@@ -15,9 +15,9 @@ as presented in section 2.1 of~\cite{sat}.
 % expr, store, result
 \newcommand{\bigstep}[3]{\langle #1, #2 \rangle \downarrow #3}
 \newcommand{\bigstepderiv}[4]{\overset{#1}{\langle #2, #3 \rangle \downarrow #4}}
-\newcommand{\bigstepw}[3]{\langle #1, #2 \rangle \downarrow^w #3}
-\newcommand{\bigsteppl}[3]{\langle #1, #2 \rangle \downarrow^{\Phi1} #3}
-\newcommand{\bigsteppr}[3]{\langle #1, #2 \rangle \downarrow^{\Phi2} #3}
+\newcommand{\bigstepw}[4]{\langle #1, #2, #3 \rangle \downarrow^w #4}
+\newcommand{\bigsteppl}[4]{\langle #1, #2, #3 \rangle \downarrow^{\Phi1} #4}
+\newcommand{\bigsteppr}[4]{\langle #1, #2, #3 \rangle \downarrow^{\Phi2} #4}
 \newcommand{\typestep}[3]{#1 \vdash {#2}: #3}
 \newcommand{\typestmt}[2]{#1 \vdash {#2}}
 % name, requirement, result
@@ -66,9 +66,10 @@ as presented in section 2.1 of~\cite{sat}.
 \newcommand{\defaultssawhile}{\ssawhile{b}{s_0}{\defaultphilist}}
 \newcommand{\dunion}{\sqcup}
 \newcommand{\union}{\cup}
-\newcommand{\storeassign}[2]{{#1} \union [{#2}]}
+\newcommand{\storeassign}[2]{{#1} \dunion [{#2}]}
 \newcommand{\leftphi}[1]{X_1 \mapsto {#1}(Y_1), \ldots}
 \newcommand{\rightphi}[1]{X_1 \mapsto {#1}(Z_1), \ldots}
+\newcommand{\dom}[1]{\text{dom }{#1}}
 
 \subsection{Syntax and Semantic of dIMP}
 We extend the syntax of IMP a little bit
@@ -263,15 +264,15 @@ $\excstore{}: \Loc (\partialf \StoreDomain) \cup \{\exception\}$.
 For $\Phi$ nodes, we introduce to judgements - one that evaluates them to the first argument,
 and one that evalutes them to the second argument.
 \\
-Judgment \fbox{$\bigsteppl{\defaultphilist}{\sigma}{\sigma'}$}:
+Judgment \fbox{$\bigsteppl{\defaultphilist}{\store}{\store''}{\store'}$}:
 \begin{align*}
     &\bsrule{E$\Phi_1$-Assign}{}
-    {\bigsteppl{\defaultphilistn}{\store}{\storeassign{\store}{X_1 \mapsto \store(Y_1),\ldots X_n \mapsto \store(Y_n)}}}\\
+    {\bigsteppl{\defaultphilistn}{\store}{\store''}{\storeassign{\store}{X_1 \mapsto \store''(Y_1),\ldots X_n \mapsto \store''(Y_n)}}}\\
 \end{align*}
-Judgment \fbox{$\bigsteppr{\defaultphilist}{\sigma}{\sigma'}$}:
+Judgment \fbox{$\bigsteppr{\defaultphilist}{\store}{\store''}{\store'}$}:
 \begin{align*}
     &\bsrule{E$\Phi_2$-Assign}{}
-    {\bigsteppr{\defaultphilistn}{\store}{\storeassign{\store}{X_1 \mapsto \store(Z_1),\ldots X_n \mapsto \store(Z_n)}}}\\
+    {\bigsteppr{\defaultphilistn}{\store}{\store''}{\storeassign{\store}{X_1 \mapsto \store''(Z_1),\ldots X_n \mapsto \store''(Z_n)}}}\\
 \end{align*}
 
 \begin{landscape}
@@ -294,28 +295,28 @@ With $\excstore{}: (\Loc \partialf \StoreDomain) \cup \{\exception\}$ we have th
     \bsrule{EC-Assign}{\bigstep{a}{\store}{\flagged{}}}
     {\bigstep{\defaultstore}{\store}{\storeassign{\store}{X \mapsto \flagged{}]}}}\\
     &\bsrule{EC-IfT}{\bigstep{b}{\store}{\btrue}\qquad \bigstep{s_0}{\store}{\store''}
-    \qquad \bigsteppl{\defaultphilist}{\sigma''}{\sigma'}}
+    \qquad \bigsteppl{\defaultphilist}{\store}{\store''}{\store'}}
     {\bigstep{\defaultssaif}{\store}{\store'}}\\
     &\bsrule{EC-IfF}{\bigstep{b}{\store}{\bfalse}\qquad \bigstep{s_1}{\store}{\store''}
-    \qquad \bigsteppr{\defaultphilist}{\sigma''}{\sigma'}}
+    \qquad \bigsteppr{\defaultphilist}{\store}{\store''}{\store'}}
     {\bigstep{\defaultssaif}{\store}{\store'}}\\
-    &\bsrule{EC-While}{\bigsteppl{\defaultphilist}{\store}{\store''} \qquad
-    \bigstepw{\defaultssawhile}{\store''}{\excstore'}}
+    &\bsrule{EC-While}{\bigsteppl{\defaultphilist}{\store}{\store}{\store''} \qquad
+    \bigstepw{\defaultssawhile}{\store}{\store''}{\excstore'}}
     {\bigstep{\defaultssawhile}{\store}{\excstore'}}\\
 \end{align*}
 
-For while loops, we introduce a special judgment of the form \fbox{$\bigstepw{c}{\sigma}{\excstore'{}}$}:
+For while loops, we introduce a special judgment of the form \fbox{$\bigstepw{c}{\store}{\store''}{\excstore'{}}$}:
 \begin{align*}
-    &\bsrule{EW-WhileF}{\bigstep{b}{\store}{\bfalse}}
-    {\bigstepw{\defaultssawhile}{\store}{\store}}\qquad
-    \bsrule{EW-WhileTAbrt}{\bigstep{b}{\store}{\btrue} \qquad 
-    \bigstep{s_0}{\store}{\exception}}
-    {\bigstepw{\defaultssawhile}{\store}{\exception}}\\
-    &\bsrule{EW-WhileT}{\bigstep{b}{\store}{\btrue} \  
-    \bigstep{s_0}{\store}{\store''} \  
-    \bigsteppr{\defaultphilist}{\store''}{\store'''} \ 
-    \bigstepw{\defaultssawhile}{\store'''}{\excstore'}}
-    {\bigstepw{\defaultssawhile}{\store}{\excstore'}}\\
+    &\bsrule{EW-WhileF}{\bigstep{b}{\store'}{\bfalse}}
+    {\bigstepw{\defaultssawhile}{\store}{\store'}{\store'}}\qquad
+    \bsrule{EW-WhileTAbrt}{\bigstep{b}{\store'}{\btrue} \qquad 
+    \bigstep{s_0}{\store'}{\exception}}
+    {\bigstepw{\defaultssawhile}{\store}{\store'}{\exception}}\\
+    &\bsrule{EW-WhileT}{\bigstep{b}{\store''}{\btrue} \  
+    \bigstep{s_0}{\store''}{\store'''} \  
+    \bigsteppr{\defaultphilist}{\store}{\store'''}{\store''''} \ 
+    \bigstepw{\defaultssawhile}{\store}{\store''''}{\excstore'}}
+    {\bigstepw{\defaultssawhile}{\store}{\store''}{\excstore'}}\\
  \end{align*}
 \end{landscape}
 In order to correctly model the execution of $\varphi$ nodes for \textbf{while} commands,
@@ -328,6 +329,7 @@ iteration.
 
 \subsubsection*{TODO BLA PRoofs about }
 \begin{theorem}
+    \label{thm:gamma-delta-disjoint}
     If $\typestep{\Gamma}{s}{\Delta}$ holds, then $\Gamma \cap \Delta = \emptyset$.
 \end{theorem}
 \begin{proof}
@@ -371,18 +373,126 @@ iteration.
         \D = \rule{SSA-While}{\typestep{\Gamma;\emptyset;\Delta_1}{\defaultphilist}{\Delta}\qquad
         \typestmt{\Gamma \cup \Delta}{b}\qquad\typestep{\Gamma \cup \Delta}{s_0}{\Delta_1}}
         {\typestep{\Gamma}{\defaultssawhile}{\Delta}}
-        \end{align*}
+    \end{align*}
         We conclude $\Gamma \cap \Delta = \emptyset$ by the same argument as in case 5.
 \end{proof}
 
 \begin{theorem}
     If $\typestep{\Gamma}{s}{\Delta}$, $\text{dom } \store = \Gamma$ and
     $\bigstep{s}{\store}{\store'}$, then $\store' = \store \dunion \store_0$
-    and $\text{dom }\store_0 = \Delta$.
+    and $\dom{\store_0} = \Delta$.
 \end{theorem}
 \begin{proof}
     Let $\D$ be a derivation of $\typestep{\Gamma}{s}{\Delta}$.
+    Let $\E$ be a derivation of $\bigstep{s}{\store}{\store'}$.
     We prove the theorem by induction over the derivation tree.\\
+    \textbf{Case 1:}
+    \begin{align*}
+        \D = \rule{SSA-Skip}{}{\typestep{\Gamma}{\skipcmd}{\emptyset}}
+    \end{align*}
+    Then we have $s = \skipcmd$,
+    \begin{align*}
+        \E = \rule{EC-Skip}{}{\bigstep{\skipcmd}{\store}{\store}}
+    \end{align*}
+    $\store' = \store$ and $\dom{\store_0} = \emptyset$.\\
+    \textbf{Case 2:}
+    \begin{align*}
+        \D = \rule{SSA-Sink}{\typestmt{\Gamma}{a}}{\typestep{\Gamma}{\defaultsink}{\emptyset}}
+    \end{align*}
+    Then we have $s = \defaultsink$,
+    \begin{align*}
+        \E =     \bsrule{EC-Sink}{\bigstep{a}{\store}{\clean{}}}
+        {\bigstep{\defaultsink}{\store}{\store}}    
+    \end{align*}
+    $\store' = \store$ and $\dom{\store_0} = \emptyset$.\\
+    \textbf{Case 3:}
+    \begin{align*}
+        \D = \rule{SSA-Assign}{\typestmt{\Gamma}{a}}{\typestep{\Gamma}{\defaultstore}{\{X\}}}
+    \end{align*}
+    Then we have $s = \defaultstore$ and
+    \begin{align*}
+        \E = \bsrule{EC-Assign}{\bigstep{a}{\store}{\flagged{}}}
+        {\bigstep{\defaultstore}{\store}{\storeassign{\store}{X \mapsto \flagged{}]}}}
+    \end{align*}
+    Furthermore, we obviously get $\dom{\store_0} = \{X\} = \Delta$.
+    As the side-condition for \textsc{SSA-Assign} specifies that $X \notin \Gamma$
+    and we have $\dom{\store} = \Gamma$ as assumption, we also have $X \notin \dom{\store}$,
+    so the union is disjoint as postulated.\\
+    \textbf{Case 4:}
+    \begin{align*}
+        \D = \rule{SSA-Seq}{\overset{\D_0}{\typestep{\Gamma}{s_0}{\Delta_0}}\qquad
+        \overset{\D_1}{\typestep{\Gamma \cup \Delta_0}{s_1}{\Delta_1}}}{\typestep{\Gamma}{\defaultssaseq}{\Delta_0 \cup \Delta_1}}
+    \end{align*}
+    Then we have $s = \defaultssaseq$ and
+    \begin{align*}
+        \E =\bsrule{EC-Seq}{\overset{\E_0}{\bigstep{s_0}{\sigma}{\store''}} \qquad 
+        \overset{\E_1}{\bigstep{s_1}{\store''}{\store'}}}
+        {\bigstep{\defaultssaseq}{\store}{\store'}}
+    \end{align*}
+    By IH on $\D_0$ with $\E_0$ we get that $\sigma'' = \sigma \dunion \tilde{\store}''$ 
+    with $\dom{\tilde{\store}''} = \Delta_0$.
+    Thus, $\dom{\sigma''} = \Gamma \union \Delta_0$.
+    Then, by IH on $\D_1$ with $\E_1$ we get that
+    $$\sigma' = \sigma'' \dunion \tilde{\store}' = \sigma \dunion (\tilde{\store}'' \dunion \tilde{\store}')$$
+    and $\dom{\tilde{\store}'} = \Delta_1$.
+    Thus, we have $\sigma_0 = \tilde{\store}'' \dunion \tilde{\store}'$
+    and $\dom{\sigma_0} = \Delta_0 \union \Delta_1$ as required.
+    \autoref{thm:gamma-delta-disjoint} implies that all the unions are disjoint.\\
+    \textbf{Case 5:}
+    \begin{align*}
+        \D = \rule{SSA-If}{\typestmt{\Gamma}{b}\qquad
+        \typestep{\Gamma}{s_0}{\Delta_0}\qquad \typestep{\Gamma}{s_1}{\Delta_1}\qquad
+        \typestep{\Gamma;\Delta_0;\Delta_1}{\defaultphilist}{\Delta}}
+        {\typestep{\Gamma}{\defaultssaif}{\Delta}}
+    \end{align*}
+    Then we have $s = \defaultssaif$ and
+    two subcases.\\
+    \textbf{Subcase 1}:
+    \begin{align*}
+        \E = \rule{SSA-IfT}{\bigstep{b}{\store}{\btrue}\qquad \bigstep{s_0}{\store}{\store''}
+        \qquad \overset{\E_0}{\bigsteppl{\defaultphilist}{\store}{\sigma''}{\sigma'}}}
+        {\bigstep{\defaultssaif}{\store}{\store'}}
+    \end{align*}
+    Because there is only one rule for $\E_0$, we know that 
+    $\store' = \store \dunion [X_i \mapsto \sigma''(Y_i)] = \store \dunion \sigma_0$ .
+    Thus $\dom{\store'} = \dom{\store{}} \dunion \{X_1, \ldots, \X_n\}$.
+    By the condition on \textsc{SSA-If} that $X_i \notin \Gamma$, we get that the union
+    is disjoint.
+    Furthermore note that $\Delta = \{X_1, \ldots, X_n\}$, proving $\dom{\store_0} = \Delta$.\\
+    \textbf{Subcase 2}:
+    \begin{align*}
+        \E = \rule{SSA-IfF}{\bigstep{b}{\store}{\bfalse}\qquad \bigstep{s_1}{\store}{\store''}
+        \qquad \overset{\E_0}{\bigsteppr{\defaultphilist}{\store}{\sigma''}{\sigma'}}}
+        {\bigstep{\defaultssaif}{\store}{\store'}}
+    \end{align*}
+    This case is fully analoguous to subcase 1.\\
+    \textbf{Case 6:}
+    TODO add lemma about EW rules!
+    \begin{align*}
+        \D = \rule{SSA-While}{\typestep{\Gamma;\emptyset;\Delta_1}{\defaultphilist}{\Delta}\qquad
+        \typestmt{\Gamma \cup \Delta}{b}\qquad\typestep{\Gamma \cup \Delta}{s_0}{\Delta_1}}
+        {\typestep{\Gamma}{\defaultssawhile}{\Delta}}
+    \end{align*}
+    Then we have $s = \defaultssawhile$ and
+    \begin{align*}
+        \E = \bsrule{EC-While}{\bigsteppl{\defaultphilist}{\store}{\store}{\store''} \ 
+        \overset{\E_0}{\bigstepw{\defaultssawhile}{\store}{\store''}{\store'}}}
+        {\bigstep{\defaultssawhile}{\store}{\store'}}
+    \end{align*}
+    \textbf{Subcase 1:}
+    We have $\E_0$ using \textsc{EW-WhileF}.
+    Then $\store' = \store''$ and by an argument like in case 5 we prove the theorem,
+    as we only need to reason about the $\varphi$ node assignment.\\
+    \textbf{Subcase 2:}
+    We have
+    \begin{align*}
+        \E_0 = \bsrule{EW-WhileT}{\bigstep{b}{\store''}{\btrue} \  
+        \bigstep{s_0}{\store''}{\store'''} \  
+        \bigsteppr{\defaultphilist}{\store}{\store'''}{\store''''} \ 
+        \bigstepw{\defaultssawhile}{\store}{\store''''}{\store'}}
+        {\bigstepw{\defaultssawhile}{\store}{\store''}{\store'}}
+    \end{align*}
+
     TODO
 \end{proof}
 \subsection{Definition of Dataflow}
