@@ -275,63 +275,49 @@ Judgment \fbox{$\bigsteppr{\defaultphilist}{\sigma}{\sigma'}$}:
 \end{align*}
 
 \begin{landscape}
-For while loops, we introduce a special judgment of the form \fbox{$\bigstepw{c}{\sigma}{\excstore'{}}$}:
-\begin{align*}
-    &\bsrule{EW-WhileF}{\bigsteppr{\defaultphilist}{\store}{\store'} \qquad
-        \bigstep{b}{\store'}{\bfalse}}
-    {\bigstepw{\defaultssawhile}{\store}{\store'}}\\
-    &\bsrule{EW-WhileTAbrt}{\bigsteppr{\defaultphilist}{\store}{\store'} \qquad
-        \bigstep{b}{\store'}{\btrue} \qquad 
-    \bigstep{s_0}{\store'}{\exception}}
-    {\bigstepw{\defaultssawhile}{\store}{\exception}}\\
-    &\bsrule{EW-WhileT}{\bigsteppr{\defaultphilist}{\store}{\store''} \ 
-        \bigstep{b}{\store''}{\btrue} \  
-    \bigstep{s_0}{\store''}{\store'} \  
-    \bigstepw{\defaultssawhile}{\store}{\excstore'}}
-    {\bigstepw{\defaultssawhile}{\store}{\excstore'}}\\
- \end{align*}
-\\
 With $\excstore{}: (\Loc \partialf \StoreDomain) \cup \{\exception\}$ we have the following rules for the
  judgment \fbox{$\bigstep{c}{\store}{\excstore{}}$}:
-\begin{align*}
-    &\bsrule{EC-WhileF}{\bigsteppl{\defaultphilist}{\store}{\store'} \qquad
-        \bigstep{b}{\sigma'}{\bfalse}}
-    {\bigstep{\defaultssawhile}{\store}{\store'}}\\
-    &\bsrule{EC-WhileTAbrt}{\bigsteppl{\defaultphilist}{\store}{\store'} \qquad
-    \bigstep{b}{\store'}{\btrue} \qquad 
-    \bigstep{s_0}{\store'}{\exception}}
-    {\bigstep{\defaultssawhile}{\sigma}{\exception}}\\
-    &\bsrule{EC-WhileT0}{\bigsteppl{\defaultphilist}{\store}{\store''} \ 
-        \bigstep{b}{\store''}{\btrue} \ 
-    \bigstep{s_0}{\store''}{\store'''} \ 
-    \bigstepw{\defaultssawhile}{\store}{\store'''}{\excstore'}}
-    {\bigstep{\defaultssawhile}{\store}{\excstore'}}\\
-\end{align*}
-\end{landscape}
 \begin{align*}
     &\bsrule{EC-SinkAbrt}{\bigstep{a}{\store}{\tracked{}}}
     {\bigstep{\defaultsink}{\store}{\exception}} \qquad
     \bsrule{EC-Sink}{\bigstep{a}{\store}{\clean{}}}
     {\bigstep{\defaultsink}{\store}{\store}} \qquad
-    \bsrule{EC-Skip}{}{\bigstep{\skipcmd}{\store}{\store}}\\
-    &\bsrule{EC-SeqAbrt}{\bigstep{s_0}{\sigma}{\exception}}
-    {\bigstep{\defaultssaseq}{\store}{\exception}} \qquad
+    \bsrule{EC-Skip}{}{\bigstep{\skipcmd}{\store}{\store}}\qquad
     \bsrule{EC-Seq}{\bigstep{s_0}{\sigma}{\store''} \qquad \bigstep{s_1}{\store''}{\excstore'}}
     {\bigstep{\defaultssaseq}{\store}{\excstore'}}\\
-    &\bsrule{EC-IfTAbrt}{\bigstep{b}{\store}{\btrue}\qquad \bigstep{s_0}{\store}{\exception}}
+    &\bsrule{EC-SeqAbrt}{\bigstep{s_0}{\sigma}{\exception}}
+    {\bigstep{\defaultssaseq}{\store}{\exception}} \qquad
+    \bsrule{EC-IfTAbrt}{\bigstep{b}{\store}{\btrue}\qquad \bigstep{s_0}{\store}{\exception}}
     {\bigstep{\defaultssaif}{\store}{\exception}}\\
     &\bsrule{EC-IfFAbrt}{\bigstep{b}{\store}{\bfalse}\qquad \bigstep{s_1}{\store}{\exception}}
-    {\bigstep{\defaultssaif}{\store}{\exception}}\\
+    {\bigstep{\defaultssaif}{\store}{\exception}}\qquad
+    \bsrule{EC-Assign}{\bigstep{a}{\store}{\flagged{}}}
+    {\bigstep{\defaultstore}{\store}{\storeassign{\store}{X \mapsto \flagged{}]}}}\\
     &\bsrule{EC-IfT}{\bigstep{b}{\store}{\btrue}\qquad \bigstep{s_0}{\store}{\store''}
     \qquad \bigsteppl{\defaultphilist}{\sigma''}{\sigma'}}
     {\bigstep{\defaultssaif}{\store}{\store'}}\\
     &\bsrule{EC-IfF}{\bigstep{b}{\store}{\bfalse}\qquad \bigstep{s_1}{\store}{\store''}
     \qquad \bigsteppr{\defaultphilist}{\sigma''}{\sigma'}}
     {\bigstep{\defaultssaif}{\store}{\store'}}\\
-    &\bsrule{EC-Assign}{\bigstep{a}{\store}{\flagged{}}}
-    {\bigstep{\defaultstore}{\store}{\storeassign{\store}{X \mapsto \flagged{}]}}}\\
+    &\bsrule{EC-While}{\bigsteppl{\defaultphilist}{\store}{\store''} \qquad
+    \bigstepw{\defaultssawhile}{\store''}{\excstore'}}
+    {\bigstep{\defaultssawhile}{\store}{\excstore'}}\\
 \end{align*}
 
+For while loops, we introduce a special judgment of the form \fbox{$\bigstepw{c}{\sigma}{\excstore'{}}$}:
+\begin{align*}
+    &\bsrule{EW-WhileF}{\bigstep{b}{\store}{\bfalse}}
+    {\bigstepw{\defaultssawhile}{\store}{\store}}\qquad
+    \bsrule{EW-WhileTAbrt}{\bigstep{b}{\store}{\btrue} \qquad 
+    \bigstep{s_0}{\store}{\exception}}
+    {\bigstepw{\defaultssawhile}{\store}{\exception}}\\
+    &\bsrule{EW-WhileT}{\bigstep{b}{\store}{\btrue} \  
+    \bigstep{s_0}{\store}{\store''} \  
+    \bigsteppr{\defaultphilist}{\store''}{\store'''} \ 
+    \bigstepw{\defaultssawhile}{\store'''}{\excstore'}}
+    {\bigstepw{\defaultssawhile}{\store}{\excstore'}}\\
+ \end{align*}
+\end{landscape}
 In order to correctly model the execution of $\varphi$ nodes for \textbf{while} commands,
 a second judgment is set up.
 The regular command judmenent only evaluates the first execution of the loop body
