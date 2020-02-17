@@ -328,6 +328,35 @@ loop executions, evaluating the $\varphi$ nodes with the store of the previous l
 iteration.
 
 \subsubsection*{TODO BLA PRoofs about }
+\begin{lemma}
+    \label{lem:phi-ssa-derivation}
+    For any derivation of form $\typestep{\Gamma;\Delta_0;\Delta_1}{\defaultphilistn}{\Delta}$
+    it holds that $\Delta = \{X_1, \ldots, X_n\}$ and $\Gamma \cap \Delta = \emptyset$.
+\end{lemma}
+\begin{proof}
+    There is only one rule available for derivations of this kind, we we have
+    \begin{align*}
+        \D = \rule{SSA-$\varphi$}{}{\typestep{\Gamma;\Delta_0;\Delta_1}{\defaultphilistn}{\{X_1, \ldots, X_n\}}}
+    \end{align*}
+    We have $\Delta = \{X_1, \ldots, X_n\}$ by definition.
+    Then $\Gamma \cap \Delta = \emptyset$ holds because one of the side-conditions
+    specifies that for $i \in \{1, \ldots, n\}$, we have that $X_i \notin \Gamma$.
+\end{proof}
+
+\begin{lemma}
+    \label{lem:phi-bs-derivation}
+    Let $\E$ be a bigstep derivation of form $\bigsteppl{\defaultphilistn}{\store}{\store''}{\store'}$
+    (or $\bigsteppr{\defaultphilistn}{\store}{\store''}{\store'}$)
+    with a SSA derivation $\typestep{\Gamma;\Delta_0;\Delta_1}{\defaultphilistn}{\Delta}$
+    and $\dom{\sigma} = \Gamma$.
+    Then $\store_0 = [X_1 \coloneqq \flagged[n_i][i], \ldots]$, $\store' = \store \dunion \store_0$
+    and $\dom{\store_0} = \Delta$.
+\end{lemma}
+\begin{proof}
+    The lemma is obvious, as only one bigstep rule and one SSA rule are available.
+    \autoref{lem:phi-ssa-derivation} implies that the unions are in fact disjoint.
+\end{proof}
+
 \begin{theorem}
     \label{thm:gamma-delta-disjoint}
     If $\typestep{\Gamma}{s}{\Delta}$ holds, then $\Gamma \cap \Delta = \emptyset$.
@@ -366,15 +395,14 @@ iteration.
         \typestep{\Gamma;\Delta_0;\Delta_1}{\defaultphilist}{\Delta}}
         {\typestep{\Gamma}{\defaultssaif}{\Delta}}
     \end{align*}
-    As is obvious from looking at the side condition of \textsc{SSA-$\varphi$} that requires all
-    $X_i \notin \Gamma$, it holds that $\Delta = \{X_1, \ldots, X_n\} \cap \Gamma = \emptyset$.\\
+    The result follows with~\autoref{lem:phi-ssa-derivation}.\\
     \textbf{Case 6:}
     \begin{align*}
         \D = \rule{SSA-While}{\typestep{\Gamma;\emptyset;\Delta_1}{\defaultphilist}{\Delta}\qquad
         \typestmt{\Gamma \cup \Delta}{b}\qquad\typestep{\Gamma \cup \Delta}{s_0}{\Delta_1}}
         {\typestep{\Gamma}{\defaultssawhile}{\Delta}}
     \end{align*}
-        We conclude $\Gamma \cap \Delta = \emptyset$ by the same argument as in case 5.
+    The result follows again with~\autoref{lem:phi-ssa-derivation}.\\
 \end{proof}
 
 \begin{theorem}
@@ -405,7 +433,63 @@ iteration.
         {\bigstep{\defaultsink}{\store}{\store}}    
     \end{align*}
     $\store' = \store$ and $\dom{\store_0} = \emptyset$.\\
-    \textbf{Case 3:}
+    \begin{landscape}
+        \textbf{Case 3:}
+        \begin{align*}
+            \D = \rule{SSA-While}{\overset{\D_0}{\typestep{\Gamma;\emptyset;\Delta_1}{\defaultphilist}{\Delta}}\qquad
+            \typestmt{\Gamma \cup \Delta}{b}\qquad
+            \typestep{\Gamma \cup \Delta}{s_0}{\Delta_1}}
+            {\typestep{\Gamma}{\defaultssawhile}{\Delta}}
+        \end{align*}
+        Then we have $s = \defaultssawhile$ and
+        \begin{align*}
+            \E = \bsrule{EC-While}{\overset{\E_0}{\bigsteppl{\defaultphilist}{\store}{\store}{\store''}} \ 
+            \overset{\E_1}{\bigstepw{\defaultssawhile}{\store}{\store''}{\store'}}}
+            {\bigstep{\defaultssawhile}{\store}{\store'}}
+        \end{align*}
+        By applying~\autoref{lem:phi-bs-derivation} on $\E_0$ with $\D_0$ we get that
+        $\store'' = \store \dunion \store_1$ with $\dom{\store_1} = \Delta$.
+            
+        \begin{claim}
+            First, we prove by induction over derivations $\E^w$ of 
+            $\bigstepw{\defaultssawhile}{\store}{\Sigma''}{\Sigma'}$
+            with SSA derivation $\D^w$ of $\typestep{\Gamma}{\defaultssawhile}{\Delta}$,
+            $\Sigma'' = \store \dunion \Sigma_1$ and $\dom{\Sigma_1} = \Delta$
+            we have that $\Sigma' = \store \dunion \Sigma_0$ with $\dom{\Sigma_0} = \Delta$.
+        \end{claim}
+        \begin{claimproof}
+            Note that we have
+            \begin{align*}
+                \D^w = \rule{SSA-While}{\overset{\D^w_0}{\typestep{\Gamma;\emptyset;\Delta_1}{\defaultphilist}{\Delta}}\qquad
+                \typestmt{\Gamma \cup \Delta}{b}\qquad
+                \overset{\D^w_1}{\typestep{\Gamma \cup \Delta}{s_0}{\Delta_1}}}
+                {\typestep{\Gamma}{\defaultssawhile}{\Delta}}
+            \end{align*}
+            \emph{Case 1:}
+            \begin{align*}
+                \E^w = \bsrule{EW-WhileF}{\bigstep{b}{\Sigma''}{\bfalse}}
+                {\bigstepw{\defaultssawhile}{\store}{\Sigma''}{\Sigma''}}
+            \end{align*}
+            Thus we have $\Sigma'' = \Sigma'$, and we get the desired statement immediately with $\Sigma_0 = \Sigma_1$.\\
+            \emph{Case 2:}
+            \begin{align*}
+                \E^w = \bsrule{EW-WhileT}{\bigstep{b}{\Sigma''}{\btrue} \  
+                \bigstep{s_0}{\Sigma''}{\Sigma'''} \  
+                \overset{\E^w_0}{\bigsteppr{\defaultphilist}{\store}{\Sigma'''}{\Sigma''''}} \ 
+                \bigstepw{\defaultssawhile}{\store}{\Sigma''''}{\Sigma'}}
+                {\bigstepw{\defaultssawhile}{\store}{\Sigma''}{\Sigma'}}
+            \end{align*}
+            By applying~\autoref{lem:phi-bs-derivation} on $\E_0$ with $\D^w_0$ we get that
+            $\Sigma''' = \sigma \dunion \Sigma_2$ with $\dom{\Sigma_2} = \Delta$.
+            By the IH on $\E^w_1$ with $\D^w$ (which we can apply here because we have the split of $\Sigma'''$)
+            we get that $\Sigma' = \sigma \dunion \Sigma_0$ with $\dom{\Sigma_0} = \Delta$.
+        \end{claimproof}
+    
+        Because we have $\store'' = \sigma \dunion \sigma_1$ with $\dom{\sigma_1} = \Delta$, 
+        we can apply the claim to $\E_1$ with $\D$ and get that $\sigma' = \sigma \dunion \sigma_0$
+        and $\dom{\sigma_0} = \Delta$ as desired.
+    \end{landscape}
+    \textbf{Case 4:}
     \begin{align*}
         \D = \rule{SSA-Assign}{\typestmt{\Gamma}{a}}{\typestep{\Gamma}{\defaultstore}{\{X\}}}
     \end{align*}
@@ -418,7 +502,7 @@ iteration.
     As the side-condition for \textsc{SSA-Assign} specifies that $X \notin \Gamma$
     and we have $\dom{\store} = \Gamma$ as assumption, we also have $X \notin \dom{\store}$,
     so the union is disjoint as postulated.\\
-    \textbf{Case 4:}
+    \textbf{Case 5:}
     \begin{align*}
         \D = \rule{SSA-Seq}{\overset{\D_0}{\typestep{\Gamma}{s_0}{\Delta_0}}\qquad
         \overset{\D_1}{\typestep{\Gamma \cup \Delta_0}{s_1}{\Delta_1}}}{\typestep{\Gamma}{\defaultssaseq}{\Delta_0 \cup \Delta_1}}
@@ -438,11 +522,11 @@ iteration.
     Thus, we have $\sigma_0 = \tilde{\store}'' \dunion \tilde{\store}'$
     and $\dom{\sigma_0} = \Delta_0 \union \Delta_1$ as required.
     \autoref{thm:gamma-delta-disjoint} implies that all the unions are disjoint.\\
-    \textbf{Case 5:}
+    \textbf{Case 6:}
     \begin{align*}
         \D = \rule{SSA-If}{\typestmt{\Gamma}{b}\qquad
         \typestep{\Gamma}{s_0}{\Delta_0}\qquad \typestep{\Gamma}{s_1}{\Delta_1}\qquad
-        \typestep{\Gamma;\Delta_0;\Delta_1}{\defaultphilist}{\Delta}}
+        \overset{\D_0}{\typestep{\Gamma;\Delta_0;\Delta_1}{\defaultphilist}{\Delta}}}
         {\typestep{\Gamma}{\defaultssaif}{\Delta}}
     \end{align*}
     Then we have $s = \defaultssaif$ and
@@ -453,47 +537,14 @@ iteration.
         \qquad \overset{\E_0}{\bigsteppl{\defaultphilist}{\store}{\sigma''}{\sigma'}}}
         {\bigstep{\defaultssaif}{\store}{\store'}}
     \end{align*}
-    Because there is only one rule for $\E_0$, we know that 
-    $\store' = \store \dunion [X_i \mapsto \sigma''(Y_i)] = \store \dunion \sigma_0$ .
-    Thus $\dom{\store'} = \dom{\store{}} \dunion \{X_1, \ldots, \X_n\}$.
-    By the condition on \textsc{SSA-If} that $X_i \notin \Gamma$, we get that the union
-    is disjoint.
-    Furthermore note that $\Delta = \{X_1, \ldots, X_n\}$, proving $\dom{\store_0} = \Delta$.\\
+    The result follows immediately from~\autoref{lem:phi-bs-derivation} applied to $\E_0$ with $\D_0$.\\
     \textbf{Subcase 2}:
     \begin{align*}
         \E = \rule{SSA-IfF}{\bigstep{b}{\store}{\bfalse}\qquad \bigstep{s_1}{\store}{\store''}
         \qquad \overset{\E_0}{\bigsteppr{\defaultphilist}{\store}{\sigma''}{\sigma'}}}
         {\bigstep{\defaultssaif}{\store}{\store'}}
     \end{align*}
-    This case is fully analoguous to subcase 1.\\
-    \textbf{Case 6:}
-    TODO add lemma about EW rules!
-    \begin{align*}
-        \D = \rule{SSA-While}{\typestep{\Gamma;\emptyset;\Delta_1}{\defaultphilist}{\Delta}\qquad
-        \typestmt{\Gamma \cup \Delta}{b}\qquad\typestep{\Gamma \cup \Delta}{s_0}{\Delta_1}}
-        {\typestep{\Gamma}{\defaultssawhile}{\Delta}}
-    \end{align*}
-    Then we have $s = \defaultssawhile$ and
-    \begin{align*}
-        \E = \bsrule{EC-While}{\bigsteppl{\defaultphilist}{\store}{\store}{\store''} \ 
-        \overset{\E_0}{\bigstepw{\defaultssawhile}{\store}{\store''}{\store'}}}
-        {\bigstep{\defaultssawhile}{\store}{\store'}}
-    \end{align*}
-    \textbf{Subcase 1:}
-    We have $\E_0$ using \textsc{EW-WhileF}.
-    Then $\store' = \store''$ and by an argument like in case 5 we prove the theorem,
-    as we only need to reason about the $\varphi$ node assignment.\\
-    \textbf{Subcase 2:}
-    We have
-    \begin{align*}
-        \E_0 = \bsrule{EW-WhileT}{\bigstep{b}{\store''}{\btrue} \  
-        \bigstep{s_0}{\store''}{\store'''} \  
-        \bigsteppr{\defaultphilist}{\store}{\store'''}{\store''''} \ 
-        \bigstepw{\defaultssawhile}{\store}{\store''''}{\store'}}
-        {\bigstepw{\defaultssawhile}{\store}{\store''}{\store'}}
-    \end{align*}
-
-    TODO
+    The result follows immediately from~\autoref{lem:phi-bs-derivation} applied to $\E_0$ with $\D_0$.
 \end{proof}
 \subsection{Definition of Dataflow}
 \begin{definition}[Program]
