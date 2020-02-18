@@ -70,6 +70,11 @@ as presented in section 2.1 of~\cite{sat}.
 \newcommand{\leftphi}[1]{X_1 \mapsto {#1}(Y_1), \ldots}
 \newcommand{\rightphi}[1]{X_1 \mapsto {#1}(Z_1), \ldots}
 \newcommand{\dom}[1]{\text{dom }{#1}}
+\newcommand{\lattice}{\textbf{Ltc}}
+\newcommand{\lclean}{\textbf{c}}
+\newcommand{\lunknown}{\textbf{u}}
+\newcommand{\ltracked}{\textbf{t}}
+\newcommand{\join}{\lor}
 
 \subsection{Syntax and Semantic of dIMP}
 We extend the syntax of IMP a little bit
@@ -155,7 +160,7 @@ Judgement \fbox{$\bigstep{c}{\sigma}{\excstore'}$}:
 The judgement operations for booleans are modified to ignore the tracked-flag and work
 just as in IMP. This is analoguous to how $\textsc{EA-Plus}$ etc.\ work.
 
-\subsection{Syntax of SSA-dIMP}
+\subsection{Syntax and Semantics of SSA-dIMP}
 To facilitate the dataflow analysis, we describe a SSA form on dIMP with a concrete
 syntax and semantics.
 We do not describe how to transform a dIMP program to a SSA-dIMP program, but 
@@ -615,6 +620,56 @@ is in fact in SSA form.
     because it shows that just proving that a dataflow algorithm is sound does not
     mean it is useful.    
 \end{remark}
+
+\subsection{A Dataflow Algorithm}
+In this section, we present a dataflow algorithm.
+Then we will prove that this algorithm is a sound dataflow algorithm.
+The algorithm is presented in terms of type analysis, i.e.\ every statement in 
+SSA-dIMP gets a dataflow type associated with it.
+
+Let $\lattice = \{\lclean, \ltracked, \lunknown\}$ and
+$\Gamma, \Delta: \Loc \partialf \lattice$.
+Every variable encountered in the program is marked with a value in the finite join-semilattice
+\lattice.
+Thus, it is either marked with \lclean (the variable
+is clean, i.e.\ does not contain a value originating from a dataflow source), \lunknown
+(it is unknown whether the variable contains a value originating from a source) or \ltracked
+(the variable contains a tracked value from a dataflow source).
+We define the following poset structure on it:
+TODO nice picture, \lunknown is the top element, no bottom element.
+Then the join operator $\join: \lattice \times \lattice \to \lattice$ is 
+obviously defined.
+
+We define the following rules:\\
+Judgement \fbox{$\typestep{\Gamma}{a}{\lattice}$}:
+\begin{align*}
+    &\rule{DF-Num}{}{\typestep{\Gamma}{n}{\lclean}}\qquad
+    \rule{DF-Loc}{}{\typestep{\Gamma}{X}{\Gamma(X)}}\qquad%\text{($X \in \Gamma$)}\qquad
+    \rule{DF-Source}{}{\typestep{\Gamma}{\source{a}}{\ltracked}}\\
+    &\rule{DF-Plus}{}{\typestep{\Gamma}{a_0+a_1}{\lclean}}\quad
+    \rule{DF-Minus}{}{\typestep{\Gamma}{a_0-a_1}{\lclean}}\quad
+    \rule{DF-Times}{}{\typestep{\Gamma}{a_0 \times a_1}{\lclean}}
+\end{align*}
+Judgement \fbox{$\typestep{\Gamma;\Delta_0;\Delta_1}{\defaultphilist}{\Delta}$}:
+\begin{align*}
+    &\rule{DF-$\varphi$}{}{\typestep{\Gamma;\Delta_0;\Delta_1}{\defaultphilist}
+    {[X_1 \mapsto (\Gamma \union \Delta_0)(Y_1) \join (\Gamma \union \Delta_1)(Z_1), \ldots]}}\\
+\end{align*}
+Judgement \fbox{$\typestep{\Gamma}{s}{\Delta}$}:
+\begin{align*}
+    &\rule{DF-Sink}{}{\typestep{\Gamma}{\sink{a}}{\emptyset}}\qquad
+    \rule{DF-Skip}{}{\typestep{\Gamma}{\skipcmd}{\emptyset}}\\
+    &\rule{DF-Assign}{\typestep{\Gamma}{a}{L}}{\typestep{\Gamma}{\defaultstore}{[X \mapsto L]}}\\% \text{($X \notin \Gamma$)}\\
+    &\rule{DF-Seq}{\typestep{\Gamma}{s_0}{\Delta_0}\qquad
+    \typestep{\Gamma \cup \Delta_0}{s_1}{\Delta_1}}{\typestep{\Gamma}{\defaultssaseq}{\Delta_0 \cup \Delta_1}}\\
+    &\rule{DF-If}{\typestep{\Gamma}{s_0}{\Delta_0}\qquad \typestep{\Gamma}{s_1}{\Delta_1}\qquad
+    \typestep{\Gamma;\Delta_0;\Delta_1}{\defaultphilist}{\Delta}}
+    {\typestep{\Gamma}{\defaultssaif}{\Delta}}\\
+    &\rule{DF-While}{\typestep{\Gamma;\emptyset;\Delta_1}{\defaultphilist}{\Delta}\qquad
+    \typestep{\Gamma \cup \Delta}{s_0}{\Delta_1}}
+    {\typestep{\Gamma}{\defaultssawhile}{\Delta}}
+\end{align*}
+
 \iffalse
 
 \subsection{The Dataflow Graph}
