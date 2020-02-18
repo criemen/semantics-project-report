@@ -177,22 +177,18 @@ from the commands denoted by $c$ in dIMP.
 At every point where $\varphi$ nodes can placed in the control flow graph
 of a dIMP program, the syntax of SSA-dIMP has an explicit list of $\varphi$ nodes.
 
+\subsubsection*{The SSA Type System}
 A program in SSA-dIMP is only valid if it conforms to the SSA properties.
-To enforce that, we describe a simple type system that describes the SSA properties.
-Thus, every variable definition dominates all of the uses of the variable.
-%, and the number of $\Phi$ nodes in the program is minimal.
-The easiest way to achieve this is to run a SSA construction algorithm on a dIMP program.
+To enforce that, we describe a simple type system.
+We require sets $\Gamma, \Delta$ of variable names that fulfill the rules below.
+We then show that these sets are enough to prove that the program is indeed in SSA form.
+The easiest way to get these sets is to run a SSA construction algorithm on a dIMP program.
 It is a gap in the provided proofs that we do not show that every dIMP program
 can be transformed in a valid SSA-dIMP program (especially, we omit showing that
-$\Phi$ nodes will be placed exactly at the places they are allowed in the syntax
+$\varphi$ nodes will be placed exactly at the places they are allowed in the syntax
 of SSA-dIMP).
 TODO conjecture
-
-\subsubsection*{The SSA property}
-TODO subsection or something
-To ensure that a program suffices the SSA property, i.e.\ that every definition dominates its use,
-we require sets $\Gamma$, $\Delta$ of variable names fulfilling the following rules:
-
+\\
 Judgement \fbox{$\typestmt{\Gamma}{a}$}:
 \begin{align*}
     &\rule{SSA-Num}{}{\typestmt{\Gamma}{n}}\qquad
@@ -275,6 +271,12 @@ Judgment \fbox{$\bigsteppr{\defaultphilist}{\store}{\store''}{\store'}$}:
     {\bigsteppr{\defaultphilistn}{\store}{\store''}{\storeassign{\store}{X_1 \mapsto \store''(Z_1),\ldots X_n \mapsto \store''(Z_n)}}}\\
 \end{align*}
 
+In order to correctly model the execution of $\varphi$ nodes for \textbf{while} commands,
+a second judgment is set up.
+The regular command judmenent only populates the variables defined by the $\varphi$ nodes
+and thend efers to a special while-command-judgement that evaluates all loop executions,
+evaluating the $\varphi$ nodes with the store after the loop body execution.
+
 \begin{landscape}
 With $\excstore{}: (\Loc \partialf \StoreDomain) \cup \{\exception\}$ we have the following rules for the
  judgment \fbox{$\bigstep{c}{\store}{\excstore{}}$}:
@@ -317,17 +319,18 @@ For while loops, we introduce a special judgment of the form \fbox{$\bigstepw{c}
     \bigsteppr{\defaultphilist}{\store}{\store'''}{\store''''} \ 
     \bigstepw{\defaultssawhile}{\store}{\store''''}{\excstore'}}
     {\bigstepw{\defaultssawhile}{\store}{\store''}{\excstore'}}\\
- \end{align*}
+\end{align*}
 \end{landscape}
-In order to correctly model the execution of $\varphi$ nodes for \textbf{while} commands,
-a second judgment is set up.
-The regular command judmenent only evaluates the first execution of the loop body
-(if any), where the variables are populated by the values as defined before the loop.
-Then it delegates to a special while-command-judgement that evaluates all other 
-loop executions, evaluating the $\varphi$ nodes with the store of the previous loop 
-iteration.
-
-\subsubsection*{TODO BLA PRoofs about }
+\begin{conjecture}
+    We conjecture that for every dIMP program $c$ with initial store $\initialstore$
+    such that $\bigstep{c}{\initialstore}{\exception}$ there exists a equivalent program
+    $s$ in SSA-dIMP with sets $\Gamma, \Delta$ and an initial store $\initialstore_0$ such that
+     $\bigstep{s}{\initialstore_0}{\exception}$ with
+    $\dom{\initialstore_0} = \Gamma$ and $\forall X \in \Gamma: \initialstore_0(X) = \initialstore(X)$.
+\end{conjecture}
+\subsubsection*{Proof that SSA-dIMP is in SSA Form}
+In this section we show that a SSA-dIMP program together with the SSA type derivation
+is in fact in SSA form.
 \begin{lemma}
     \label{lem:phi-ssa-derivation}
     For any derivation of form $\typestep{\Gamma;\Delta_0;\Delta_1}{\defaultphilistn}{\Delta}$
@@ -546,61 +549,73 @@ iteration.
     \end{align*}
     The result follows immediately from~\autoref{lem:phi-bs-derivation} applied to $\E_0$ with $\D_0$.
 \end{proof}
+%\begin{corollary}
+%    Following from these two theorems, it is immediately that in
+%    $\bigstep{s}{\store}{\store'}$ with $\typestep{\Gamma}{s}{\Delta}$ every variable is only 
+%    written to once, as $\Gamma \cap \Delta = \emptyset$ and $\store' = \store \dunion \sigma_0$
+%    with $\dom{\store_0} = \Delta$ implies that the result store for commands append-only.
+%\end{corollary}
+
 \subsection{Definition of Dataflow}
 \begin{definition}[Program]
     A \emph{program} in dIMP is a command $c$.
     Complex programs are expressed by using the recursive nature of
     the definition of commands.
-    Any program in dIMP can be transformed to be a program in SSA-dIMP.
+    Any program in dIMP can be transformed to be a program $s$ in SSA-dIMP with associated
+    sets $\Gamma, \Delta$.
 \end{definition}
 
 \begin{definition}[Initial Store]
     An \emph{initial store} is a store $\initialstore$ s.t.\ 
-    $\forall X: \exists n^c: \initialstore(X) = \clean{}$.
+    $\forall X: \exists n: \initialstore(X) = \clean[n]$.
     This means that in an initial store all values are flagged as being clean.
     We will implicitly denote inital stores by $\initialstore$.
 \end{definition}
 
 \begin{definition}[Dataflow]
-    A tuple $(c, \initialstore)$ of a program $c$ and initial store $\initialstore{}$ 
+    A tuple $(s, \initialstore, \Gamma, \Delta)$ of a program $s$ and initial store $\initialstore{}$ 
+    with $\dom{\initialstore{}} = \Gamma$
     has \emph{dataflow from the source to a sink} if
-    $\bigstep{c}{\initialstore{}}{\exception}$ holds.
+    $\bigstep{s}{\initialstore{}}{\exception}$ holds.
     This means that the program aborts.
 \end{definition}
 
 \begin{definition}[Dataflow Algorithm]
-    A \emph{dataflow algorithm} $\A(c)$ computes, given a program $c$,
+    A \emph{dataflow algorithm} $\A(s, \Gamma, \Delta)$ computes, given a program $s$
+    and a SSA type derivation $\typestep{\Gamma}{s}{\Delta}$,
     if there exists an initial store $\initialstore{}$ 
-    such that $(c, \initialstore)$ has dataflow from the source to a sink.
+    such that $(s, \initialstore, \Gamma, \Delta)$ has dataflow from the source to a sink.
+    $\A(s, \Gamma, \Delta) \in \{\text{HAS\_FLOW}, \text{NO\_FLOW}, \text{UNKOWN}\}$.
 \end{definition}
 
 \begin{definition}[Soundness]
-    A dataflow algorithm is \emph{sound} if for any tuple $(c, \initialstore)$ that
-    has dataflow it holds that $\A(c) = \text{HAS\_FLOW}$.
+    A dataflow algorithm is \emph{sound} if for any tuple $(s, \initialstore, \Gamma, \Delta)$ that
+    has dataflow it holds that $\A(s, \Gamma, \Delta) = \text{HAS\_FLOW}$.
 \end{definition}
 
 \begin{definition}[Completeness]
-    A dataflow algorithm is \emph{complete} if $\A(c) = \text{HAS\_FLOW}$
+    A dataflow algorithm is \emph{complete} if $\A(s, \Gamma, \Delta) = \text{HAS\_FLOW}$
     implies that there exists an initial store $\initialstore$
-     such that $(c, \initialstore)$ has dataflow.
+     such that $(s, \initialstore, \Gamma, \Delta)$ has dataflow.
 \end{definition}
 \begin{definition}[False Positive]
-    A program $c$ for which there exists no initial store $\initialstore$ such that 
-    $(c, \initialstore)$ has dataflow, but for which $\A(c) = \text{HAS\_FLOW}$ holds
+    A program $s$ for which there exists no initial store $\initialstore$ such that 
+    $(s, \initialstore, \Gamma, \Delta)$ has dataflow, but for which $\A(s, \Gamma, \Delta) = \text{HAS\_FLOW}$ holds
     is called a \emph{false positive} of the algorithm.
 \end{definition}
 \begin{remark}
     In general, it is impossible to construct a dataflow algorithm that is both 
     sound and complete.
-    In practice, a dataflow algorithm will be neither sound nor complete.
+    In practice, a dataflow algorithm may be neither sound nor complete.
     However, in the theoretical setting of this chapter, we are interested in 
     sound dataflow algorithms.
-    The \emph{trivially sound dataflow algorithm} $\A_0(c) = \text{HAS\_FLOW}$ 
+    The \emph{trivially sound dataflow algorithm} $\A_0(s, \Gamma, \Delta) = \text{HAS\_FLOW}$ 
     is sound by definition, but not very interesting.
     We will not consider it further, but it is interesting to keep in mind,
     because it shows that just proving that a dataflow algorithm is sound does not
     mean it is useful.    
 \end{remark}
+\iffalse
 
 \subsection{The Dataflow Graph}
 To aid the construction of dataflow algorithms, we define the concept
@@ -671,7 +686,6 @@ the edge set will be empty.
 
 %TODO: Add a second pass, like in QL, that starts at the sink nodes and thus
 %filters out edges that don't lead to any sink.
-\iffalse
 \subsubsection*{Soundness Proof}
 \begin{theorem}
     \label{thm:df-soundness}
