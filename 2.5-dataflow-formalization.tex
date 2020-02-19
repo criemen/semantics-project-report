@@ -29,9 +29,9 @@ as presented in section 2.1 of~\cite{sat}.
 %\newcommand{\clean}[1][n]{#1^\textbf{c}}
 %\newcommand{\tracked}[1][n]{#1^\textbf{t}}
 %\newcommand{\flagged}[1][n]{#1^f}
-\NewDocumentCommand{\clean}{O{n}+o}{#1[\textbf{c}\IfValueT{#2}{_#2}]}
-\NewDocumentCommand{\tracked}{O{n}+o}{#1[\textbf{t}\IfValueT{#2}{_#2}]}
-\NewDocumentCommand{\flagged}{O{n}+o}{#1[{f}\IfValueT{#2}{_#2}]}
+\NewDocumentCommand{\clean}{O{n}+o}{{#1}_{[\textbf{c}\IfValueT{#2}{_#2}]}}
+\NewDocumentCommand{\tracked}{O{n}+o}{{#1}_{[\textbf{t}\IfValueT{#2}{_#2}]}}
+\NewDocumentCommand{\flagged}{O{n}+o}{{#1}_{[{f}\IfValueT{#2}{_#2}]}}
 \newcommand{\source}[1]{\textbf{source }{#1}}
 \newcommand{\defaultsource}{\source{a}}
 \newcommand{\sink}[1]{\textbf{sink }{#1}}
@@ -55,15 +55,14 @@ as presented in section 2.1 of~\cite{sat}.
 \newcommand{\storecmd}[2]{{#1} \coloneqq {#2}}
 \newcommand{\defaultstore}{\storecmd{X}{a}}
 \newcommand{\phistore}[3]{{#1} \coloneqq \varphi({#2}, {#3})}
-% Do not use anymore!
-%\newcommand{\philist}{\Phi_{list}}
+\newcommand{\philist}{\Phi}
 \newcommand{\defaultphi}{\phistore{X_1}{Y_1}{Z_1}, \ldots}
 \newcommand{\defaultphilist}{[\defaultphi]}
 \newcommand{\defaultphilistn}{[\defaultphi, \phistore{X_n}{Y_n}{Z_n}]}
 \newcommand{\ssaif}[4]{\textbf{if }{#1} \textbf{ then }{#2}\textbf{ else }{#3};{#4}}
-\newcommand{\defaultssaif}{\ssaif{b}{s_0}{s_1}{\defaultphilist}}
+\newcommand{\defaultssaif}{\ssaif{b}{s_0}{s_1}{\philist}}
 \newcommand{\ssawhile}[3]{\textbf{while }#3;{#1} \textbf{ do } {#2}}
-\newcommand{\defaultssawhile}{\ssawhile{b}{s_0}{\defaultphilist}}
+\newcommand{\defaultssawhile}{\ssawhile{b}{s_0}{\philist}}
 \newcommand{\dunion}{\sqcup}
 \newcommand{\union}{\cup}
 \newcommand{\storeassign}[2]{{#1} \dunion [{#2}]}
@@ -83,7 +82,7 @@ and call the resulting language dIMP (for dataflow IMP):
     &a \Coloneqq \dots | \defaultsource\\
     &c \Coloneqq \dots | \defaultsink\\
 \end{align*}
-We define the set $\tilde{\textbf{Z}} =\{\flagged{} | n \in \textbf{Z}, f \in \{\textbf{c}, \textbf{t}\}\}$.
+We define the set $\tilde{\textbf{Z}} =\{\flagged{} \mid n \in \textbf{Z}, f \in \{\textbf{c}, \textbf{t}\}\}$.
 Stores are denoted with $\store \in \Sigma = \Loc \to \tilde{\textbf{Z}}$.
 Stores are function from locations to the set of tagged integer
 values.
@@ -175,8 +174,8 @@ from the commands denoted by $c$ in dIMP.
 \begin{align*}
     s \Coloneqq &\:\skipcmd \mid \defaultsink \mid \defaultstore \mid \defaultssaseq 
     \mid \defaultssaif\\
-    &\mid \defaultssawhile% \\
-    %\philist \Coloneqq &\:[] \mid \Phi_{node} : \philist\\
+    &\mid \defaultssawhile \\
+    \philist \Coloneqq &\: \defaultphilistn\\
     %\Phi_{node} \Coloneqq &\:X \coloneqq \varphi(Y, Z)
 \end{align*}
 At every point where $\varphi$ nodes can placed in the control flow graph
@@ -217,7 +216,7 @@ Judgement \fbox{$\typestmt{\Gamma}{b}$}:
     &\rule{SSA-And}{\typestmt{\Gamma}{b_1}\qquad\typestmt{\Gamma}{b_2}}
     {\typestmt{\Gamma}{b_1 \land b_2}}\\
 \end{align*}
-Judgement \fbox{$\typestep{\Gamma;\Delta_0;\Delta_1}{\defaultphilist}{\Delta}$}:
+Judgement \fbox{$\typestep{\Gamma;\Delta_0;\Delta_1}{\philist}{\Delta}$}:
 \begin{align*}
     &\rule{SSA-$\varphi$}{}{\typestep{\Gamma;\Delta_0;\Delta_1}{\defaultphilistn}{\{X_1, \ldots, X_n\}}}\\
     &\text{(if for $i \in \{1, \ldots, n\}: X_i \notin \Gamma \land Y_i \in \Gamma \cup \Delta_0 \land Z_i \in \Gamma \cup \Delta_1
@@ -231,9 +230,9 @@ Judgement \fbox{$\typestep{\Gamma}{s}{\Delta}$}:
     &\rule{SSA-Seq}{\typestep{\Gamma}{s_0}{\Delta_0}\qquad
     \typestep{\Gamma \cup \Delta_0}{s_1}{\Delta_1}}{\typestep{\Gamma}{\defaultssaseq}{\Delta_0 \cup \Delta_1}}\\
     &\rule{SSA-If}{\typestmt{\Gamma}{b}\qquad\typestep{\Gamma}{s_0}{\Delta_0}\qquad \typestep{\Gamma}{s_1}{\Delta_1}\qquad
-    \typestep{\Gamma;\Delta_0;\Delta_1}{\defaultphilist}{\Delta}}
+    \typestep{\Gamma;\Delta_0;\Delta_1}{\philist}{\Delta}}
     {\typestep{\Gamma}{\defaultssaif}{\Delta}}\\
-    &\rule{SSA-While}{\typestep{\Gamma;\emptyset;\Delta_1}{\defaultphilist}{\Delta}\qquad
+    &\rule{SSA-While}{\typestep{\Gamma;\emptyset;\Delta_1}{\philist}{\Delta}\qquad
     \typestmt{\Gamma \cup \Delta}{b}\qquad\typestep{\Gamma \cup \Delta}{s_0}{\Delta_1}}
     {\typestep{\Gamma}{\defaultssawhile}{\Delta}}
 \end{align*}
@@ -265,12 +264,12 @@ $\excstore{}: \Loc (\partialf \StoreDomain) \cup \{\exception\}$.
 For $\Phi$ nodes, we introduce to judgements - one that evaluates them to the first argument,
 and one that evalutes them to the second argument.
 \\
-Judgment \fbox{$\bigsteppl{\defaultphilist}{\store}{\store''}{\store'}$}:
+Judgment \fbox{$\bigsteppl{\philist}{\store}{\store''}{\store'}$}:
 \begin{align*}
     &\bsrule{E$\Phi_1$-Assign}{}
     {\bigsteppl{\defaultphilistn}{\store}{\store''}{\storeassign{\store}{X_1 \mapsto \store''(Y_1),\ldots X_n \mapsto \store''(Y_n)}}}\\
 \end{align*}
-Judgment \fbox{$\bigsteppr{\defaultphilist}{\store}{\store''}{\store'}$}:
+Judgment \fbox{$\bigsteppr{\philist}{\store}{\store''}{\store'}$}:
 \begin{align*}
     &\bsrule{E$\Phi_2$-Assign}{}
     {\bigsteppr{\defaultphilistn}{\store}{\store''}{\storeassign{\store}{X_1 \mapsto \store''(Z_1),\ldots X_n \mapsto \store''(Z_n)}}}\\
@@ -302,12 +301,12 @@ With $\excstore{}: (\Loc \partialf \StoreDomain) \cup \{\exception\}$ we have th
     \bsrule{EC-Assign}{\bigstep{a}{\store}{\flagged{}}}
     {\bigstep{\defaultstore}{\store}{\storeassign{\store}{X \mapsto \flagged{}]}}}\\
     &\bsrule{EC-IfT}{\bigstep{b}{\store}{\btrue}\qquad \bigstep{s_0}{\store}{\store''}
-    \qquad \bigsteppl{\defaultphilist}{\store}{\store''}{\store'}}
+    \qquad \bigsteppl{\philist}{\store}{\store''}{\store'}}
     {\bigstep{\defaultssaif}{\store}{\store'}}\\
     &\bsrule{EC-IfF}{\bigstep{b}{\store}{\bfalse}\qquad \bigstep{s_1}{\store}{\store''}
-    \qquad \bigsteppr{\defaultphilist}{\store}{\store''}{\store'}}
+    \qquad \bigsteppr{\philist}{\store}{\store''}{\store'}}
     {\bigstep{\defaultssaif}{\store}{\store'}}\\
-    &\bsrule{EC-While}{\bigsteppl{\defaultphilist}{\store}{\store}{\store''} \qquad
+    &\bsrule{EC-While}{\bigsteppl{\philist}{\store}{\store}{\store''} \qquad
     \bigstepw{\defaultssawhile}{\store}{\store''}{\excstore'}}
     {\bigstep{\defaultssawhile}{\store}{\excstore'}}\\
 \end{align*}
@@ -321,7 +320,7 @@ For while loops, we introduce a special judgment of the form \fbox{$\bigstepw{c}
     {\bigstepw{\defaultssawhile}{\store}{\store'}{\exception}}\\
     &\bsrule{EW-WhileT}{\bigstep{b}{\store''}{\btrue} \  
     \bigstep{s_0}{\store''}{\store'''} \  
-    \bigsteppr{\defaultphilist}{\store}{\store'''}{\store''''} \ 
+    \bigsteppr{\philist}{\store}{\store'''}{\store''''} \ 
     \bigstepw{\defaultssawhile}{\store}{\store''''}{\excstore'}}
     {\bigstepw{\defaultssawhile}{\store}{\store''}{\excstore'}}\\
 \end{align*}
@@ -400,13 +399,13 @@ is in fact in SSA form.
     \begin{align*}
         \D = \rule{SSA-If}{\typestmt{\Gamma}{b}\qquad
         \typestep{\Gamma}{s_0}{\Delta_0}\qquad \typestep{\Gamma}{s_1}{\Delta_1}\qquad
-        \typestep{\Gamma;\Delta_0;\Delta_1}{\defaultphilist}{\Delta}}
+        \typestep{\Gamma;\Delta_0;\Delta_1}{\philist}{\Delta}}
         {\typestep{\Gamma}{\defaultssaif}{\Delta}}
     \end{align*}
     The result follows with~\autoref{lem:phi-ssa-derivation}.\\
     \textbf{Case 6:}
     \begin{align*}
-        \D = \rule{SSA-While}{\typestep{\Gamma;\emptyset;\Delta_1}{\defaultphilist}{\Delta}\qquad
+        \D = \rule{SSA-While}{\typestep{\Gamma;\emptyset;\Delta_1}{\philist}{\Delta}\qquad
         \typestmt{\Gamma \cup \Delta}{b}\qquad\typestep{\Gamma \cup \Delta}{s_0}{\Delta_1}}
         {\typestep{\Gamma}{\defaultssawhile}{\Delta}}
     \end{align*}
@@ -444,14 +443,14 @@ is in fact in SSA form.
     \begin{landscape}
         \textbf{Case 3:}
         \begin{align*}
-            \D = \rule{SSA-While}{\overset{\D_0}{\typestep{\Gamma;\emptyset;\Delta_1}{\defaultphilist}{\Delta}}\qquad
+            \D = \rule{SSA-While}{\overset{\D_0}{\typestep{\Gamma;\emptyset;\Delta_1}{\philist}{\Delta}}\qquad
             \typestmt{\Gamma \cup \Delta}{b}\qquad
             \typestep{\Gamma \cup \Delta}{s_0}{\Delta_1}}
             {\typestep{\Gamma}{\defaultssawhile}{\Delta}}
         \end{align*}
         Then we have $s = \defaultssawhile$ and
         \begin{align*}
-            \E = \bsrule{EC-While}{\overset{\E_0}{\bigsteppl{\defaultphilist}{\store}{\store}{\store''}} \ 
+            \E = \bsrule{EC-While}{\overset{\E_0}{\bigsteppl{\philist}{\store}{\store}{\store''}} \ 
             \overset{\E_1}{\bigstepw{\defaultssawhile}{\store}{\store''}{\store'}}}
             {\bigstep{\defaultssawhile}{\store}{\store'}}
         \end{align*}
@@ -468,7 +467,7 @@ is in fact in SSA form.
         \begin{claimproof}
             Note that we have
             \begin{align*}
-                \D^w = \rule{SSA-While}{\overset{\D^w_0}{\typestep{\Gamma;\emptyset;\Delta_1}{\defaultphilist}{\Delta}}\qquad
+                \D^w = \rule{SSA-While}{\overset{\D^w_0}{\typestep{\Gamma;\emptyset;\Delta_1}{\philist}{\Delta}}\qquad
                 \typestmt{\Gamma \cup \Delta}{b}\qquad
                 \overset{\D^w_1}{\typestep{\Gamma \cup \Delta}{s_0}{\Delta_1}}}
                 {\typestep{\Gamma}{\defaultssawhile}{\Delta}}
@@ -483,7 +482,7 @@ is in fact in SSA form.
             \begin{align*}
                 \E^w = \bsrule{EW-WhileT}{\bigstep{b}{\Sigma''}{\btrue} \  
                 \bigstep{s_0}{\Sigma''}{\Sigma'''} \  
-                \overset{\E^w_0}{\bigsteppr{\defaultphilist}{\store}{\Sigma'''}{\Sigma''''}} \ 
+                \overset{\E^w_0}{\bigsteppr{\philist}{\store}{\Sigma'''}{\Sigma''''}} \ 
                 \bigstepw{\defaultssawhile}{\store}{\Sigma''''}{\Sigma'}}
                 {\bigstepw{\defaultssawhile}{\store}{\Sigma''}{\Sigma'}}
             \end{align*}
@@ -534,7 +533,7 @@ is in fact in SSA form.
     \begin{align*}
         \D = \rule{SSA-If}{\typestmt{\Gamma}{b}\qquad
         \typestep{\Gamma}{s_0}{\Delta_0}\qquad \typestep{\Gamma}{s_1}{\Delta_1}\qquad
-        \overset{\D_0}{\typestep{\Gamma;\Delta_0;\Delta_1}{\defaultphilist}{\Delta}}}
+        \overset{\D_0}{\typestep{\Gamma;\Delta_0;\Delta_1}{\philist}{\Delta}}}
         {\typestep{\Gamma}{\defaultssaif}{\Delta}}
     \end{align*}
     Then we have $s = \defaultssaif$ and
@@ -542,14 +541,14 @@ is in fact in SSA form.
     \textbf{Subcase 1}:
     \begin{align*}
         \E = \rule{SSA-IfT}{\bigstep{b}{\store}{\btrue}\qquad \bigstep{s_0}{\store}{\store''}
-        \qquad \overset{\E_0}{\bigsteppl{\defaultphilist}{\store}{\sigma''}{\sigma'}}}
+        \qquad \overset{\E_0}{\bigsteppl{\philist}{\store}{\sigma''}{\sigma'}}}
         {\bigstep{\defaultssaif}{\store}{\store'}}
     \end{align*}
     The result follows immediately from~\autoref{lem:phi-bs-derivation} applied to $\E_0$ with $\D_0$.\\
     \textbf{Subcase 2}:
     \begin{align*}
         \E = \rule{SSA-IfF}{\bigstep{b}{\store}{\bfalse}\qquad \bigstep{s_1}{\store}{\store''}
-        \qquad \overset{\E_0}{\bigsteppr{\defaultphilist}{\store}{\sigma''}{\sigma'}}}
+        \qquad \overset{\E_0}{\bigsteppr{\philist}{\store}{\sigma''}{\sigma'}}}
         {\bigstep{\defaultssaif}{\store}{\store'}}
     \end{align*}
     The result follows immediately from~\autoref{lem:phi-bs-derivation} applied to $\E_0$ with $\D_0$.
