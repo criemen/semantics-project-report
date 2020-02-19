@@ -63,7 +63,7 @@ as presented in section 2.1 of~\cite{sat}.
 \newcommand{\defaultssaif}{\ssaif{b}{s_0}{s_1}{\philist}}
 \newcommand{\ssawhile}[3]{\textbf{while }#3;{#1} \textbf{ do } {#2}}
 \newcommand{\defaultssawhile}{\ssawhile{b}{s_0}{\philist}}
-\newcommand{\dunion}{\sqcup}
+\newcommand{\dunion}{\mathbin{\mathaccent\cdot\cup}}
 \newcommand{\union}{\cup}
 \newcommand{\storeassign}[2]{{#1} \dunion [{#2}]}
 \newcommand{\leftphi}[1]{X_1 \mapsto {#1}(Y_1), \ldots}
@@ -121,7 +121,7 @@ There is a new judgment of the form
     \qquad \bigstep{a_1}{\store}{\flagged[n_1][1]}}
     {\bigstep{a_0 \times a_1}{\store}{\clean[(n_0 \times n_1)]}}\\
     &\bsrule{EA-Source}{\bigstep{a}{\store}{\flagged}}
-    {\bigstep{\source}{\store}{\tracked}}
+    {\bigstep{\source{a}}{\store}{\tracked}}
 \end{align*}
 
 The Judgment $\langle c, \sigma \rangle \downarrow \sigma'$ is replaced by 
