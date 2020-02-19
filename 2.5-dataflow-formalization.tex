@@ -285,24 +285,23 @@ The regular command judmenent only populates the variables defined by the $\varp
 and then defers to a special while-command-judgement that evaluates all loop executions,
 evaluating the $\varphi$ nodes with the store after the loop body execution.
 
-\begin{landscape}
-With $\excstore{}: (\Loc \partialf \StoreDomain) \cup \{\exception\}$ we have the following rules for the
+With $\excstore{}: (\Loc \partialf \StoreDomain) \union \{\exception\}$ we have the following rules for the
  judgment \fbox{$\bigstep{c}{\store}{\excstore{}}$}:
 \begin{align*}
     &\bsrule{EC-SinkAbrt}{\bigstep{a}{\store}{\tracked{}}}
     {\bigstep{\defaultsink}{\store}{\exception}} \qquad
     \bsrule{EC-Sink}{\bigstep{a}{\store}{\clean{}}}
     {\bigstep{\defaultsink}{\store}{\store}} \qquad
-    \bsrule{EC-Skip}{}{\bigstep{\skipcmd}{\store}{\store}}\qquad
-    \bsrule{EC-Seq}{\bigstep{s_0}{\sigma}{\store''} \qquad \bigstep{s_1}{\store''}{\excstore'}}
-    {\bigstep{\defaultssaseq}{\store}{\excstore'}}\\
-    &\bsrule{EC-SeqAbrt}{\bigstep{s_0}{\sigma}{\exception}}
-    {\bigstep{\defaultssaseq}{\store}{\exception}} \qquad
-    \bsrule{EC-IfTAbrt}{\bigstep{b}{\store}{\btrue}\qquad \bigstep{s_0}{\store}{\exception}}
+    \bsrule{EC-Skip}{}{\bigstep{\skipcmd}{\store}{\store}}\\
+    &\bsrule{EC-Seq}{\bigstep{s_0}{\sigma}{\store''} \qquad \bigstep{s_1}{\store''}{\excstore'}}
+    {\bigstep{\defaultssaseq}{\store}{\excstore'}}\qquad
+    \bsrule{EC-SeqAbrt}{\bigstep{s_0}{\sigma}{\exception}}
+    {\bigstep{\defaultssaseq}{\store}{\exception}} \\
+    &\bsrule{EC-IfTAbrt}{\bigstep{b}{\store}{\btrue}\qquad \bigstep{s_0}{\store}{\exception}}
     {\bigstep{\defaultssaif}{\store}{\exception}}\\
     &\bsrule{EC-IfFAbrt}{\bigstep{b}{\store}{\bfalse}\qquad \bigstep{s_1}{\store}{\exception}}
-    {\bigstep{\defaultssaif}{\store}{\exception}}\qquad
-    \bsrule{EC-Assign}{\bigstep{a}{\store}{\flagged{}}}
+    {\bigstep{\defaultssaif}{\store}{\exception}}\\
+    &\bsrule{EC-Assign}{\bigstep{a}{\store}{\flagged{}}}
     {\bigstep{\defaultstore}{\store}{\storeassign{\store}{X \mapsto \flagged{}]}}}\\
     &\bsrule{EC-IfT}{\bigstep{b}{\store}{\btrue}\qquad \bigstep{s_0}{\store}{\store''}
     \qquad \bigsteppl{\philist}{\dom\store}{\store''}{\store'}}
@@ -315,20 +314,19 @@ With $\excstore{}: (\Loc \partialf \StoreDomain) \cup \{\exception\}$ we have th
     {\bigstep{\defaultssawhile}{\store}{\excstore'}}\\
 \end{align*}
 
-For while loops, we introduce a special judgment of the form \fbox{$\bigstepw{c}{\filter}{\store''}{\excstore'{}}$}:
+For while loops, we introduce a special judgment of the form \fbox{$\bigstepw{c}{\filter}{\store}{\excstore'{}}$}:
 \begin{align*}
     &\bsrule{EW-WhileF}{\bigstep{b}{\store}{\bfalse}}
-    {\bigstepw{\defaultssawhile}{\filter}{\store}{\store}}\qquad
-    \bsrule{EW-WhileTAbrt}{\bigstep{b}{\store}{\btrue} \qquad 
+    {\bigstepw{\defaultssawhile}{\filter}{\store}{\store}}\qquad\\
+    &\bsrule{EW-WhileTAbrt}{\bigstep{b}{\store}{\btrue} \qquad 
     \bigstep{s_0}{\store}{\exception}}
     {\bigstepw{\defaultssawhile}{\filter}{\store}{\exception}}\\
-    &\bsrule{EW-WhileT}{\bigstep{b}{\store}{\btrue} \  
-    \bigstep{s_0}{\store}{\store''} \  
-    \bigsteppr{\philist}{\filter}{\store''}{\store'''} \ 
+    &\bsrule{EW-WhileT}{\bigstep{b}{\store}{\btrue} \enskip
+    \bigstep{s_0}{\store}{\store''} \enskip
+    \bigsteppr{\philist}{\filter}{\store''}{\store'''} \enskip
     \bigstepw{\defaultssawhile}{\filter}{\store'''}{\excstore'}}
-    {\bigstepw{\defaultssawhile}{\filter}{\store}{\excstore'}}\\
+    {\bigstepw{\defaultssawhile}{\filter}{\store}{\excstore'}}
 \end{align*}
-\end{landscape}
 \begin{conjecture}
     We conjecture that for every dIMP program $c$ with initial store $\initialstore$
     such that $\bigstep{c}{\initialstore}{\exception}$ there exists a equivalent program
@@ -336,6 +334,140 @@ For while loops, we introduce a special judgment of the form \fbox{$\bigstepw{c}
      $\bigstep{s}{\initialstore_0}{\exception}$ with
     $\dom{\initialstore_0} = \Gamma$ and $\forall X \in \Gamma: \initialstore_0(X) = \initialstore(X)$.
 \end{conjecture}
+
+We state that a SSA-dIMP program together with the SSA type derivation
+is in fact in SSA form - each variable is defined only once.
+Furthermore, the structure of the bigstep derivation trees imply that 
+for every bigstep derivation, all variables are defined before they are used.
+Proofs are omitted, as we prove these theorems in greater generality later.
+
+\begin{theorem}
+    \label{thm:gamma-delta-disjoint}
+    If $\typestep{\Gamma}{s}{\Delta}$ holds, then $\Gamma \cap \Delta = \emptyset$.
+\end{theorem}
+
+\begin{theorem}
+    If $\typestep{\Gamma}{s}{\Delta}$, $\text{dom } \store = \Gamma$ and
+    $\bigstep{s}{\store}{\store'}$, then $\store' = \store \dunion \store_0$
+    and $\dom{\store_0} = \Delta$.
+\end{theorem}
+
+\subsection{Definition of Dataflow}
+\begin{definition}[Program]
+    A \emph{program} in dIMP is a command $c$.
+    Complex programs are expressed by using the recursive nature of
+    the definition of commands.
+    Any program in dIMP can be transformed to be a program $s$ in SSA-dIMP with associated
+    sets $\Gamma, \Delta$.
+\end{definition}
+
+\begin{definition}[Initial Store]
+    An \emph{initial store} is a store $\initialstore$ s.t.\ 
+    $\forall X: \exists n: \initialstore(X) = \clean[n]$.
+    This means that in an initial store all values are flagged as being clean.
+    We will implicitly denote inital stores by $\initialstore$.
+\end{definition}
+
+\begin{definition}[Dataflow]
+    A tuple $(s, \initialstore, \Gamma, \Delta)$ of a program $s$ and initial store $\initialstore{}$ 
+    with $\dom{\initialstore{}} = \Gamma$
+    has \emph{dataflow from the source to a sink} if
+    $\bigstep{s}{\initialstore{}}{\exception}$ holds.
+    This means that the program aborts.
+\end{definition}
+
+\begin{definition}[Dataflow Algorithm]
+    A \emph{dataflow algorithm} $\A(s, \Gamma, \Delta)$ computes, given a program $s$
+    and a SSA type derivation $\typestep{\Gamma}{s}{\Delta}$,
+    if there exists an initial store $\initialstore{}$ 
+    such that $(s, \initialstore, \Gamma, \Delta)$ has dataflow from the source to a sink.
+    $\A(s, \Gamma, \Delta) \in \{\text{HAS\_FLOW}, \text{NO\_FLOW}, \text{UNKOWN}\}$.
+\end{definition}
+
+\begin{definition}[Soundness]
+    A dataflow algorithm is \emph{sound} if for any tuple $(s, \initialstore, \Gamma, \Delta)$ that
+    has dataflow it holds that $\A(s, \Gamma, \Delta) = \text{HAS\_FLOW}$ or
+    $\A(s, \Gamma, \Delta) = \text{UNKNOWN}$.
+\end{definition}
+
+\begin{definition}[Completeness]
+    A dataflow algorithm is \emph{complete} if $\A(s, \Gamma, \Delta) = \text{HAS\_FLOW}$
+    implies that there exists an initial store $\initialstore$
+     such that $(s, \initialstore, \Gamma, \Delta)$ has dataflow.
+\end{definition}
+\begin{definition}[False Positive]
+    A program $s$ for which there exists no initial store $\initialstore$ such that 
+    $(s, \initialstore, \Gamma, \Delta)$ has dataflow, but for which $\A(s, \Gamma, \Delta) = \text{HAS\_FLOW}$ holds
+    is called a \emph{false positive} of the algorithm.
+\end{definition}
+\begin{remark}
+    In general, it is impossible to construct a dataflow algorithm that is both 
+    sound and complete.
+    In practice, a dataflow algorithm may be neither sound nor complete.
+    However, in the theoretical setting of this chapter, we are interested in 
+    sound dataflow algorithms.
+    The \emph{trivially sound dataflow algorithm} $\A_0(s, \Gamma, \Delta) = \text{UNKOWN}$ 
+    is sound by definition, but not very interesting.
+    We will not consider it further, but it is interesting to keep in mind,
+    because it shows that just proving that a dataflow algorithm is sound does not
+    mean it is useful.    
+\end{remark}
+
+\subsection{A Dataflow Algorithm}
+In this section, we present a dataflow algorithm.
+Then we will prove that this algorithm is a sound dataflow algorithm.
+The algorithm is presented in terms of type analysis, i.e.\ every statement in 
+SSA-dIMP gets a dataflow type associated with it.
+
+Let $\lattice = \{\lclean, \ltracked, \lunknown\}$ and
+$\Gamma, \Delta: \Loc \partialf \lattice$.
+Every variable encountered in the program is marked with a value in the finite join-semilattice
+\lattice.
+Thus, it is either marked with \lclean (the variable
+is clean, i.e.\ does not contain a value originating from a dataflow source), \lunknown
+(it is unknown whether the variable contains a value originating from a source) or \ltracked
+(the variable contains a tracked value from a dataflow source).
+We define the following poset structure on it:
+TODO nice picture, \lunknown is the top element, no bottom element.
+Then the join operator $\join: \lattice \times \lattice \to \lattice$ is 
+obviously defined.
+
+We define the following rules:\\
+Judgement \fbox{$\typestep{\Gamma}{a}{\lattice}$}:
+\begin{align*}
+    &\rule{DF-Num}{}{\typestep{\Gamma}{n}{\lclean}}\qquad
+    \rule{DF-Loc}{}{\typestep{\Gamma}{X}{\Gamma(X)}}\qquad%\text{($X \in \Gamma$)}\qquad
+    \rule{DF-Source}{}{\typestep{\Gamma}{\source{a}}{\ltracked}}\\
+    &\rule{DF-Plus}{}{\typestep{\Gamma}{a_0+a_1}{\lclean}}\quad
+    \rule{DF-Minus}{}{\typestep{\Gamma}{a_0-a_1}{\lclean}}\quad
+    \rule{DF-Times}{}{\typestep{\Gamma}{a_0 \times a_1}{\lclean}}
+\end{align*}
+Judgement \fbox{$\typestep{\Gamma;\Delta_0;\Delta_1}{\defaultphilist}{\Delta}$}:
+\begin{align*}
+    &\rule{DF-$\varphi$}{}{\typestep{\Gamma;\Delta_0;\Delta_1}{\defaultphilist}
+    {[X_1 \mapsto (\Gamma \union \Delta_0)(Y_1) \join (\Gamma \union \Delta_1)(Z_1), \ldots]}}\\
+\end{align*}
+Judgement \fbox{$\typestep{\Gamma}{s}{\Delta}$}:
+\begin{align*}
+    &\rule{DF-Sink}{}{\typestep{\Gamma}{\sink{a}}{\emptyset}}\qquad
+    \rule{DF-Skip}{}{\typestep{\Gamma}{\skipcmd}{\emptyset}}\\
+    &\rule{DF-Assign}{\typestep{\Gamma}{a}{L}}{\typestep{\Gamma}{\defaultstore}{[X \mapsto L]}}\\% \text{($X \notin \Gamma$)}\\
+    &\rule{DF-Seq}{\typestep{\Gamma}{s_0}{\Delta_0}\qquad
+    \typestep{\Gamma \cup \Delta_0}{s_1}{\Delta_1}}{\typestep{\Gamma}{\defaultssaseq}{\Delta_0 \cup \Delta_1}}\\
+    &\rule{DF-If}{\typestep{\Gamma}{s_0}{\Delta_0}\qquad \typestep{\Gamma}{s_1}{\Delta_1}\qquad
+    \typestep{\Gamma;\Delta_0;\Delta_1}{\defaultphilist}{\Delta}}
+    {\typestep{\Gamma}{\defaultssaif}{\Delta}}\\
+    &\rule{DF-While}{\typestep{\Gamma;\emptyset;\Delta_1}{\defaultphilist}{\Delta}\qquad
+    \typestep{\Gamma \cup \Delta}{s_0}{\Delta_1}}
+    {\typestep{\Gamma}{\defaultssawhile}{\Delta}}
+\end{align*}
+
+
+
+% Use these proofs as inspiration for the blue part, but they are not correct anymore with the
+% new changes to the semantics (filters for phi nodes)
+\iffalse
+% TODO what does "is in SSA form" mean?
 \subsubsection*{Proof that SSA-dIMP is in SSA Form}
 In this section we show that a SSA-dIMP program together with the SSA type derivation
 is in fact in SSA form.
@@ -563,116 +695,7 @@ is in fact in SSA form.
 %    written to once, as $\Gamma \cap \Delta = \emptyset$ and $\store' = \store \dunion \sigma_0$
 %    with $\dom{\store_0} = \Delta$ implies that the result store for commands append-only.
 %\end{corollary}
-
-\subsection{Definition of Dataflow}
-\begin{definition}[Program]
-    A \emph{program} in dIMP is a command $c$.
-    Complex programs are expressed by using the recursive nature of
-    the definition of commands.
-    Any program in dIMP can be transformed to be a program $s$ in SSA-dIMP with associated
-    sets $\Gamma, \Delta$.
-\end{definition}
-
-\begin{definition}[Initial Store]
-    An \emph{initial store} is a store $\initialstore$ s.t.\ 
-    $\forall X: \exists n: \initialstore(X) = \clean[n]$.
-    This means that in an initial store all values are flagged as being clean.
-    We will implicitly denote inital stores by $\initialstore$.
-\end{definition}
-
-\begin{definition}[Dataflow]
-    A tuple $(s, \initialstore, \Gamma, \Delta)$ of a program $s$ and initial store $\initialstore{}$ 
-    with $\dom{\initialstore{}} = \Gamma$
-    has \emph{dataflow from the source to a sink} if
-    $\bigstep{s}{\initialstore{}}{\exception}$ holds.
-    This means that the program aborts.
-\end{definition}
-
-\begin{definition}[Dataflow Algorithm]
-    A \emph{dataflow algorithm} $\A(s, \Gamma, \Delta)$ computes, given a program $s$
-    and a SSA type derivation $\typestep{\Gamma}{s}{\Delta}$,
-    if there exists an initial store $\initialstore{}$ 
-    such that $(s, \initialstore, \Gamma, \Delta)$ has dataflow from the source to a sink.
-    $\A(s, \Gamma, \Delta) \in \{\text{HAS\_FLOW}, \text{NO\_FLOW}, \text{UNKOWN}\}$.
-\end{definition}
-
-\begin{definition}[Soundness]
-    A dataflow algorithm is \emph{sound} if for any tuple $(s, \initialstore, \Gamma, \Delta)$ that
-    has dataflow it holds that $\A(s, \Gamma, \Delta) = \text{HAS\_FLOW}$ or
-    $\A(s, \Gamma, \Delta) = \text{UNKNOWN}$.
-\end{definition}
-
-\begin{definition}[Completeness]
-    A dataflow algorithm is \emph{complete} if $\A(s, \Gamma, \Delta) = \text{HAS\_FLOW}$
-    implies that there exists an initial store $\initialstore$
-     such that $(s, \initialstore, \Gamma, \Delta)$ has dataflow.
-\end{definition}
-\begin{definition}[False Positive]
-    A program $s$ for which there exists no initial store $\initialstore$ such that 
-    $(s, \initialstore, \Gamma, \Delta)$ has dataflow, but for which $\A(s, \Gamma, \Delta) = \text{HAS\_FLOW}$ holds
-    is called a \emph{false positive} of the algorithm.
-\end{definition}
-\begin{remark}
-    In general, it is impossible to construct a dataflow algorithm that is both 
-    sound and complete.
-    In practice, a dataflow algorithm may be neither sound nor complete.
-    However, in the theoretical setting of this chapter, we are interested in 
-    sound dataflow algorithms.
-    The \emph{trivially sound dataflow algorithm} $\A_0(s, \Gamma, \Delta) = \text{UNKOWN}$ 
-    is sound by definition, but not very interesting.
-    We will not consider it further, but it is interesting to keep in mind,
-    because it shows that just proving that a dataflow algorithm is sound does not
-    mean it is useful.    
-\end{remark}
-
-\subsection{A Dataflow Algorithm}
-In this section, we present a dataflow algorithm.
-Then we will prove that this algorithm is a sound dataflow algorithm.
-The algorithm is presented in terms of type analysis, i.e.\ every statement in 
-SSA-dIMP gets a dataflow type associated with it.
-
-Let $\lattice = \{\lclean, \ltracked, \lunknown\}$ and
-$\Gamma, \Delta: \Loc \partialf \lattice$.
-Every variable encountered in the program is marked with a value in the finite join-semilattice
-\lattice.
-Thus, it is either marked with \lclean (the variable
-is clean, i.e.\ does not contain a value originating from a dataflow source), \lunknown
-(it is unknown whether the variable contains a value originating from a source) or \ltracked
-(the variable contains a tracked value from a dataflow source).
-We define the following poset structure on it:
-TODO nice picture, \lunknown is the top element, no bottom element.
-Then the join operator $\join: \lattice \times \lattice \to \lattice$ is 
-obviously defined.
-
-We define the following rules:\\
-Judgement \fbox{$\typestep{\Gamma}{a}{\lattice}$}:
-\begin{align*}
-    &\rule{DF-Num}{}{\typestep{\Gamma}{n}{\lclean}}\qquad
-    \rule{DF-Loc}{}{\typestep{\Gamma}{X}{\Gamma(X)}}\qquad%\text{($X \in \Gamma$)}\qquad
-    \rule{DF-Source}{}{\typestep{\Gamma}{\source{a}}{\ltracked}}\\
-    &\rule{DF-Plus}{}{\typestep{\Gamma}{a_0+a_1}{\lclean}}\quad
-    \rule{DF-Minus}{}{\typestep{\Gamma}{a_0-a_1}{\lclean}}\quad
-    \rule{DF-Times}{}{\typestep{\Gamma}{a_0 \times a_1}{\lclean}}
-\end{align*}
-Judgement \fbox{$\typestep{\Gamma;\Delta_0;\Delta_1}{\defaultphilist}{\Delta}$}:
-\begin{align*}
-    &\rule{DF-$\varphi$}{}{\typestep{\Gamma;\Delta_0;\Delta_1}{\defaultphilist}
-    {[X_1 \mapsto (\Gamma \union \Delta_0)(Y_1) \join (\Gamma \union \Delta_1)(Z_1), \ldots]}}\\
-\end{align*}
-Judgement \fbox{$\typestep{\Gamma}{s}{\Delta}$}:
-\begin{align*}
-    &\rule{DF-Sink}{}{\typestep{\Gamma}{\sink{a}}{\emptyset}}\qquad
-    \rule{DF-Skip}{}{\typestep{\Gamma}{\skipcmd}{\emptyset}}\\
-    &\rule{DF-Assign}{\typestep{\Gamma}{a}{L}}{\typestep{\Gamma}{\defaultstore}{[X \mapsto L]}}\\% \text{($X \notin \Gamma$)}\\
-    &\rule{DF-Seq}{\typestep{\Gamma}{s_0}{\Delta_0}\qquad
-    \typestep{\Gamma \cup \Delta_0}{s_1}{\Delta_1}}{\typestep{\Gamma}{\defaultssaseq}{\Delta_0 \cup \Delta_1}}\\
-    &\rule{DF-If}{\typestep{\Gamma}{s_0}{\Delta_0}\qquad \typestep{\Gamma}{s_1}{\Delta_1}\qquad
-    \typestep{\Gamma;\Delta_0;\Delta_1}{\defaultphilist}{\Delta}}
-    {\typestep{\Gamma}{\defaultssaif}{\Delta}}\\
-    &\rule{DF-While}{\typestep{\Gamma;\emptyset;\Delta_1}{\defaultphilist}{\Delta}\qquad
-    \typestep{\Gamma \cup \Delta}{s_0}{\Delta_1}}
-    {\typestep{\Gamma}{\defaultssawhile}{\Delta}}
-\end{align*}
+\fi
 
 \iffalse
 
