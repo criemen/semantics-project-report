@@ -344,7 +344,7 @@ for every bigstep derivation, all variables are defined before they are used.
 Proofs are omitted, as we prove these theorems in greater generality later.
 
 \begin{theorem}
-    \label{thm:gamma-delta-disjoint}
+    %\label{thm:gamma-delta-disjoint}
     If $\typestep{\Gamma}{s}{\Delta}$ holds, then $\Gamma \cap \Delta = \emptyset$.
 \end{theorem}
 
@@ -384,6 +384,9 @@ Proofs are omitted, as we prove these theorems in greater generality later.
     if there exists an initial store $\initialstore{}$ 
     such that $(s, \initialstore, \Gamma, \Delta)$ has dataflow from the source to a sink.
     $\A(s, \Gamma, \Delta) \in \{\text{HAS\_FLOW}, \text{NO\_FLOW}, \text{UNKOWN}\}$.
+    TODO: Do we really want unkown here? HAS FLOW is no guarantee, as dead code/unreachable paths 
+    are still reported as HAS FLOW, not as UNKOWN
+%    \text{HAS\_FLOW} indicates that it is ver
 \end{definition}
 
 \begin{definition}[Soundness]
@@ -399,7 +402,8 @@ Proofs are omitted, as we prove these theorems in greater generality later.
 \end{definition}
 \begin{definition}[False Positive]
     A program $s$ for which there exists no initial store $\initialstore$ such that 
-    $(s, \initialstore, \Gamma, \Delta)$ has dataflow, but for which $\A(s, \Gamma, \Delta) = \text{HAS\_FLOW}$ holds
+    $(s, \initialstore, \Gamma, \Delta)$ has dataflow, but for which $\A(s, \Gamma, \Delta) = \text{HAS\_FLOW}$
+    or $\A(s, \Gamma, \Delta) = \text{UNKOWN}$ holds
     is called a \emph{false positive} of the algorithm.
 \end{definition}
 \begin{remark}
@@ -488,6 +492,52 @@ Judgement \fbox{$\typestep{\Gamma}{s}{\Delta}$}:
     \typestmt{\Gamma \cup \Delta}{b}\qquad\typestep{\Gamma \cup \Delta}{s_0}{\Delta_1}}
     {\typestep{\Gamma}{\defaultssawhile}{\Delta}}
 \end{align*}
+
+We have the following properties of these rules:
+\begin{theorem}
+    \label{thm:gamma-delta-disjoint}
+    If $\typestep{\Gamma}{s}{\Delta}$ holds, then $\dom\Gamma \cap \dom\Delta = \emptyset$.
+\end{theorem}
+
+\begin{theorem}
+    If $\typestep{\Gamma}{s}{\Delta}$, $\dom\store = \dom\Gamma$ and
+    $\bigstep{s}{\store}{\store'}$, then $\store' = \store \dunion \store_0$
+    and $\dom{\store_0} = \Delta$.
+    TODO flags of store need to match the Gamma
+\end{theorem}
+
+We also want the following (general) soundness property:
+\begin{theorem}
+    Let $(s, \Gamma_s, \Delta_s)$ be a program in SSA form and let $\store_s$ be a store
+    with $\dom\store_s = \Gamma_s$.
+    Let $\bigstep{s}{\store_s}{\excstore{}_s}$ be the bigstep derivation.
+    Let $\Gamma: \Loc \partialf \lattice$ be defined by TODO.
+    If $\excstore{}' = \exception$, then
+    the derivation of $\typestep{\Gamma}{s}{\Delta}$ using the DF ruleset
+    contains at least one derivation of the form
+    \begin{equation*}
+        \rule{DF-Sink}{\typestep{\Gamma}{a}{L}}{\typestep{\Gamma}{\sink{a}}{\emptyset}}
+    \end{equation*}
+    where $L = \lunknown$ or $L = \ltracked$.
+\end{theorem}
+\begin{corollary}
+    Let $(s, \Gamma_s, \Delta_s)$ be a program in SSA form and define $\Gamma$ by
+    \begin{align*}
+        \Gamma: &\Gamma_s \to \lattice\\
+        &X \mapsto \lclean
+    \end{align*}
+    define gamma as clean
+    Let $\D$ be the derivation of $\typestep{\Gamma}{s}{\Delta}$ using the DF rules.
+    The algorithm that outputs \text{HAS\_FLOW} if $\D$ contains a derivation of form
+    \begin{equation*}
+        \rule{DF-Sink}{\typestep{\Gamma}{a}{\ltracked}}{\typestep{\Gamma}{\sink{a}}{\emptyset}}
+    \end{equation*}
+    and, in the absence of that, outputs \text{UNKOWN} if $\D$ contains a derivation of form
+    \begin{equation*}
+        \rule{DF-Sink}{\typestep{\Gamma}{a}{\lunknown}}{\typestep{\Gamma}{\sink{a}}{\emptyset}}
+    \end{equation*}
+    and, in the absence of that, outputs \text{NO\_FLOW} is a sound dataflow algorithm.
+\end{corollary}
 
 \iffalse
 \subsection{A Dataflow Algorithm}
