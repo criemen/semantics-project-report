@@ -73,7 +73,10 @@ as presented in section 2.1 of~\cite{sat}.
 \newcommand{\lclean}{\textbf{c}}
 \newcommand{\lunknown}{\textbf{u}}
 \newcommand{\ltracked}{\textbf{t}}
-\newcommand{\join}{\bigsqcup}
+\newcommand{\join}{\mathbin\sqcup}
+% refine Join to be the unary lattice join
+\let\Join\undefined
+\newcommand{\Join}{\mathop\bigsqcup}
 \newcommand{\restrict}[1]{\raisebox{-.5ex}{$|$}_{#1}}
 \newcommand{\filter}{\Theta}
 
@@ -193,7 +196,6 @@ It is a gap in the provided proofs that we do not show that every dIMP program
 can be transformed in a valid SSA-dIMP program (especially, we omit showing that
 $\varphi$ nodes will be placed exactly at the places they are allowed in the syntax
 of SSA-dIMP).
-TODO conjecture
 \\
 Judgement \fbox{$\typestmt{\Gamma}{a}$}:
 \begin{align*}
@@ -413,6 +415,81 @@ Proofs are omitted, as we prove these theorems in greater generality later.
     mean it is useful.    
 \end{remark}
 
+\subsection{A General Setting For Flow Analysis}
+In this section, we extend the type system presented for SSA to be viable as a
+general-purpose constraint system.
+This constraint system can then be solved via fixed-point iteration.
+The system is designed in a way that it can be easily adapted to different analyses.
+We instantiate this system to determine if programs have dataflow.
+
+Let $\lattice$ be a poset.
+Let $\Join: \lattice \times \lattice \partialf \lattice$ be the (partially defined)
+join operator on the poset.
+We require that its domain is maximal, i.e. if $L_1, L_2 \in \lattice$ have a least upper
+bound, it is $L_1 \join L_2$.
+Let $\Gamma, \Delta: \Loc \partialf \lattice$.
+
+For dataflow analysis, we have $\lattice = \{\lclean, \ltracked, \lunknown\}$.
+Every variable encountered in the program is marked with a value in \lattice.
+Thus, it is either marked with \lclean{} (the variable
+is clean, i.e.\ does not contain a value originating from a dataflow source), \lunknown{}
+(it is unknown whether the variable contains a value originating from a source) or \ltracked{}
+(the variable contains a tracked value from a dataflow source).
+We define the following poset structure on it:
+TODO nice picture, \lunknown{} is the top element, no bottom element.
+Then the join operator is defined on the whole poset.
+
+We introduce the following judgements.
+\\
+Judgement \fbox{$\typestep{\Gamma}{a}{L}$}:
+\begin{align*}
+    &\rule{DF-Num}{}{\typestep{\Gamma}{n}{\lclean}}\qquad
+    \rule{DF-Loc}{}{\typestep{\Gamma}{X}{\Gamma(X)}}\qquad
+    \rule{DF-Source}{\typestep{\Gamma}{a}{L}}
+    {\typestep{\Gamma}{\source{a}}{\ltracked}}\\
+    &\rule{DF-Plus}{\typestep{\Gamma}{a_0}{L_0}\qquad\typestep{\Gamma}{a_1}{L_1}}
+    {\typestep{\Gamma}{a_0+a_1}{\lclean}}\qquad
+    \rule{DF-Minus}{\typestep{\Gamma}{a_0}{L_0}\qquad\typestep{\Gamma}{a_1}{L_1}}
+    {\typestep{\Gamma}{a_0-a_1}{\lclean}}\\
+    &\rule{DF-Times}{\typestep{\Gamma}{a_0}{L_0}\qquad\typestep{\Gamma}{a_1}{L_1}}
+    {\typestep{\Gamma}{a_0 \times a_1}{\lclean}}
+\end{align*}
+Judgement \fbox{$\typestmt{\Gamma}{b}$}:
+\begin{align*}
+    &\rule{DF-Eq}{\typestep{\Gamma}{a_0}{L_0}\qquad \typestep{\Gamma}{a_1}{L_1}}
+    {\typestmt{\Gamma}{a_0 = a_1}}\qquad
+    \rule{DF-Leq}{\typestep{\Gamma}{a_0}{L_0}\qquad \typestep{\Gamma}{a_1}{L_1}}
+    {\typestmt{\Gamma}{a_0 \leq a_1}}\qquad
+    \rule{DF-Neg}{\typestmt{\Gamma}{b}}
+    {\typestmt{\Gamma}{\neg b}}\\
+    &\rule{DF-And}{\typestmt{\Gamma}{b_1}\qquad\typestmt{\Gamma}{b_2}}
+    {\typestmt{\Gamma}{b_1 \land b_2}}\\
+\end{align*}
+Judgement \fbox{$\typestep{\Gamma;\Delta_0;\Delta_1}{\philist}{\Delta}$}:
+\begin{align*}
+    &\rule{DF-$\varphi$}{}{\typestep{\Gamma;\Delta_0;\Delta_1}{\defaultphilistn}{[X_1 \mapsto L_1, \ldots, X_n \mapsto L_n]}}\\
+    &\text{(if for $i \in \{1, \ldots, n\}: X_i \notin \dom\Gamma \land L_i = (\Gamma \dunion \Delta_0)(Y_i) \join (\Gamma \dunion \Delta_1)(Z_i)
+    \land \forall j \neq i: X_j \neq X_i$)}
+\end{align*}
+Note that this implies that this rule is only applicable if $Y_i$, $Z_i$ exist in the respective
+domains of the partial functions, and if the join exists as well.\\
+Judgement \fbox{$\typestep{\Gamma}{s}{\Delta}$}:
+\begin{align*}
+    &\rule{DF-Sink}{\typestep{\Gamma}{a}{L}}{\typestep{\Gamma}{\sink{a}}{\emptyset}}\qquad
+    \rule{DF-Skip}{}{\typestep{\Gamma}{\skipcmd}{\emptyset}}\\
+    &\rule{DF-Assign}{\typestep{\Gamma}{a}{L}}
+    {\typestep{\Gamma}{\defaultstore}{[X \mapsto L]}} \text{($X \notin \dom\Gamma$)}\\
+    &\rule{DF-Seq}{\typestep{\Gamma}{s_0}{\Delta_0}\qquad
+    \typestep{\Gamma \cup \Delta_0}{s_1}{\Delta_1}}{\typestep{\Gamma}{\defaultssaseq}{\Delta_0 \cup \Delta_1}}\\
+    &\rule{DF-If}{\typestmt{\Gamma}{b}\qquad\typestep{\Gamma}{s_0}{\Delta_0}\qquad \typestep{\Gamma}{s_1}{\Delta_1}\qquad
+    \typestep{\Gamma;\Delta_0;\Delta_1}{\philist}{\Delta}}
+    {\typestep{\Gamma}{\defaultssaif}{\Delta}}\\
+    &\rule{DF-While}{\typestep{\Gamma;\emptyset;\Delta_1}{\philist}{\Delta}\qquad
+    \typestmt{\Gamma \cup \Delta}{b}\qquad\typestep{\Gamma \cup \Delta}{s_0}{\Delta_1}}
+    {\typestep{\Gamma}{\defaultssawhile}{\Delta}}
+\end{align*}
+
+\iffalse
 \subsection{A Dataflow Algorithm}
 In this section, we present a dataflow algorithm.
 Then we will prove that this algorithm is a sound dataflow algorithm.
@@ -461,7 +538,7 @@ Judgement \fbox{$\typestep{\Gamma}{s}{\Delta}$}:
     \typestep{\Gamma \cup \Delta}{s_0}{\Delta_1}}
     {\typestep{\Gamma}{\defaultssawhile}{\Delta}}
 \end{align*}
-
+\fi
 
 
 % Use these proofs as inspiration for the blue part, but they are not correct anymore with the
