@@ -73,7 +73,9 @@ as presented in section 2.1 of~\cite{sat}.
 \newcommand{\lclean}{\textbf{c}}
 \newcommand{\lunknown}{\textbf{u}}
 \newcommand{\ltracked}{\textbf{t}}
-\newcommand{\join}{\lor}
+\newcommand{\join}{\bigsqcup}
+\newcommand{\restrict}[1]{\raisebox{-.5ex}{$|$}_{#1}}
+\newcommand{\filter}{\Theta}
 
 \subsection{Syntax and Semantic of dIMP}
 We extend the syntax of IMP a little bit
@@ -261,24 +263,26 @@ $\excstore{}: \Loc (\partialf \StoreDomain) \cup \{\exception\}$.
 %where the evaluation of $\philist$ 
 %is combined with the variables in the store $\sigma$.
 % TODO cleanup
-For $\Phi$ nodes, we introduce to judgements - one that evaluates them to the first argument,
+For $\varphi$ nodes, we introduce to judgements - one that evaluates them to the first argument,
 and one that evalutes them to the second argument.
+Both judgements are provided with a filter $\filter$ that specifies which variables 
+to keep from the outer store.
 \\
-Judgment \fbox{$\bigsteppl{\philist}{\store}{\store''}{\store'}$}:
+Judgment \fbox{$\bigsteppl{\philist}{\filter}{\store}{\store'}$}:
 \begin{align*}
     &\bsrule{E$\Phi_1$-Assign}{}
-    {\bigsteppl{\defaultphilistn}{\store}{\store''}{\storeassign{\store}{X_1 \mapsto \store''(Y_1),\ldots X_n \mapsto \store''(Y_n)}}}\\
+    {\bigsteppl{\defaultphilistn}{\filter}{\store}{\storeassign{\store\restrict{\filter}}{X_1 \mapsto \store(Y_1),\ldots X_n \mapsto \store(Y_n)}}}\\
 \end{align*}
-Judgment \fbox{$\bigsteppr{\philist}{\store}{\store''}{\store'}$}:
+Judgment \fbox{$\bigsteppr{\philist}{\filter}{\store}{\store'}$}:
 \begin{align*}
     &\bsrule{E$\Phi_2$-Assign}{}
-    {\bigsteppr{\defaultphilistn}{\store}{\store''}{\storeassign{\store}{X_1 \mapsto \store''(Z_1),\ldots X_n \mapsto \store''(Z_n)}}}\\
+    {\bigsteppr{\defaultphilistn}{\filter}{\store}{\storeassign{\store\restrict{\filter}}{X_1 \mapsto \store(Z_1),\ldots X_n \mapsto \store(Z_n)}}}\\
 \end{align*}
 
 In order to correctly model the execution of $\varphi$ nodes for \textbf{while} commands,
 a second judgment is set up.
 The regular command judmenent only populates the variables defined by the $\varphi$ nodes
-and thend efers to a special while-command-judgement that evaluates all loop executions,
+and then defers to a special while-command-judgement that evaluates all loop executions,
 evaluating the $\varphi$ nodes with the store after the loop body execution.
 
 \begin{landscape}
@@ -301,28 +305,28 @@ With $\excstore{}: (\Loc \partialf \StoreDomain) \cup \{\exception\}$ we have th
     \bsrule{EC-Assign}{\bigstep{a}{\store}{\flagged{}}}
     {\bigstep{\defaultstore}{\store}{\storeassign{\store}{X \mapsto \flagged{}]}}}\\
     &\bsrule{EC-IfT}{\bigstep{b}{\store}{\btrue}\qquad \bigstep{s_0}{\store}{\store''}
-    \qquad \bigsteppl{\philist}{\store}{\store''}{\store'}}
+    \qquad \bigsteppl{\philist}{\dom\store}{\store''}{\store'}}
     {\bigstep{\defaultssaif}{\store}{\store'}}\\
     &\bsrule{EC-IfF}{\bigstep{b}{\store}{\bfalse}\qquad \bigstep{s_1}{\store}{\store''}
-    \qquad \bigsteppr{\philist}{\store}{\store''}{\store'}}
+    \qquad \bigsteppr{\philist}{\dom\store}{\store''}{\store'}}
     {\bigstep{\defaultssaif}{\store}{\store'}}\\
-    &\bsrule{EC-While}{\bigsteppl{\philist}{\store}{\store}{\store''} \qquad
+    &\bsrule{EC-While}{\bigsteppl{\philist}{\dom\store}{\store}{\store''} \qquad
     \bigstepw{\defaultssawhile}{\store}{\store''}{\excstore'}}
     {\bigstep{\defaultssawhile}{\store}{\excstore'}}\\
 \end{align*}
 
-For while loops, we introduce a special judgment of the form \fbox{$\bigstepw{c}{\store}{\store''}{\excstore'{}}$}:
+For while loops, we introduce a special judgment of the form \fbox{$\bigstepw{c}{\filter}{\store''}{\excstore'{}}$}:
 \begin{align*}
-    &\bsrule{EW-WhileF}{\bigstep{b}{\store'}{\bfalse}}
-    {\bigstepw{\defaultssawhile}{\store}{\store'}{\store'}}\qquad
-    \bsrule{EW-WhileTAbrt}{\bigstep{b}{\store'}{\btrue} \qquad 
-    \bigstep{s_0}{\store'}{\exception}}
-    {\bigstepw{\defaultssawhile}{\store}{\store'}{\exception}}\\
-    &\bsrule{EW-WhileT}{\bigstep{b}{\store''}{\btrue} \  
-    \bigstep{s_0}{\store''}{\store'''} \  
-    \bigsteppr{\philist}{\store}{\store'''}{\store''''} \ 
-    \bigstepw{\defaultssawhile}{\store}{\store''''}{\excstore'}}
-    {\bigstepw{\defaultssawhile}{\store}{\store''}{\excstore'}}\\
+    &\bsrule{EW-WhileF}{\bigstep{b}{\store}{\bfalse}}
+    {\bigstepw{\defaultssawhile}{\filter}{\store}{\store}}\qquad
+    \bsrule{EW-WhileTAbrt}{\bigstep{b}{\store}{\btrue} \qquad 
+    \bigstep{s_0}{\store}{\exception}}
+    {\bigstepw{\defaultssawhile}{\filter}{\store}{\exception}}\\
+    &\bsrule{EW-WhileT}{\bigstep{b}{\store}{\btrue} \  
+    \bigstep{s_0}{\store}{\store''} \  
+    \bigsteppr{\philist}{\filter}{\store''}{\store'''} \ 
+    \bigstepw{\defaultssawhile}{\filter}{\store'''}{\excstore'}}
+    {\bigstepw{\defaultssawhile}{\filter}{\store}{\excstore'}}\\
 \end{align*}
 \end{landscape}
 \begin{conjecture}
@@ -594,7 +598,8 @@ is in fact in SSA form.
 
 \begin{definition}[Soundness]
     A dataflow algorithm is \emph{sound} if for any tuple $(s, \initialstore, \Gamma, \Delta)$ that
-    has dataflow it holds that $\A(s, \Gamma, \Delta) = \text{HAS\_FLOW}$.
+    has dataflow it holds that $\A(s, \Gamma, \Delta) = \text{HAS\_FLOW}$ or
+    $\A(s, \Gamma, \Delta) = \text{UNKNOWN}$.
 \end{definition}
 
 \begin{definition}[Completeness]
@@ -613,7 +618,7 @@ is in fact in SSA form.
     In practice, a dataflow algorithm may be neither sound nor complete.
     However, in the theoretical setting of this chapter, we are interested in 
     sound dataflow algorithms.
-    The \emph{trivially sound dataflow algorithm} $\A_0(s, \Gamma, \Delta) = \text{HAS\_FLOW}$ 
+    The \emph{trivially sound dataflow algorithm} $\A_0(s, \Gamma, \Delta) = \text{UNKOWN}$ 
     is sound by definition, but not very interesting.
     We will not consider it further, but it is interesting to keep in mind,
     because it shows that just proving that a dataflow algorithm is sound does not
