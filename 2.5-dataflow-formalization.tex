@@ -500,10 +500,21 @@ We have the following properties of these rules:
 \end{theorem}
 
 \begin{theorem}
-    If $\typestep{\Gamma}{s}{\Delta}$, $\dom\store = \dom\Gamma$ and
-    $\bigstep{s}{\store}{\store'}$, then $\store' = \store \dunion \store_0$
-    and $\dom{\store_0} = \Delta$.
-    TODO flags of store need to match the Gamma
+    Let $\bigstep{s}{\store}{\store'}$, define $\Gamma: \dom\store \partialf \lattice$ by
+    \begin{align*}
+        \Gamma(X) \mapsto \begin{cases}
+            \lclean & \text{if $\exists n \in \Z: \store(X) = \clean$}\\
+            \ltracked & \text{if $\exists n \in \Z: \store(X) = \tracked{}$}\\
+        \end{cases}
+    \end{align*}
+    and let $\typestep{\Gamma}{s}{\Delta}$.
+    Then we have that $\store' = \store \dunion \store_0$,
+    $\dom\store_0 = \dom\Delta$
+    and that $\Delta$ correctly describes the tracking status of the variables in $\store_0$:
+    \begin{align*}
+        \forall X: \exists n \in \Z: (\Delta(X) = \lclean \implies \store_0(X) = \clean) 
+        \land (\Delta(X) = \ltracked \implies \store_0(X) = \tracked)
+    \end{align*}
 \end{theorem}
 
 We also want the following (general) soundness property:
@@ -511,7 +522,13 @@ We also want the following (general) soundness property:
     Let $(s, \Gamma_s, \Delta_s)$ be a program in SSA form and let $\store_s$ be a store
     with $\dom\store_s = \Gamma_s$.
     Let $\bigstep{s}{\store_s}{\excstore{}_s}$ be the bigstep derivation.
-    Let $\Gamma: \Loc \partialf \lattice$ be defined by TODO.
+    Let $\Gamma: \Gamma_s \partialf \lattice$ be defined by
+    \begin{align*}
+        \Gamma(X) \mapsto \begin{cases}
+            \lclean & \text{if $\exists n \in \Z: \store_s(X) = \clean$}\\
+            \ltracked & \text{if $\exists n \in \Z: \store_s(X) = \tracked{}$}\\
+        \end{cases}
+    \end{align*}
     If $\excstore{}' = \exception$, then
     the derivation of $\typestep{\Gamma}{s}{\Delta}$ using the DF ruleset
     contains at least one derivation of the form
@@ -536,7 +553,7 @@ We also want the following (general) soundness property:
     \begin{equation*}
         \rule{DF-Sink}{\typestep{\Gamma}{a}{\lunknown}}{\typestep{\Gamma}{\sink{a}}{\emptyset}}
     \end{equation*}
-    and, in the absence of that, outputs \text{NO\_FLOW} is a sound dataflow algorithm.
+    and, in the absence of that, outputs \text{NO\_FLOW}, is a sound dataflow algorithm.
 \end{corollary}
 
 \iffalse
