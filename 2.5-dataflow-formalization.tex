@@ -509,55 +509,86 @@ We have the following properties of these rules:
 \end{theorem}
 
 \begin{theorem}[Preservation-ish]
+    \label{thm:preservation}
     Let $\bigstep{s}{\store}{\store'}$, $\store$ matches the description $\Gamma$,
     and let $\typestep{\Gamma}{s}{\Delta}$ by the DF rules.
     Then we have that $\store' = \store \dunion \store_0$,
     and $\store_0$ matches the description $\Delta$.
 \end{theorem}
-%\begin{theorem}
-%    TODO do we need this?
-%    Let $\typestep{\Gamma}{s}{\Delta}$ be a derivation using the DF rules with $X \in \dom\Delta$.
-%    The either $s$ is a command defining $X$ (so it is either an assignment to $X$ or $s$ contains a $\varphi$-node defining $X$),
-%    or there exists a subcommand $s_0$ of $s$ with $\typestep{\Gamma_0}{s_0}{\Delta_0}$ and $\Delta_0(X) = \Delta(X)$.
-%\end{theorem}
-\begin{theorem}[Progress-Ish I]
-    Let $\E$ be the derivation tree of $\bigstep{s_s}{\store_s}{\store_s'}$.
-    Let $\Gamma_s$ be a description that is matching $\store_s$ and
-    $\D_s$ the derivation $\typestep{\Gamma_s}{s_s}{\Delta_s}$.
-    Then for all subderivations $\E$ of $\bigstep{s}{\store}{\store'}$ in $\E$
-    we have that there exists $\Gamma$ matching $\store$
-    in the subderivation $\D$ of $\typestep{\Gamma}{s}{\Delta}$ in $\D_s$.
-\end{theorem}
-\begin{theorem}[Progress-Ish II]
-    Let $\E$ be the derivation tree of $\bigstep{s_s}{\store_s}{\store_s'}$.
-    Let $\Gamma_s$ be a description that is matching $\store_s$ and
-    $\D_s$ the derivation $\typestep{\Gamma_s}{s_s}{\Delta_s}$.
-    Then for all subderivations $\E$ of $\bigstep{a}{\store}{\flagged{}}$ in $\E$
-    we have that there exists $\Gamma$ matching $\store$
-    in the subderivation $\D$ of $\typestmt{\Gamma}{a}$ in $\D_s$.
-\end{theorem}
 
-
+\begin{theorem}[Progress-Ish]
+    \label{thm:progress}
+    Let $\E$ be the derivation tree of $\bigstep{s}{\store}{\store'}$.
+    Let $\Gamma$ be a description that is matching $\store$ and
+    $\D$ the derivation $\typestep{\Gamma}{s}{\Delta}$.
+    Then for all subderivations $\E_s$ of form $\bigstep{s_s}{\store_s}{\store'_s}$ in $\E$
+    we have that there exists $\Gamma_s$ matching $\store_s$
+    in the subderivation $\D_s$ of $\typestep{\Gamma_s}{s_s}{\Delta_s}$ in $\D$.
+    For all subderivations $\E_a$ of form $\bigstep{a}{\store_a}{\flagged{}}$ in $\E$
+    we have that there exists $\Gamma_a$ matching $\store_a$
+    in the subderivation $\D$ of $\typestep{\Gamma_a}{a}{L}$ in $\D_a$.
+    TODO add about booleans!
+    Add two lemmas that do the work for boolean+arithmetic.
+\end{theorem}
+\begin{proof}
+    Proof by induction over the derivation of $\E$.\\
+    \textbf{Case 1:}
+    Skip\\
+    \textbf{Case 2:}
+    Sink\\
+    \textbf{Case 3:}
+    \begin{align*}
+        &\E = \bsrule{EC-Seq}{\overset{\E_0}{\bigstep{s_0}{\sigma}{\store''}}
+         \qquad \overset{\E_1}{\bigstep{s_1}{\store''}{\store'}}}
+        {\bigstep{\defaultssaseq}{\store}{\store'}}\\
+        &\D = \rule{DF-Seq}{\overset{\D_0}{\typestep{\Gamma}{s_0}{\Delta_0}}\qquad
+        \overset{\D_1}{\typestep{\Gamma \cup \Delta_0}{s_1}{\Delta_1}}}
+        {\typestep{\Gamma}{\defaultssaseq}{\Delta_0 \cup \Delta_1}}
+    \end{align*}
+    By assumption we have that $\Gamma$ matches $\store$.
+    Thus, we can apply the IH on $\E_0$ with $\D_0$.
+    By~\autoref{thm:preservation} we get that $\store'' = \store \dunion \store_0$
+    and $\Delta_0$ matches $\store_0$.
+    Thus, $\Gamma \union \Delta_0$ matches $\store''$
+    and we can apply the IH on $\E_1$ with $\D_1$.\\
+    \textbf{Case 4:}
+    \begin{align*}
+        &\E = \bsrule{EC-IfT}{\bigstep{b}{\store}{\btrue}\qquad 
+        \overset{\E_0}{\bigstep{s_0}{\store}{\store''}}
+        \qquad \bigsteppl{\philist}{\dom\store}{\store''}{\store'}}
+        {\bigstep{\defaultssaif}{\store}{\store'}}\\
+        &\D = \rule{DF-If}{\typestmt{\Gamma}{b}\qquad
+        \overset{\D_0}{\typestep{\Gamma}{s_0}{\Delta_0}}\qquad \typestep{\Gamma}{s_1}{\Delta_1}\qquad
+        \typestep{\Gamma;\Delta_0;\Delta_1}{\philist}{\Delta}}
+        {\typestep{\Gamma}{\defaultssaif}{\Delta}}
+    \end{align*}
+    Then we apply the IH on $\E_0$ with $\D_0$.
+    \textbf{Case 5:}
+    $\E$ uses \textsc{EC-IfF}: analoguous.\\
+    \textbf{Case 6:}
+    \begin{align*}
+        &\E = \bsrule{EC-Assign}{\overset{\E_0}{\bigstep{a}{\store}{\flagged{}}}}
+        {\bigstep{\defaultstore}{\store}{\store{}[X \mapsto \flagged{}]}}\\
+        &\D = \rule{DF-Assign}{\overset{\D_0}{\typestep{\Gamma}{a}{L}}}
+        {\typestep{\Gamma}{\defaultstore}{[X \mapsto L]}}
+    \end{align*}
+    Then, because $\Gamma$ matches $\store$ by assumption we get that it still matches $\store$
+    in all subexpressions $a_0$ of $a$ in $\typestep{\Gamma}{a_0}{L}$.
+    {\color{red} Andrzej: This is a bit hand-wavy bit the entire induction over arithmetic expressions would
+    be really boring to see. Do you think this is okay?}\\
+    \textbf{Case 7:}\\
+    \begin{align*}
+        &\E = \bsrule{EC-While}{\bigsteppl{\philist}{\dom\store}{\store}{\store''} \qquad
+        \bigstepw{\defaultssawhile}{\store}{\store''}{\excstore'}}
+        {\bigstep{\defaultssawhile}{\store}{\excstore'}}\\
+        &\D = \rule{DF-While}{\typestep{\Gamma;\emptyset;\Delta_1}{\philist}{\Delta}\qquad
+        \typestmt{\Gamma \cup \Delta}{b}\qquad\typestep{\Gamma \cup \Delta}{s_0}{\Delta_1}}
+        {\typestep{\Gamma}{\defaultssawhile}{\Delta}}
+    \end{align*}
+    TODO we need a lemma here about the while judgement.
+\end{proof}
 
 We also have the following (general) soundness property of the dataflow analysis:
-
-\begin{lemma}
-    Let $(s, \Gamma_{ssa}, \Delta_{ssa})$ be a program in SSA form and let $\store_s$ be a store
-    with $\dom\store_s = \Gamma_{ssa}$.
-    Let $\E_s$ be the bigstep derivation of $\bigstep{s}{\store_s}{\excstore{}_s}$.
-    Let $\store_s$ match the description $\Gamma_s$
-    and $\D_s$ be the derivation of $\typestep{\Gamma_s}{s}{\Delta_s}$.
-    If 
-    \begin{align*}
-        \E = \bsrule{EA-Loc}{}{\bigstep{X}{\store}{\store(X)}}
-    \end{align*} 
-    with $\store(X) = \tracked{}$ is a part of the derivation tree $\E_s$,
-    the corresponding derivation of the read from $X$ in $\D_s$
-    \begin{align*}
-        \D = \rule{DF-Loc}{}{\typestep{\Gamma}{X}{\Gamma(X)}}
-    \end{align*}
-    has $\Gamma(X) = \lunknown$ or $\Gamma(X) = \ltracked$.
-\end{lemma}
 \begin{theorem}
     Let $(s, \Gamma_{ssa}, \Delta_{ssa})$ be a program in SSA form and let $\store_s$ be a store
     with $\dom\store_s = \Gamma_{ssa}$.
@@ -612,7 +643,7 @@ We also have the following (general) soundness property of the dataflow analysis
         \D_0 = \rule{DF-Loc}{}{\typestep{\Gamma}{X}{\Gamma(X)}}
     \end{align*}
     Obviously we have $\store(X) = \tracked$.
-    By TODO ref Progress-Ish II, we get that $\Gamma$ matches $\store$, so we get 
+    By~\autoref{thm:progress} we get that $\Gamma$ matches $\store$, so we get 
     $\Gamma(X) = \ltracked$ or $\Gamma(X)= \lunknown$ as desired.
 \end{proof}
 
@@ -622,7 +653,6 @@ We also have the following (general) soundness property of the dataflow analysis
         \Gamma: &\Gamma_s \to \lattice\\
         &X \mapsto \lclean
     \end{align*}
-    define gamma as clean
     Let $\D$ be the derivation of $\typestep{\Gamma}{s}{\Delta}$ using the DF rules.
     The algorithm that outputs \text{HAS\_FLOW} if $\D$ contains a derivation of form
     \begin{equation*}
