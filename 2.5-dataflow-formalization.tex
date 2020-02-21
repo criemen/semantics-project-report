@@ -494,49 +494,128 @@ Judgement \fbox{$\typestep{\Gamma}{s}{\Delta}$}:
 \end{align*}
 
 We have the following properties of these rules:
+\begin{definition}[Store-Matching]
+    A store $\store$ \emph{matches a description} $\Gamma: \Loc \partialf \lattice$ if it holds that 
+    $\dom\store = \dom\Gamma$ and
+    \begin{align*}
+        \forall X: \exists n \in \Z: (\Gamma(X) = \ltracked \implies \store(X) = \tracked)
+        \land (\Gamma(X) = \lclean \implies \store(X) = \clean)
+    \end{align*}
+\end{definition}
+
 \begin{theorem}
     \label{thm:gamma-delta-disjoint}
     If $\typestep{\Gamma}{s}{\Delta}$ holds, then $\dom\Gamma \cap \dom\Delta = \emptyset$.
 \end{theorem}
 
-\begin{theorem}
-    Let $\bigstep{s}{\store}{\store'}$, define $\Gamma: \dom\store \partialf \lattice$ by
-    \begin{align*}
-        \Gamma(X) \mapsto \begin{cases}
-            \lclean & \text{if $\exists n \in \Z: \store(X) = \clean$}\\
-            \ltracked & \text{if $\exists n \in \Z: \store(X) = \tracked{}$}\\
-        \end{cases}
-    \end{align*}
-    and let $\typestep{\Gamma}{s}{\Delta}$.
+\begin{theorem}[Preservation-ish]
+    Let $\bigstep{s}{\store}{\store'}$, $\store$ matches the description $\Gamma$,
+    and let $\typestep{\Gamma}{s}{\Delta}$ by the DF rules.
     Then we have that $\store' = \store \dunion \store_0$,
-    $\dom\store_0 = \dom\Delta$
-    and that $\Delta$ correctly describes the tracking status of the variables in $\store_0$:
-    \begin{align*}
-        \forall X: \exists n \in \Z: (\Delta(X) = \lclean \implies \store_0(X) = \clean) 
-        \land (\Delta(X) = \ltracked \implies \store_0(X) = \tracked)
-    \end{align*}
+    and $\store_0$ matches the description $\Delta$.
+\end{theorem}
+%\begin{theorem}
+%    TODO do we need this?
+%    Let $\typestep{\Gamma}{s}{\Delta}$ be a derivation using the DF rules with $X \in \dom\Delta$.
+%    The either $s$ is a command defining $X$ (so it is either an assignment to $X$ or $s$ contains a $\varphi$-node defining $X$),
+%    or there exists a subcommand $s_0$ of $s$ with $\typestep{\Gamma_0}{s_0}{\Delta_0}$ and $\Delta_0(X) = \Delta(X)$.
+%\end{theorem}
+\begin{theorem}[Progress-Ish I]
+    Let $\E$ be the derivation tree of $\bigstep{s_s}{\store_s}{\store_s'}$.
+    Let $\Gamma_s$ be a description that is matching $\store_s$ and
+    $\D_s$ the derivation $\typestep{\Gamma_s}{s_s}{\Delta_s}$.
+    Then for all subderivations $\E$ of $\bigstep{s}{\store}{\store'}$ in $\E$
+    we have that there exists $\Gamma$ matching $\store$
+    in the subderivation $\D$ of $\typestep{\Gamma}{s}{\Delta}$ in $\D_s$.
+\end{theorem}
+\begin{theorem}[Progress-Ish II]
+    Let $\E$ be the derivation tree of $\bigstep{s_s}{\store_s}{\store_s'}$.
+    Let $\Gamma_s$ be a description that is matching $\store_s$ and
+    $\D_s$ the derivation $\typestep{\Gamma_s}{s_s}{\Delta_s}$.
+    Then for all subderivations $\E$ of $\bigstep{a}{\store}{\flagged{}}$ in $\E$
+    we have that there exists $\Gamma$ matching $\store$
+    in the subderivation $\D$ of $\typestmt{\Gamma}{a}$ in $\D_s$.
 \end{theorem}
 
-We also want the following (general) soundness property:
-\begin{theorem}
-    Let $(s, \Gamma_s, \Delta_s)$ be a program in SSA form and let $\store_s$ be a store
-    with $\dom\store_s = \Gamma_s$.
-    Let $\bigstep{s}{\store_s}{\excstore{}_s}$ be the bigstep derivation.
-    Let $\Gamma: \Gamma_s \partialf \lattice$ be defined by
+
+
+We also have the following (general) soundness property of the dataflow analysis:
+
+\begin{lemma}
+    Let $(s, \Gamma_{ssa}, \Delta_{ssa})$ be a program in SSA form and let $\store_s$ be a store
+    with $\dom\store_s = \Gamma_{ssa}$.
+    Let $\E_s$ be the bigstep derivation of $\bigstep{s}{\store_s}{\excstore{}_s}$.
+    Let $\store_s$ match the description $\Gamma_s$
+    and $\D_s$ be the derivation of $\typestep{\Gamma_s}{s}{\Delta_s}$.
+    If 
     \begin{align*}
-        \Gamma(X) \mapsto \begin{cases}
+        \E = \bsrule{EA-Loc}{}{\bigstep{X}{\store}{\store(X)}}
+    \end{align*} 
+    with $\store(X) = \tracked{}$ is a part of the derivation tree $\E_s$,
+    the corresponding derivation of the read from $X$ in $\D_s$
+    \begin{align*}
+        \D = \rule{DF-Loc}{}{\typestep{\Gamma}{X}{\Gamma(X)}}
+    \end{align*}
+    has $\Gamma(X) = \lunknown$ or $\Gamma(X) = \ltracked$.
+\end{lemma}
+\begin{theorem}
+    Let $(s, \Gamma_{ssa}, \Delta_{ssa})$ be a program in SSA form and let $\store_s$ be a store
+    with $\dom\store_s = \Gamma_{ssa}$.
+    Let $\E_s$ be the bigstep derivation of $\bigstep{s}{\store_s}{\excstore{}_s}$.
+    Let $\Gamma_s: \Gamma_{ssa} \partialf \lattice$ be defined by
+    \begin{align*}
+        \Gamma_s(X) \mapsto \begin{cases}
             \lclean & \text{if $\exists n \in \Z: \store_s(X) = \clean$}\\
             \ltracked & \text{if $\exists n \in \Z: \store_s(X) = \tracked{}$}\\
         \end{cases}
     \end{align*}
     If $\excstore{}' = \exception$, then
-    the derivation of $\typestep{\Gamma}{s}{\Delta}$ using the DF ruleset
-    contains at least one derivation of the form
+    the derivation tree $\D_s$ of $\typestep{\Gamma_{s}}{s}{\Delta_s}$ using the DF ruleset
+    contains at least one sub-derivation of the form
     \begin{equation*}
-        \rule{DF-Sink}{\typestep{\Gamma}{a}{L}}{\typestep{\Gamma}{\sink{a}}{\emptyset}}
+        \D_t = \rule{DF-Sink}{\typestep{\Gamma_t}{a_t}{L_t}}{\typestep{\Gamma_t}{\sink{a_t}}{\emptyset}}
     \end{equation*}
-    where $L = \lunknown$ or $L = \ltracked$.
+    where $L_t = \lunknown$ or $L_t = \ltracked$.
 \end{theorem}
+\begin{proof}
+    If $\excstore{}' = \exception$, then there exists a sub-command $\defaultsink$ of $s$
+    such that there exists a store $\store$, $\Gamma$, $L \in \lattice$ and a sub-derivation tree $\E$ of $\E_s$
+    such that
+    \begin{align*}
+        \E = \bsrule{EC-SinkAbrt}{\overset{\E_0}{\bigstep{a}{\store}{\tracked{}}}}
+        {\bigstep{\defaultsink}{\store}{\exception}}
+    \end{align*}
+    and
+    \begin{align*}
+        \D = \rule{DF-Sink}{\overset{\D_0}{\typestep{\Gamma}{a}{L}}}
+        {\typestep{\Gamma}{\sink{a}}{\emptyset}}
+    \end{align*}
+    Let $\D$ be the derivation tree of $\typestep{\Gamma}{\defaultsink}{\Delta}$.
+    Then we have two cases, depending on $a$:\\
+    \textbf{Case 1:}
+    \begin{align*}
+        \E_0 = \bsrule{EA-Source}{\bigstep{a_0}{\store}{\flagged}}
+        {\bigstep{\source{a_0}}{\store}{\tracked}}
+    \end{align*}
+    Then we get
+    \begin{align*}
+        \D_0 = \rule{DF-Source}{\typestep{\Gamma}{a_0}{L_0}}
+        {\typestep{\Gamma}{\source{a_0}}{\ltracked}}
+    \end{align*}
+    and with $L_t = \ltracked, \Gamma_t = \Gamma$ the theorem follows.\\
+    \textbf{Case 2:}
+    \begin{align*}
+        \E_0 = \bsrule{EA-Loc}{}{\bigstep{X}{\store}{\store(X)}}
+    \end{align*}
+    Then we have 
+    \begin{align*}
+        \D_0 = \rule{DF-Loc}{}{\typestep{\Gamma}{X}{\Gamma(X)}}
+    \end{align*}
+    Obviously we have $\store(X) = \tracked$.
+    By TODO ref Progress-Ish II, we get that $\Gamma$ matches $\store$, so we get 
+    $\Gamma(X) = \ltracked$ or $\Gamma(X)= \lunknown$ as desired.
+\end{proof}
+
 \begin{corollary}
     Let $(s, \Gamma_s, \Delta_s)$ be a program in SSA form and define $\Gamma$ by
     \begin{align*}
