@@ -304,7 +304,7 @@ With $\excstore{}: (\Loc \partialf \StoreDomain) \union \{\exception\}$ we have 
     &\bsrule{EC-IfFAbrt}{\bigstep{b}{\store}{\bfalse}\qquad \bigstep{s_1}{\store}{\exception}}
     {\bigstep{\defaultssaif}{\store}{\exception}}\\
     &\bsrule{EC-Assign}{\bigstep{a}{\store}{\flagged{}}}
-    {\bigstep{\defaultstore}{\store}{\storeassign{\store}{X \mapsto \flagged{}]}}}\\
+    {\bigstep{\defaultstore}{\store}{\storeassign{\store}{X \mapsto \flagged{}}}}\\
     &\bsrule{EC-IfT}{\bigstep{b}{\store}{\btrue}\qquad \bigstep{s_0}{\store}{\store''}
     \qquad \bigsteppl{\philist}{\dom\store}{\store''}{\store'}}
     {\bigstep{\defaultssaif}{\store}{\store'}}\\
@@ -312,7 +312,7 @@ With $\excstore{}: (\Loc \partialf \StoreDomain) \union \{\exception\}$ we have 
     \qquad \bigsteppr{\philist}{\dom\store}{\store''}{\store'}}
     {\bigstep{\defaultssaif}{\store}{\store'}}\\
     &\bsrule{EC-While}{\bigsteppl{\philist}{\dom\store}{\store}{\store''} \qquad
-    \bigstepw{\defaultssawhile}{\store}{\store''}{\excstore'}}
+    \bigstepw{\defaultssawhile}{\dom\store}{\store''}{\excstore'}}
     {\bigstep{\defaultssawhile}{\store}{\excstore'}}\\
 \end{align*}
 
@@ -493,7 +493,6 @@ Judgement \fbox{$\typestep{\Gamma}{s}{\Delta}$}:
     {\typestep{\Gamma}{\defaultssawhile}{\Delta}}
 \end{align*}
 
-We have the following properties of these rules:
 \begin{definition}[Store-Matching]
     A store $\store$ \emph{matches a description} $\Gamma: \Loc \partialf \lattice$ if it holds that 
     $\dom\store = \dom\Gamma$ and
@@ -503,18 +502,163 @@ We have the following properties of these rules:
     \end{align*}
 \end{definition}
 
+First, we justify why the semantics contains disjoint unions when updating stores.
 \begin{theorem}
     \label{thm:gamma-delta-disjoint}
     If $\typestep{\Gamma}{s}{\Delta}$ holds, then $\dom\Gamma \cap \dom\Delta = \emptyset$.
 \end{theorem}
 
+Then we prove some lemmas needed to establish the key properties of the semantics
+and the dataflow rules.
+\begin{lemma}
+    \label{lem:gamma-arithm}
+    Let $\E$ be the derivation of $\bigstep{a}{\sigma}{\flagged{}}$.
+    If $\typestep{\Gamma}{a}{L}$ and $\store$ matches $\Gamma$, then 
+    for all subderivations $\bigstep{a_0}{\sigma_0}{\flagged{}}$ in $\E$
+    there exists a derivation
+    $\typestep{\Gamma_0}{a_0}{L_0}$ such that $\Gamma_0$ matches $\sigma_0$
+    and $L$ is either $\lunknown$ or correctly describes the flag of $\flagged{}$.
+\end{lemma}
+\begin{lemma}
+    \label{lem:gamma-bool}
+    Let $\E$ be the derivation of $\bigstep{b}{\sigma}{t}$.
+    If $\typestmt{\Gamma}{b}$ and $\store$ matches $\Gamma$, then 
+    for all subderivations $\bigstep{b_0}{\sigma_0}{t}$ in $\E$
+    there exists a derivation
+    $\typestmt{\Gamma_0}{b_0}$ such that $\Gamma_0$ matches $\sigma_0$,
+    and for all derivations $\bigstep{a}{\store_1}{\flagged{}}$ in $\E$
+    there exists a derivation $\typestep{\Gamma_1}{a}{L}$ such that $\Gamma_1$
+    matches $\store_1$.
+\end{lemma}
+
+For the dataflow rules, there are theorems akin the preservation and progress results
+proven about type systems.
+These are then used to derive a general soundness result about using the dataflow rules
+to detect the possiblity of dataflow.
+Based on that, an algorithm is presented and proven to be sound.
+
+\begin{lemma}[Preservation-ish $\Phi$]
+    \label{thm:preservation-phi}
+    Let $\bigsteppl{\Phi}{\Theta}{\sigma''}{\sigma'}$ (or $\bigsteppr{\Phi}{\Theta}{\sigma''}{\sigma'}$),
+    such that $\store'' = \store \dunion \store_0''\dunion \store{\_}$, $\store$ matches $\Gamma$, 
+    $\store_0''$ matches $\Delta_1$ (or $\Delta_2$) and $\Theta = \dom\store$.
+    Let $\typestep{\Gamma;\Delta_0;\Delta_1}{\Phi}{\Delta}$ by the DF rules.
+    Then we have that $\store' = \store \dunion \store_0$,
+    and $\store_0$ matches the description $\Delta$.
+\end{lemma}
+
 \begin{theorem}[Preservation-ish]
     \label{thm:preservation}
-    Let $\bigstep{s}{\store}{\store'}$, $\store$ matches the description $\Gamma$,
-    and let $\typestep{\Gamma}{s}{\Delta}$ by the DF rules.
+    Let $\bigstep{s}{\store}{\store'}$ by $\E$, $\store$ matches the description $\Gamma$,
+    and let $\typestep{\Gamma}{s}{\Delta}$ by $\D$ and the DF rules.
     Then we have that $\store' = \store \dunion \store_0$,
     and $\store_0$ matches the description $\Delta$.
 \end{theorem}
+\begin{proof}
+    We prove the theorem by induction over the derivation $\E$.\\
+    \textbf{Case 1:}
+    Skip\\
+    \textbf{Case 2:}
+    Sink\\
+    \textbf{Case 3:}
+    \begin{align*}
+        &\E = \bsrule{EC-Seq}{\overset{\E_0}{\bigstep{s_0}{\sigma}{\store''}}
+         \qquad \overset{\E_1}{\bigstep{s_1}{\store''}{\store'}}}
+        {\bigstep{\defaultssaseq}{\store}{\store'}}\\
+        &\D = \rule{DF-Seq}{\overset{\D_0}{\typestep{\Gamma}{s_0}{\Delta_0}}\qquad
+        \overset{\D_1}{\typestep{\Gamma \cup \Delta_0}{s_1}{\Delta_1}}}
+        {\typestep{\Gamma}{\defaultssaseq}{\Delta_0 \cup \Delta_1}}
+    \end{align*}
+    By assumption we have that $\Gamma$ matches $\store$.
+    Thus, we can apply the IH on $\E_0$ with $\D_0$.
+    Thus $\store'' = \store \dunion \store''_0$ and $\store''_0$ matches $\Delta_0$.
+    Thus, $\Gamma \union \Delta_0$ matches $\store''$.
+    Thus, we apply the IH on $\E_1$ with $\D_1$, and we get that
+    $\store' = \store'' \dunion \store'_0$ and $\Delta_1$ matches $\store'_0$.
+    Then, we have $\store' = \store \dunion \store''_0 \dunion \store'_0$
+    and we can set $\store_0 = \store''_0 \dunion \store'_0$, and we obviously 
+    have that $\store_0$ matches $\Delta_0 \union \Delta_1$.\\
+    \textbf{Case 4:}
+    \begin{align*}
+        &\E = \bsrule{EC-IfT}{
+        \overset{}{\bigstep{b}{\store}{\btrue}}\qquad 
+        \overset{\E_0}{\bigstep{s_0}{\store}{\store''}}
+        \qquad 
+        \overset{\E_1}{\bigsteppl{\philist}{\dom\store}{\store''}{\store'}}}
+        {\bigstep{\defaultssaif}{\store}{\store'}}\\
+        &\D = \rule{DF-If}{
+        \overset{}{\typestmt{\Gamma}{b}}\qquad
+        \overset{\D_0}{\typestep{\Gamma}{s_0}{\Delta_0}}\qquad \typestep{\Gamma}{s_1}{\Delta_1}\qquad
+        \overset{\D_1}{\typestep{\Gamma;\Delta_0;\Delta_1}{\philist}{\Delta}}}
+        {\typestep{\Gamma}{\defaultssaif}{\Delta}}
+    \end{align*}
+    By IH on $\E_0$ with $\D_0$, we get that $\store'' = \store \dunion \store''_0$ and 
+    $\store''_0$ matches $\Delta_0$.
+    The result then follows from~\autoref{thm:preservation-phi} on $\E_0$ with $\D_0$.\\
+    \textbf{Case 5:}
+    $\E$ uses \textsc{EC-IfF}: analoguous.\\
+    \textbf{Case 6:}
+    \begin{align*}
+        &\E = \bsrule{EC-Assign}{\overset{\E_0}{\bigstep{a}{\store}{\flagged{}}}}
+        {\bigstep{\defaultstore}{\store}{\storeassign{\store}{X \mapsto \flagged{}}}}\\
+        &\D = \rule{DF-Assign}{\overset{\D_0}{\typestep{\Gamma}{a}{L}}}
+        {\typestep{\Gamma}{\defaultstore}{[X \mapsto L]}}
+    \end{align*}
+    We apply~\autoref{lem:gamma-arithm} on $\E_0$ with $\D_0$,
+    and as $L$ matches $\flagged{}$, $\Delta = [X \mapsto L]$ matches the store
+    $[X \mapsto \flagged{}]$.
+    ~\autoref{thm:gamma-delta-disjoint} implies that the union in the \textsc{EC-Assign}
+    rule is actually disjoint.
+    \\
+    \textbf{Case 7:}\\
+    \begin{align*}
+        &\E = \bsrule{EC-While}{\overset{\E_0}{\bigsteppl{\philist}{\dom\store}{\store}{\store''}}\qquad
+        \overset{\E_2}{\bigstepw{\defaultssawhile}{\dom\store}{\store''}{\excstore'}}}
+        {\bigstep{\defaultssawhile}{\store}{\store'}}\\
+        &\D = \rule{DF-While}{\overset{\D_0}{\typestep{\Gamma;\emptyset;\Delta_1}{\philist}{\Delta}}\qquad
+        \overset{\D_1}{\typestmt{\Gamma \cup \Delta}{b}}\qquad
+        \overset{\D_2}{\typestep{\Gamma \cup \Delta}{s_0}{\Delta_1}}}
+        {\typestep{\Gamma}{\defaultssawhile}{\Delta}}
+    \end{align*}
+    By applying~\autoref{thm:preservation-phi} on $\E_0$ with $\D_0$, we get that
+    $\store'' = \store \dunion \store_0$, $\Delta$ matches $\store_0$.
+    Thus $\Gamma \union \Delta$ matches $\store''$.
+    We prove the statement by an inner induction over the while derivation $\E^w$:
+    \begin{claim}
+        Let $\bigstepw{\defaultwhile}{\filter}{\store_w}{\store_w'}$ by $\E^w$,
+         $\store_w = \store_w^0 \dunion \store_w^1$
+        such that $\store_w^0$ matches $\Gamma$, $\Theta = \dom\store^0_w$ and $\store_w^1$ matches $\Delta$,
+        and let $\typestep{\Gamma}{\defaultwhile}{\Delta}$ by $\D$ and the DF rules.
+        Then we have that $\store_w' = \store_w^0 \dunion \store_0$,
+        and $\store_0$ matches the description $\Delta$.
+    \end{claim}
+    \begin{claimproof}
+        \emph{Subcase 1:}
+        \begin{align*}
+            \E^w = \bsrule{EW-WhileF}{
+            \overset{}{\bigstep{b}{\store_w}{\bfalse}}}
+            {\bigstepw{\defaultssawhile}{\filter}{\store_w}{\store_w}}
+        \end{align*}
+        Trivial, $\store_0 = \store_w^1$.\\
+        \emph{Subcase 2:}
+        \begin{align*}
+            \E^w = \bsrule{EW-WhileT}{\overset{}{\bigstep{b}{\store_w}{\btrue}} \enskip
+            \overset{\E^w_0}{\bigstep{s_0}{\store_w}{\store''}} \enskip
+            \overset{\E^w_1}{\bigsteppr{\philist}{\filter}{\store''}{\store'''}} \enskip
+            \overset{\E^w_2}{\bigstepw{\defaultssawhile}{\filter}{\store'''}{\excstore'}}}
+            {\bigstepw{\defaultssawhile}{\filter}{\store_w}{\store_w'}}
+        \end{align*}
+        By the outer IH on $\E^w_0$ with $\D_2$, we get that
+        $\sigma'' = \sigma_w \dunion \sigma_w'' = \sigma_w^0 \dunion \sigma_w^1 \dunion \sigma_w''$
+        and $\Delta_1$ matches $\sigma_w''$.
+        By~\autoref{thm:preservation-phi} we get that $\store''' = \store_w^0 \dunion \store_0'''$ and
+        $\store_0'''$ matches $\Delta$.
+        With that we can apply the inner induction on $\E^2_w$ with $\D$ to get the result on $\sigma_w'$.
+    \end{claimproof}
+    We finish the proof by applying the claim on $\E^2$ with $\D$.
+\end{proof}
+
+
 
 \begin{theorem}[Progress-Ish]
     \label{thm:progress}
@@ -527,11 +671,12 @@ We have the following properties of these rules:
     For all subderivations $\E_a$ of form $\bigstep{a}{\store_a}{\flagged{}}$ in $\E$
     we have that there exists $\Gamma_a$ matching $\store_a$
     in the subderivation $\D$ of $\typestep{\Gamma_a}{a}{L}$ in $\D_a$.
-    TODO add about booleans!
-    Add two lemmas that do the work for boolean+arithmetic.
+    For all subderivations $\E_b$ of form $\bigstep{b}{\store_b}{t}$ in $\E$
+    we have that there exists $\Gamma_b$ matching $\store_b$
+    in the subderivation $\D$ of $\typestmt{\Gamma_b}{b}$ in $\D_b$.
 \end{theorem}
 \begin{proof}
-    Proof by induction over the derivation of $\E$.\\
+    Proof by induction over the derivation $\E$.\\
     \textbf{Case 1:}
     Skip\\
     \textbf{Case 2:}
@@ -553,43 +698,78 @@ We have the following properties of these rules:
     and we can apply the IH on $\E_1$ with $\D_1$.\\
     \textbf{Case 4:}
     \begin{align*}
-        &\E = \bsrule{EC-IfT}{\bigstep{b}{\store}{\btrue}\qquad 
-        \overset{\E_0}{\bigstep{s_0}{\store}{\store''}}
+        &\E = \bsrule{EC-IfT}{
+        \overset{\E_0}{\bigstep{b}{\store}{\btrue}}\qquad 
+        \overset{\E_1}{\bigstep{s_0}{\store}{\store''}}
         \qquad \bigsteppl{\philist}{\dom\store}{\store''}{\store'}}
         {\bigstep{\defaultssaif}{\store}{\store'}}\\
-        &\D = \rule{DF-If}{\typestmt{\Gamma}{b}\qquad
-        \overset{\D_0}{\typestep{\Gamma}{s_0}{\Delta_0}}\qquad \typestep{\Gamma}{s_1}{\Delta_1}\qquad
+        &\D = \rule{DF-If}{
+        \overset{\D_0}{\typestmt{\Gamma}{b}}\qquad
+        \overset{\D_1}{\typestep{\Gamma}{s_0}{\Delta_0}}\qquad \typestep{\Gamma}{s_1}{\Delta_1}\qquad
         \typestep{\Gamma;\Delta_0;\Delta_1}{\philist}{\Delta}}
         {\typestep{\Gamma}{\defaultssaif}{\Delta}}
     \end{align*}
-    Then we apply the IH on $\E_0$ with $\D_0$.
+    Apply~\autoref{lem:gamma-bool} on $\E_0$ with $\D_0$ and the IH on $\E_1$ with $\D_1$.\\
     \textbf{Case 5:}
     $\E$ uses \textsc{EC-IfF}: analoguous.\\
     \textbf{Case 6:}
     \begin{align*}
         &\E = \bsrule{EC-Assign}{\overset{\E_0}{\bigstep{a}{\store}{\flagged{}}}}
-        {\bigstep{\defaultstore}{\store}{\store{}[X \mapsto \flagged{}]}}\\
+        {\bigstep{\defaultstore}{\store}{{\storeassign{\store}{X \mapsto \flagged{}}}}}\\
         &\D = \rule{DF-Assign}{\overset{\D_0}{\typestep{\Gamma}{a}{L}}}
         {\typestep{\Gamma}{\defaultstore}{[X \mapsto L]}}
     \end{align*}
-    Then, because $\Gamma$ matches $\store$ by assumption we get that it still matches $\store$
-    in all subexpressions $a_0$ of $a$ in $\typestep{\Gamma}{a_0}{L}$.
-    {\color{red} Andrzej: This is a bit hand-wavy bit the entire induction over arithmetic expressions would
-    be really boring to see. Do you think this is okay?}\\
+    Apply~\autoref{lem:gamma-arithm} on $\E_0$ with $\D_0$.\\
     \textbf{Case 7:}\\
     \begin{align*}
-        &\E = \bsrule{EC-While}{\bigsteppl{\philist}{\dom\store}{\store}{\store''} \qquad
-        \bigstepw{\defaultssawhile}{\store}{\store''}{\excstore'}}
-        {\bigstep{\defaultssawhile}{\store}{\excstore'}}\\
-        &\D = \rule{DF-While}{\typestep{\Gamma;\emptyset;\Delta_1}{\philist}{\Delta}\qquad
-        \typestmt{\Gamma \cup \Delta}{b}\qquad\typestep{\Gamma \cup \Delta}{s_0}{\Delta_1}}
+        &\E = \bsrule{EC-While}{\overset{\E_0}{\bigsteppl{\philist}{\dom\store}{\store}{\store''}}\qquad
+        \overset{\E_2}{\bigstepw{\defaultssawhile}{\dom\store}{\store''}{\excstore'}}}
+        {\bigstep{\defaultssawhile}{\store}{\store'}}\\
+        &\D = \rule{DF-While}{\overset{\D_0}{\typestep{\Gamma;\emptyset;\Delta_1}{\philist}{\Delta}}\qquad
+        \overset{\D_1}{\typestmt{\Gamma \cup \Delta}{b}}\qquad
+        \overset{\D_2}{\typestep{\Gamma \cup \Delta}{s_0}{\Delta_1}}}
         {\typestep{\Gamma}{\defaultssawhile}{\Delta}}
     \end{align*}
-    TODO we need a lemma here about the while judgement.
+    By applying~\autoref{thm:preservation-phi} on $\E_0$ with $\D_0$, we get that
+    $\Gamma \union \Delta$ matches $\store''$.
+    We prove the statement by an inner induction over the while derivation $\E^w$:
+    \begin{claim}
+        Assume that $\Gamma \union \Delta$ match $\store_w$, and that $\dom\Gamma = \Theta$.
+        Then we have that in all sub-derivations of $\E^w$, there exists $\Gamma_w, \Delta_w$ such that 
+        in $\bigstep{s_w}{\store_w}{\store_w'}$, $\bigstep{a_w}{\store_w}{\flagged{}}$ and 
+        $\bigstep{b_w}{\store_w}{t}$    
+        with respective derivations 
+        $\typestep{\Gamma_w}{s_w}{\Delta_w}$, $\typestep{\Gamma_w}{a_w}{L}$ and $\typestmt{\Gamma_w}{b_w}$
+        such that $\Gamma_w$ matches $\store_w$.    
+    \end{claim}
+    \begin{claimproof}
+        \emph{Subcase 1:}
+        \begin{align*}
+            \E^w = \bsrule{EW-WhileF}{
+            \overset{\E^w_0}{\bigstep{b}{\store_w}{\bfalse}}}
+            {\bigstepw{\defaultssawhile}{\filter}{\store_w}{\store_w}}
+        \end{align*}
+        Then we apply~\autoref{lem:gamma-bool} on $\E^w_0$ with $\D_1$.\\
+        \emph{Subcase 2:}
+        \begin{align*}
+            \E^w = \bsrule{EW-WhileT}{\overset{\E^w_0}{\bigstep{b}{\store_w}{\btrue}} \enskip
+            \overset{\E^w_1}{\bigstep{s_0}{\store_w}{\store''}} \enskip
+            \overset{\E^w_2}{\bigsteppr{\philist}{\filter}{\store''}{\store'''}} \enskip
+            \overset{\E^w_3}{\bigstepw{\defaultssawhile}{\filter}{\store'''}{\excstore'}}}
+            {\bigstepw{\defaultssawhile}{\filter}{\store_w}{\store_w'}}
+        \end{align*}
+        Apply~\autoref{lem:gamma-bool} on $\E_0^w$ with $\D_1$
+        and the outer IH on $\E^w_1$ with $\D_2$.
+        Furthermore, by~\autoref{thm:preservation} on $\E^w_1$ with $\D_2$ we get that 
+        $\store'' = \store_w \dunion \store''_w$ and $\store''_w$ is matched by $\Delta_1$.
+        Thus, by~\autoref{thm:preservation-phi} on $\E_2^w$ with $\D_0$ we get that $\Gamma \union \Delta$
+        matches $\store'''$, and we can apply the inner IH on $\E^w_3$.
+    \end{claimproof}
+    We finish proving the case by applying the claim on $\E_2$.
 \end{proof}
 
 We also have the following (general) soundness property of the dataflow analysis:
-\begin{theorem}
+\begin{theorem}[Soundness of the DF rules]
     Let $(s, \Gamma_{ssa}, \Delta_{ssa})$ be a program in SSA form and let $\store_s$ be a store
     with $\dom\store_s = \Gamma_{ssa}$.
     Let $\E_s$ be the bigstep derivation of $\bigstep{s}{\store_s}{\excstore{}_s}$.
