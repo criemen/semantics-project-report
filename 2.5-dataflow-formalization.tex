@@ -16,10 +16,11 @@ as presented in section 2.1 of~\cite{sat}.
 We extend the syntax of IMP a little bit
 and call the resulting language dIMP (for dataflow IMP):
 \begin{align*}
-    &a \Coloneqq \dots | \defaultsource\\
-    &c \Coloneqq \dots | \defaultsink\\
+    &a \Coloneqq \dots \mid \defaultsource\\
+    &c \Coloneqq \dots \mid \defaultsink\\
+    &f \Coloneqq \textbf{c} \mid \textbf{t}\\
 \end{align*}
-We define the set $\tilde{\textbf{Z}} =\{\flagged{} \mid n \in \textbf{Z}, f \in \{\textbf{c}, \textbf{t}\}\}$.
+We define the set $\tilde{\textbf{Z}} =\{\flagged{} \mid n \in \textbf{Z}\}$.
 Stores are denoted with $\store \in \Sigma = \Loc \to \tilde{\textbf{Z}}$.
 Stores are function from locations to the set of tagged integer
 values.
@@ -121,7 +122,7 @@ of a dIMP program, the syntax of SSA-dIMP has an explicit list of $\varphi$ node
 \subsubsection*{The SSA Type System}
 A program in SSA-dIMP is only valid if it conforms to the SSA properties.
 To enforce that, we describe a simple type system.
-We require sets $\Gamma, \Delta$ of variable names that fulfill the rules below.
+Let $\Gamma, \Delta \subset \Loc$ be finite sets of variable names that fulfill the rules below.
 We then show that these sets are enough to prove that the program is indeed in SSA form.
 The easiest way to get these sets is to run a SSA construction algorithm on a dIMP program.
 It is a gap in the provided proofs that we do not show that every dIMP program
@@ -131,7 +132,7 @@ of SSA-dIMP).
 \\
 Judgement \fbox{$\typestmt{\Gamma}{a}$}:
 \begin{align*}
-    &\rule{SSA-Num}{}{\typestmt{\Gamma}{n}}\qquad
+    &\rule{SSA-Num}{}{\typestmt{\Gamma}{\overline{n}}}\qquad
     \rule{SSA-Loc}{}{\typestmt{\Gamma}{X}}\text{($X \in \Gamma$)}\qquad
     \rule{SSA-Source}{\typestmt{\Gamma}{a}}{\typestmt{\Gamma}{\source{a}}}\\
     &\rule{SSA-Plus}{\typestmt{\Gamma}{a_0}\qquad\typestmt{\Gamma}{a_1}}
@@ -193,14 +194,17 @@ variables have to be defined before they can be read.
 
 The judgment for booleans and arithmetic expressions does not change.
 As before, we use $\excstore{}$ to denote partial functions
-$\excstore{}: \Loc (\partialf \StoreDomain) \cup \{\exception\}$.
+$\excstore{} \in (\Loc \partialf \StoreDomain) \cup \{\exception\}$.
 %where the evaluation of $\philist$ 
 %is combined with the variables in the store $\sigma$.
 % TODO cleanup
 For $\varphi$ nodes, we introduce to judgements - one that evaluates them to the first argument,
 and one that evalutes them to the second argument.
-Both judgements are provided with a filter $\filter$ that specifies which variables 
+Both judgements are provided with a filter $\filter \subset \dom\sigma$ that specifies which variables 
 to keep from the outer store.
+The symbol $\dunion$ denotes a union of sets of which we assert that it is disjoint.
+The symbol $\store\restrict{\filter}$ denotes the restriction of the map $\store$
+to the domain $\filter$.
 \\
 Judgment \fbox{$\bigsteppl{\philist}{\filter}{\store}{\store'}$}:
 \begin{align*}
@@ -359,11 +363,13 @@ The system is designed in a way that it can be easily adapted to different analy
 We instantiate this system to determine if programs have dataflow.
 
 Let $\lattice$ be a poset.
-Let $\Join: \lattice \times \lattice \partialf \lattice$ be the (partially defined)
+Let $\join: \lattice \times \lattice \partialf \lattice$ be the (partially defined)
 join operator on the poset.
 We require that its domain is maximal, i.e. if $L_1, L_2 \in \lattice$ have a least upper
 bound, it is $L_1 \join L_2$.
 Let $\Gamma, \Delta: \Loc \partialf \lattice$.
+Thus, we generalize the definition of $\Gamma$ and $\Delta$ here.
+The previous definition can be recovered by setting $\lattice$ to be the one-point set.
 
 For dataflow analysis, we have $\lattice = \{\lclean, \ltracked, \lunknown\}$.
 Every variable encountered in the program is marked with a value in \lattice.
@@ -379,7 +385,7 @@ We introduce the following judgements.
 \\
 Judgement \fbox{$\typestep{\Gamma}{a}{L}$}:
 \begin{align*}
-    &\rule{DF-Num}{}{\typestep{\Gamma}{n}{\lclean}}\qquad
+    &\rule{DF-Num}{}{\typestep{\Gamma}{\overline{n}}{\lclean}}\qquad
     \rule{DF-Loc}{}{\typestep{\Gamma}{X}{\Gamma(X)}}\qquad
     \rule{DF-Source}{\typestep{\Gamma}{a}{L}}
     {\typestep{\Gamma}{\source{a}}{\ltracked}}\\
@@ -401,6 +407,8 @@ Judgement \fbox{$\typestmt{\Gamma}{b}$}:
     &\rule{DF-And}{\typestmt{\Gamma}{b_1}\qquad\typestmt{\Gamma}{b_2}}
     {\typestmt{\Gamma}{b_1 \land b_2}}\\
 \end{align*}
+We now redefine the meaning of $\dunion$ to be the union of maps, 
+where we assert that the domains of the maps are disjoint.\\
 Judgement \fbox{$\typestep{\Gamma;\Delta_0;\Delta_1}{\philist}{\Delta}$}:
 \begin{align*}
     &\rule{DF-$\varphi$}{}{\typestep{\Gamma;\Delta_0;\Delta_1}{\defaultphilistn}{[X_1 \mapsto L_1, \ldots, X_n \mapsto L_n]}}\\
@@ -411,8 +419,8 @@ Note that this implies that this rule is only applicable if $Y_i$, $Z_i$ exist i
 domains of the partial functions, and if the join exists as well.\\
 Judgement \fbox{$\typestep{\Gamma}{s}{\Delta}$}:
 \begin{align*}
-    &\rule{DF-Sink}{\typestep{\Gamma}{a}{L}}{\typestep{\Gamma}{\sink{a}}{\emptyset}}\qquad
-    \rule{DF-Skip}{}{\typestep{\Gamma}{\skipcmd}{\emptyset}}\\
+    &\rule{DF-Sink}{\typestep{\Gamma}{a}{L}}{\typestep{\Gamma}{\sink{a}}{[]}}\qquad
+    \rule{DF-Skip}{}{\typestep{\Gamma}{\skipcmd}{[]}}\\
     &\rule{DF-Assign}{\typestep{\Gamma}{a}{L}}
     {\typestep{\Gamma}{\defaultstore}{[X \mapsto L]}} \text{($X \notin \dom\Gamma$)}\\
     &\rule{DF-Seq}{\typestep{\Gamma}{s_0}{\Delta_0}\qquad
@@ -475,7 +483,7 @@ Based on that, an algorithm is presented and proven to be sound.
     such that $\store'' = \store \dunion \store_0''\dunion \store{\_}$, $\store$ matches $\Gamma$, 
     $\store_0''$ matches $\Delta_1$ (or $\Delta_2$) and $\Theta = \dom\store$.
     Let $\typestep{\Gamma;\Delta_0;\Delta_1}{\Phi}{\Delta}$ by the DF rules.
-    Then we have that $\store' = \store \dunion \store_0$,
+    Then we have that there exists $\store_0$ such that $\store' = \store \dunion \store_0$,
     and $\store_0$ matches the description $\Delta$.
 \end{lemma}
 
