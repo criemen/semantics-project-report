@@ -616,8 +616,8 @@ We also have the following (general) soundness property of the dataflow analysis
     with $L = \lclean$.
 \end{definition}
 
-
 \begin{lemma}
+    \label{lem:df-soundness}
     Let $(s, \Gamma_{ssa}, \Delta_{ssa})$ be a program in SSA form and let $\store$ be a store
     with $\dom\store = \Gamma_{ssa}$ and $\matches{\store}{\Gamma}$.
     Let $\E$ be the bigstep derivation of $\bigstep{s}{\store}{\excstore{}'}$
@@ -664,25 +664,21 @@ We also have the following (general) soundness property of the dataflow analysis
     \textbf{Case 4:}
     \begin{align*}
         &\E = \bsrule{EC-While}{\bigsteppl{\philist}{\dom\store}{\store}{\store''} \qquad
-        \bigstepw{\defaultssawhile}{\dom\store}{\store''}{\excstore'}}
+        \overset{\E_0}{\bigstepw{\defaultssawhile}{\dom\store}{\store''}{\excstore'}}}
         {\bigstep{\defaultssawhile}{\store}{\excstore'}}\\
-        &\D = \rule{DF-While}{\typestep{\Gamma;\emptyset;\Delta_1}{\philist}{\Delta}\qquad
-        \typestmt{\Gamma \cup \Delta}{b}\qquad\typestep{\Gamma \cup \Delta}{s_0}{\Delta_1}}
+        &\D = \rule{DF-While}{\overset{\D_0}{\typestep{\Gamma;\emptyset;\Delta_1}{\philist}{\Delta}}\qquad
+        \typestmt{\Gamma \cup \Delta}{b}\qquad
+        \overset{\D_1}{\typestep{\Gamma \cup \Delta}{s_0}{\Delta_1}}}
         {\typestep{\Gamma}{\defaultssawhile}{\Delta}}
     \end{align*}
     \begin{claim}
-        Assume that $\matches{\store_w}{\Gamma \union \Delta}$, that $\dom\Gamma = \filter$ and
+        Let $\store_w = \store_{w0} \dunion \store_{w1}$ with
+        $\matches{\store_{w0}}{\Gamma}$ and $\matches{\store_{w1}}{\Delta}$,
+         $\dom\Gamma = \filter$ and
         $\bigstepw{\defaultssawhile}{\filter}{\store_w}{\excstore{}'_w}$ by $\E^w$.
-        Let $\typestep{\Gamma \union \Delta}{s_0}{\Delta_1}$ by $\D^w_1$
+        Let $\typestep{\Gamma \union \Delta}{s_0}{\Delta_1}$ by $\D^w_0$
+        and $\typestep{\Gamma;\emptyset;\Delta_1}{\philist}{\Delta}$ by $\D^w_1$.
         Then if all sinks in $\E^w$ are safe, $\excstore{}'_w \neq \exception$.
-
-        %.TODO finish
-        %Then we have that there exists $\Gamma_w, \Delta_w$ such that 
-        %in $\bigstep{s_w}{\store_w}{\excstore_w'}$, $\bigstep{a_w}{\store_w}{\flagged{}}$ and 
-        %$\bigstep{b_w}{\store_w}{t}$    
-        %with respective derivations 
-        %$\typestep{\Gamma_w}{s_w}{\Delta_w}$
-        %such that $\Gamma_w$ matches $\store_w$.    
     \end{claim}
     \begin{claimproof}
         The case \textsc{EW-WhileF} is trivial, as it never evaluates to \exception.\\
@@ -692,24 +688,25 @@ We also have the following (general) soundness property of the dataflow analysis
             \overset{\E_0}{\bigstep{s_0}{\store_w}{\exception}}}
             {\bigstepw{\defaultssawhile}{\filter}{\store_w}{\exception}}
         \end{align*}
-        By applying the outer IH on $\E_0$ with $\D^w_1$
-        Trivial, $\store_0 = \store_w^1$.\\
+        By applying the outer IH on $\E_0$ with $\D^w_0$ we get that for 
+        $\bigstep{s_0}{\store_w}{\excstore{}'}$ it actually holds that $\excstore{}' \neq \exception$,
+        so this case cannot occur.\\
         \emph{Subcase 2:}
         \begin{align*}
             \E^w = \bsrule{EW-WhileT}{\overset{}{\bigstep{b}{\store_w}{\btrue}} \enskip
             \overset{\E^w_0}{\bigstep{s_0}{\store_w}{\store''}} \enskip
             \overset{\E^w_1}{\bigsteppr{\philist}{\filter}{\store''}{\store'''}} \enskip
-            \overset{\E^w_2}{\bigstepw{\defaultssawhile}{\filter}{\store'''}{\excstore'}}}
+            \overset{\E^w_2}{\bigstepw{\defaultssawhile}{\filter}{\store'''}{\excstore'_w}}}
             {\bigstepw{\defaultssawhile}{\filter}{\store_w}{\store_w'}}
         \end{align*}
-        By the outer IH on $\E^w_0$ with $\D_2$, we get that
-        $\sigma'' = \sigma_w \dunion \sigma_w'' = \sigma_w^0 \dunion \sigma_w^1 \dunion \sigma_w''$
-        and $\matches{\sigma_w''}{\Delta_1}$.
-        By~\autoref{thm:preservation-phi} we get that $\store''' = \store_w^0 \dunion \store_0'''$ and
-        $\matches{\store_0'''}{\Delta}$.
-        With that we can apply the inner induction on $\E^2_w$ with $\D$ to get the result on $\sigma_w'$.
+        By~\autoref{thm:preservation} on $\E^w_0$ with $\D^w_0$, we get that $\store'' = \store_w \dunion \store''_0$
+        and $\matches{\store''_0}{\Delta_1}$, thus $\matches{\store''}{\Gamma \union \Delta \dunion \Delta_1}$.
+        By~\autoref{thm:preservation-phi} on $\E^w_1$ with $\D_1^w$ it follows that $\store''' = \store_{w0} \dunion \store'''_0$
+        with $\matches{\store'''_0}{\Delta}$.
+        Thus $\matches{\store'''}{\Gamma \union \Delta}$ and we can apply the inner IH on $\E^w_2$.
+        That implies that $\excstore{}'_w \neq \exception$.
     \end{claimproof}
-
+    We apply the claim on $\E_0$ with $\D_0$ and $\D_1$.
 \end{proof}
 
 \begin{theorem}[Soundness of the DF rules]
@@ -727,94 +724,8 @@ We also have the following (general) soundness property of the dataflow analysis
     If all sinks in $\D$ are safe, then $\excstore{}' \neq \exception$.
 \end{theorem}
 \begin{proof}
-    Now assume that all sinks are safe.
-    We prove by induction over the derivation $\E$ that then $\excstore{}' \neq \exception$.
-    The cases \textsc{EC-Skip}, \textsc{EC-Sink}, \textsc{EC-Assign}, \textsc{EC-IfT} and \textsc{EC-IfF}
-    are trivially clear, as they never evaluate to \exception.\\
-    \textbf{Case 1:}
-    \begin{align*}
-        \E = \bsrule{EC-SinkAbrt}{\overset{\E_0}{\bigstep{a}{\store}{\tracked{}}}}
-        {\bigstep{\defaultsink}{\store}{\exception}}\\
-        \D = \rule{DF-Sink}{\overset{\D_0}{\typestep{\Gamma}{a}{L}}}
-        {\typestep{\Gamma}{\sink{a}}{\emptyset}}
-    \end{align*}
-    However, by assumption we have $L = \lclean$.
-    Furthermore, as $\store : \Gamma$ by definition, this is a contradiction,
-    so this case cannot happen.
-    The cases for \textsc{EC-SeqAbrt}, \textsc{EC-IfTAbrt} and \textsc{EC-IfFAbrt}
-    are handled in the exact same way.\\
-    \textbf{Case 2:}
-    \begin{align*}
-        &\E = \bsrule{EC-Seq}{\overset{\E_0}{\bigstep{s_0}{\sigma}{\store''}} \qquad 
-        \overset{\E_1}{\bigstep{s_1}{\store''}{\excstore'}}}
-        {\bigstep{\defaultssaseq}{\store}{\excstore'}}\\    
-        &\D = \rule{DF-Seq}{\overset{\D_0}{\typestep{\Gamma}{s_0}{\Delta_0}}\qquad
-        \overset{\D_1}{\typestep{\Gamma \cup \Delta_0}{s_1}{\Delta_1}}}
-        {\typestep{\Gamma}{\defaultssaseq}{\Delta_0 \cup \Delta_1}}
-    \end{align*}
-    By~\autoref{thm:preservation} on $\E_0$ with $\D_0$ we get that $\matches{\store''}{\Gamma \cup \Delta_0}$.
-    Then we apply the IH on $\E_1$ with $\D_1$ and get that $\excstore{}' \neq \exception$.\\
-    \textbf{Case 3:}
-    \begin{align*}
-        &\E = \bsrule{EC-While}{\bigsteppl{\philist}{\dom\store}{\store}{\store''} \qquad
-        \bigstepw{\defaultssawhile}{\dom\store}{\store''}{\excstore'}}
-        {\bigstep{\defaultssawhile}{\store}{\excstore'}}\\
-        &\D = \rule{DF-While}{\typestep{\Gamma;\emptyset;\Delta_1}{\philist}{\Delta}\qquad
-        \typestmt{\Gamma \cup \Delta}{b}\qquad\typestep{\Gamma \cup \Delta}{s_0}{\Delta_1}}
-        {\typestep{\Gamma}{\defaultssawhile}{\Delta}}
-    \end{align*}
-    \begin{claim}
-        Assume that $\matches{\store_w}{\Gamma \union \Delta}$ and that $\dom\Gamma = \Theta$.
-        Then we have that there exists $\Gamma_w, \Delta_w$ such that 
-        in $\bigstep{s_w}{\store_w}{\excstore_w'}$, $\bigstep{a_w}{\store_w}{\flagged{}}$ and 
-        $\bigstep{b_w}{\store_w}{t}$    
-        with respective derivations 
-        $\typestep{\Gamma_w}{s_w}{\Delta_w}$
-        such that $\Gamma_w$ matches $\store_w$.    
-    \end{claim}
-
-
-
-
-
-\iffalse
-    If $\excstore{}' = \exception$, then there exists a sub-command $\defaultsink$ of $s$
-    such that there exists a store $\store$, $\Gamma$, $L \in \lattice$ and a sub-derivation tree $\E$ of $\E_s$
-    such that
-    \begin{align*}
-        \E = \bsrule{EC-SinkAbrt}{\overset{\E_0}{\bigstep{a}{\store}{\tracked{}}}}
-        {\bigstep{\defaultsink}{\store}{\exception}}
-    \end{align*}
-    and
-    \begin{align*}
-        \D = \rule{DF-Sink}{\overset{\D_0}{\typestep{\Gamma}{a}{L}}}
-        {\typestep{\Gamma}{\sink{a}}{\emptyset}}
-    \end{align*}
-    Let $\D$ be the derivation tree of $\typestep{\Gamma}{\defaultsink}{\Delta}$.
-    Then we have two cases, depending on $a$:\\
-    \textbf{Case 1:}
-    \begin{align*}
-        \E_0 = \bsrule{EA-Source}{\bigstep{a_0}{\store}{\flagged}}
-        {\bigstep{\source{a_0}}{\store}{\tracked}}
-    \end{align*}
-    Then we get
-    \begin{align*}
-        \D_0 = \rule{DF-Source}{\typestep{\Gamma}{a_0}{L_0}}
-        {\typestep{\Gamma}{\source{a_0}}{\ltracked}}
-    \end{align*}
-    and with $L_t = \ltracked, \Gamma_t = \Gamma$ the theorem follows.\\
-    \textbf{Case 2:}
-    \begin{align*}
-        \E_0 = \bsrule{EA-Loc}{}{\bigstep{X}{\store}{\store(X)}}
-    \end{align*}
-    Then we have 
-    \begin{align*}
-        \D_0 = \rule{DF-Loc}{}{\typestep{\Gamma}{X}{\Gamma(X)}}
-    \end{align*}
-    Obviously we have $\store(X) = \tracked$.
-    By~\autoref{thm:progress} we get that $\matches{\store}{\Gamma}$, so we get 
-    $\Gamma(X) = \ltracked$ or $\Gamma(X)= \lunknown$ as desired.
-    \fi
+    We have that $\matches{\store}{\Gamma}$ by construction.
+    Thus we can apply~\autoref{lem:df-soundness} to prove the theorem.
 \end{proof}
 
 \begin{corollary}
