@@ -460,22 +460,7 @@ and the dataflow rules.
 \begin{lemma}
     \label{lem:gamma-arithm}
     Let $\E$ be the derivation of $\bigstep{a}{\sigma}{\flagged{}}$.
-    If $\typestep{\Gamma}{a}{L}$ and $\store$ matches $\Gamma$, then 
-    for all subderivations $\bigstep{a_0}{\sigma_0}{\flagged{}}$ in $\E$
-    there exists a derivation
-    $\typestep{\Gamma_0}{a_0}{L_0}$ such that $\Gamma_0$ matches $\sigma_0$
-    and $L$ is either $\lunknown$ or correctly describes the flag of $\flagged{}$.
-\end{lemma}
-\begin{lemma}
-    \label{lem:gamma-bool}
-    Let $\E$ be the derivation of $\bigstep{b}{\sigma}{t}$.
-    If $\typestmt{\Gamma}{b}$ and $\store$ matches $\Gamma$, then 
-    for all subderivations $\bigstep{b_0}{\sigma_0}{t}$ in $\E$
-    there exists a derivation
-    $\typestmt{\Gamma_0}{b_0}$ such that $\Gamma_0$ matches $\sigma_0$,
-    and for all derivations $\bigstep{a}{\store_1}{\flagged{}}$ in $\E$
-    there exists a derivation $\typestep{\Gamma_1}{a}{L}$ such that $\Gamma_1$
-    matches $\store_1$.
+    If $\typestep{\Gamma}{a}{L}$ and $\store$ matches $\Gamma$, then $\flagged{} \in \gamma(L)$.
 \end{lemma}
 
 For the dataflow rules, there are theorems akin the preservation and progress results
