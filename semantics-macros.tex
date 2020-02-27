@@ -10,8 +10,7 @@
 \newcommand{\typestmt}[2]{#1 \vdash {#2}}
 % name, requirement, result
 \newcommand{\bsrule}[3]{\textsc{#1}\ddfrac{#2}{#3}}
-\let\rule\undefined
-\newcommand{\rule}[3]{\textsc{#1}\ddfrac{#2}{#3}}
+\newcommand{\trule}[3]{\textsc{#1}\ddfrac{#2}{#3}}
 \newcommand{\literalint}[1][n]{\bar{#1}}
 \newcommand{\store}[1][\sigma]{#1}
 %\newcommand{\clean}[1][n]{#1^\textbf{c}}
@@ -63,8 +62,8 @@
 \newcommand{\ltracked}{\textbf{t}}
 \newcommand{\join}{\mathbin\sqcup}
 % refine Join to be the unary lattice join
-\let\Join\undefined
-\newcommand{\Join}{\mathop\bigsqcup}
+%\let\Join\undefined
+%\newcommand{\Join}{\mathop\bigsqcup}
 \newcommand{\restrict}[1]{\raisebox{-.5ex}{$|$}_{#1}}
 \newcommand{\filter}{\Theta}
 \newcommand{\matches}[2]{{#1}:{#2}}

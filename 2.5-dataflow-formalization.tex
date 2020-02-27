@@ -129,44 +129,44 @@ of SSA-dIMP).
 \\
 Judgement \fbox{$\typestmt{\Gamma}{a}$}:
 \begin{align*}
-    &\rule{SSA-Num}{}{\typestmt{\Gamma}{\overline{n}}}\qquad
-    \rule{SSA-Loc}{}{\typestmt{\Gamma}{X}}\text{($X \in \Gamma$)}\qquad
-    \rule{SSA-Source}{\typestmt{\Gamma}{a}}{\typestmt{\Gamma}{\source{a}}}\\
-    &\rule{SSA-Plus}{\typestmt{\Gamma}{a_0}\qquad\typestmt{\Gamma}{a_1}}
+    &\trule{SSA-Num}{}{\typestmt{\Gamma}{\overline{n}}}\qquad
+    \trule{SSA-Loc}{}{\typestmt{\Gamma}{X}}\text{($X \in \Gamma$)}\qquad
+    \trule{SSA-Source}{\typestmt{\Gamma}{a}}{\typestmt{\Gamma}{\source{a}}}\\
+    &\trule{SSA-Plus}{\typestmt{\Gamma}{a_0}\qquad\typestmt{\Gamma}{a_1}}
     {\typestmt{\Gamma}{a_0+a_1}}\quad
-    \rule{SSA-Minus}{\typestmt{\Gamma}{a_0}\qquad\typestmt{\Gamma}{a_1}}
+    \trule{SSA-Minus}{\typestmt{\Gamma}{a_0}\qquad\typestmt{\Gamma}{a_1}}
     {\typestmt{\Gamma}{a_0-a_1}}\quad
-    \rule{SSA-Times}{\typestmt{\Gamma}{a_0}\qquad\typestmt{\Gamma}{a_1}}
+    \trule{SSA-Times}{\typestmt{\Gamma}{a_0}\qquad\typestmt{\Gamma}{a_1}}
     {\typestmt{\Gamma}{a_0 \times a_1}}
 \end{align*}
 Judgement \fbox{$\typestmt{\Gamma}{b}$}:
 \begin{align*}
-    &\rule{SSA-Eq}{\typestmt{\Gamma}{a_0}\qquad \typestmt{\Gamma}{a_1}}
+    &\trule{SSA-Eq}{\typestmt{\Gamma}{a_0}\qquad \typestmt{\Gamma}{a_1}}
     {\typestmt{\Gamma}{a_0 = a_1}}\qquad
-    \rule{SSA-Leq}{\typestmt{\Gamma}{a_0}\qquad \typestmt{\Gamma}{a_1}}
+    \trule{SSA-Leq}{\typestmt{\Gamma}{a_0}\qquad \typestmt{\Gamma}{a_1}}
     {\typestmt{\Gamma}{a_0 \leq a_1}}\qquad
-    \rule{SSA-Neg}{\typestmt{\Gamma}{b}}
+    \trule{SSA-Neg}{\typestmt{\Gamma}{b}}
     {\typestmt{\Gamma}{\neg b}}\\
-    &\rule{SSA-And}{\typestmt{\Gamma}{b_1}\qquad\typestmt{\Gamma}{b_2}}
+    &\trule{SSA-And}{\typestmt{\Gamma}{b_1}\qquad\typestmt{\Gamma}{b_2}}
     {\typestmt{\Gamma}{b_1 \land b_2}}\\
 \end{align*}
 Judgement \fbox{$\typestep{\Gamma;\Delta_0;\Delta_1}{\philist}{\Delta}$}:
 \begin{align*}
-    &\rule{SSA-$\varphi$}{}{\typestep{\Gamma;\Delta_0;\Delta_1}{\defaultphilistn}{\{X_1, \ldots, X_n\}}}\\
+    &\trule{SSA-$\varphi$}{}{\typestep{\Gamma;\Delta_0;\Delta_1}{\defaultphilistn}{\{X_1, \ldots, X_n\}}}\\
     &\text{(if for $i \in \{1, \ldots, n\}: X_i \notin \Gamma \land Y_i \in \Gamma \cup \Delta_0 \land Z_i \in \Gamma \cup \Delta_1
     \land \forall j \neq i: X_j \neq X_i$)}
 \end{align*}
 Judgement \fbox{$\typestep{\Gamma}{s}{\Delta}$}:
 \begin{align*}
-    &\rule{SSA-Sink}{\typestmt{\Gamma}{a}}{\typestep{\Gamma}{\sink{a}}{\emptyset}}\qquad
-    \rule{SSA-Skip}{}{\typestep{\Gamma}{\skipcmd}{\emptyset}}\\
-    &\rule{SSA-Assign}{\typestmt{\Gamma}{a}}{\typestep{\Gamma}{\defaultstore}{\{X\}}} \text{($X \notin \Gamma$)}\\
-    &\rule{SSA-Seq}{\typestep{\Gamma}{s_0}{\Delta_0}\qquad
+    &\trule{SSA-Sink}{\typestmt{\Gamma}{a}}{\typestep{\Gamma}{\sink{a}}{\emptyset}}\qquad
+    \trule{SSA-Skip}{}{\typestep{\Gamma}{\skipcmd}{\emptyset}}\\
+    &\trule{SSA-Assign}{\typestmt{\Gamma}{a}}{\typestep{\Gamma}{\defaultstore}{\{X\}}} \text{($X \notin \Gamma$)}\\
+    &\trule{SSA-Seq}{\typestep{\Gamma}{s_0}{\Delta_0}\qquad
     \typestep{\Gamma \cup \Delta_0}{s_1}{\Delta_1}}{\typestep{\Gamma}{\defaultssaseq}{\Delta_0 \cup \Delta_1}}\\
-    &\rule{SSA-If}{\typestmt{\Gamma}{b}\qquad\typestep{\Gamma}{s_0}{\Delta_0}\qquad \typestep{\Gamma}{s_1}{\Delta_1}\qquad
+    &\trule{SSA-If}{\typestmt{\Gamma}{b}\qquad\typestep{\Gamma}{s_0}{\Delta_0}\qquad \typestep{\Gamma}{s_1}{\Delta_1}\qquad
     \typestep{\Gamma;\Delta_0;\Delta_1}{\philist}{\Delta}}
     {\typestep{\Gamma}{\defaultssaif}{\Delta}}\\
-    &\rule{SSA-While}{\typestep{\Gamma;\emptyset;\Delta_1}{\philist}{\Delta}\qquad
+    &\trule{SSA-While}{\typestep{\Gamma;\emptyset;\Delta_1}{\philist}{\Delta}\qquad
     \typestmt{\Gamma \cup \Delta}{b}\qquad\typestep{\Gamma \cup \Delta}{s_0}{\Delta_1}}
     {\typestep{\Gamma}{\defaultssawhile}{\Delta}}
 \end{align*}
@@ -219,7 +219,7 @@ Judgment \fbox{$\bigsteppr{\philist}{\filter}{\store}{\store'}$}:
     {\bigsteppr{\defaultphilistn}{\filter}{\store}{\storeassign{\store\restrict{\filter}}{X_1 \mapsto \store(Z_1),\ldots X_n \mapsto \store(Z_n)}}}\\
 \end{align*}
 \\
-Judgment \fbox{$\bigstepw{c}{\filter}{\store}{\excstore'{}}$}:
+Judgment \fbox{$\bigstepw{s}{\filter}{\store}{\excstore'{}}$}:
 \begin{align*}
     &\bsrule{EW-WhileF}{\bigstep{b}{\store}{\bfalse}}
     {\bigstepw{\defaultssawhile}{\filter}{\store}{\store}}\qquad\\
@@ -233,7 +233,7 @@ Judgment \fbox{$\bigstepw{c}{\filter}{\store}{\excstore'{}}$}:
     {\bigstepw{\defaultssawhile}{\filter}{\store}{\excstore'}}
 \end{align*}
 \\
-Judgment \fbox{$\bigstep{c}{\store}{\excstore{}}$}:
+Judgment \fbox{$\bigstep{s}{\store}{\excstore{}}$}:
 \begin{align*}
     &\bsrule{EC-Seq}{\bigstep{s_0}{\sigma}{\store''} \qquad \bigstep{s_1}{\store''}{\excstore'}}
     {\bigstep{\defaultssaseq}{\store}{\excstore'}}\qquad
@@ -388,33 +388,33 @@ We introduce the following judgements:
 \\
 Judgement \fbox{$\typestep{\Gamma}{a}{L}$}:
 \begin{align*}
-    &\rule{DF-Num}{}{\typestep{\Gamma}{\overline{n}}{\lclean}}\qquad
-    \rule{DF-Loc}{}{\typestep{\Gamma}{X}{\Gamma(X)}}\qquad
-    \rule{DF-Source}{\typestep{\Gamma}{a}{L}}
+    &\trule{DF-Num}{}{\typestep{\Gamma}{\overline{n}}{\lclean}}\qquad
+    \trule{DF-Loc}{}{\typestep{\Gamma}{X}{\Gamma(X)}}\qquad
+    \trule{DF-Source}{\typestep{\Gamma}{a}{L}}
     {\typestep{\Gamma}{\source{a}}{\ltracked}}\\
-    &\rule{DF-Plus}{\typestep{\Gamma}{a_0}{L_0}\qquad\typestep{\Gamma}{a_1}{L_1}}
+    &\trule{DF-Plus}{\typestep{\Gamma}{a_0}{L_0}\qquad\typestep{\Gamma}{a_1}{L_1}}
     {\typestep{\Gamma}{a_0+a_1}{\lclean}}\qquad
-    \rule{DF-Minus}{\typestep{\Gamma}{a_0}{L_0}\qquad\typestep{\Gamma}{a_1}{L_1}}
+    \trule{DF-Minus}{\typestep{\Gamma}{a_0}{L_0}\qquad\typestep{\Gamma}{a_1}{L_1}}
     {\typestep{\Gamma}{a_0-a_1}{\lclean}}\\
-    &\rule{DF-Times}{\typestep{\Gamma}{a_0}{L_0}\qquad\typestep{\Gamma}{a_1}{L_1}}
+    &\trule{DF-Times}{\typestep{\Gamma}{a_0}{L_0}\qquad\typestep{\Gamma}{a_1}{L_1}}
     {\typestep{\Gamma}{a_0 \times a_1}{\lclean}}
 \end{align*}
 Judgement \fbox{$\typestmt{\Gamma}{b}$}:
 \begin{align*}
-    &\rule{DF-Eq}{\typestep{\Gamma}{a_0}{L_0}\qquad \typestep{\Gamma}{a_1}{L_1}}
+    &\trule{DF-Eq}{\typestep{\Gamma}{a_0}{L_0}\qquad \typestep{\Gamma}{a_1}{L_1}}
     {\typestmt{\Gamma}{a_0 = a_1}}\qquad
-    \rule{DF-Leq}{\typestep{\Gamma}{a_0}{L_0}\qquad \typestep{\Gamma}{a_1}{L_1}}
+    \trule{DF-Leq}{\typestep{\Gamma}{a_0}{L_0}\qquad \typestep{\Gamma}{a_1}{L_1}}
     {\typestmt{\Gamma}{a_0 \leq a_1}}\qquad
-    \rule{DF-Neg}{\typestmt{\Gamma}{b}}
+    \trule{DF-Neg}{\typestmt{\Gamma}{b}}
     {\typestmt{\Gamma}{\neg b}}\\
-    &\rule{DF-And}{\typestmt{\Gamma}{b_1}\qquad\typestmt{\Gamma}{b_2}}
+    &\trule{DF-And}{\typestmt{\Gamma}{b_1}\qquad\typestmt{\Gamma}{b_2}}
     {\typestmt{\Gamma}{b_1 \land b_2}}\\
 \end{align*}
 We now redefine the meaning of $\dunion$ to be the union of maps, 
 where we assert that the domains of the maps are disjoint.\\
 Judgement \fbox{$\typestep{\Gamma;\Delta_0;\Delta_1}{\philist}{\Delta}$}:
 \begin{align*}
-    &\rule{DF-$\varphi$}{}{\typestep{\Gamma;\Delta_0;\Delta_1}{\defaultphilistn}{[X_1 \mapsto L_1, \ldots, X_n \mapsto L_n]}}\\
+    &\trule{DF-$\varphi$}{}{\typestep{\Gamma;\Delta_0;\Delta_1}{\defaultphilistn}{[X_1 \mapsto L_1, \ldots, X_n \mapsto L_n]}}\\
     &\text{(if for $i \in \{1, \ldots, n\}: X_i \notin \dom\Gamma \land L_i = (\Gamma \dunion \Delta_0)(Y_i) \join (\Gamma \dunion \Delta_1)(Z_i)
     \land \forall j \neq i: X_j \neq X_i$)}
 \end{align*}
@@ -422,16 +422,16 @@ Note that this implies that this rule is only applicable if $Y_i$, $Z_i$ exist i
 domains of the partial functions, and if the join exists as well.\\
 Judgement \fbox{$\typestep{\Gamma}{s}{\Delta}$}:
 \begin{align*}
-    &\rule{DF-Sink}{\typestep{\Gamma}{a}{L}}{\typestep{\Gamma}{\sink{a}}{[]}}\qquad
-    \rule{DF-Skip}{}{\typestep{\Gamma}{\skipcmd}{[]}}\\
-    &\rule{DF-Assign}{\typestep{\Gamma}{a}{L}}
+    &\trule{DF-Sink}{\typestep{\Gamma}{a}{L}}{\typestep{\Gamma}{\sink{a}}{[]}}\qquad
+    \trule{DF-Skip}{}{\typestep{\Gamma}{\skipcmd}{[]}}\\
+    &\trule{DF-Assign}{\typestep{\Gamma}{a}{L}}
     {\typestep{\Gamma}{\defaultstore}{[X \mapsto L]}} \text{($X \notin \dom\Gamma$)}\\
-    &\rule{DF-Seq}{\typestep{\Gamma}{s_0}{\Delta_0}\qquad
+    &\trule{DF-Seq}{\typestep{\Gamma}{s_0}{\Delta_0}\qquad
     \typestep{\Gamma \cup \Delta_0}{s_1}{\Delta_1}}{\typestep{\Gamma}{\defaultssaseq}{\Delta_0 \cup \Delta_1}}\\
-    &\rule{DF-If}{\typestmt{\Gamma}{b}\qquad\typestep{\Gamma}{s_0}{\Delta_0}\qquad \typestep{\Gamma}{s_1}{\Delta_1}\qquad
+    &\trule{DF-If}{\typestmt{\Gamma}{b}\qquad\typestep{\Gamma}{s_0}{\Delta_0}\qquad \typestep{\Gamma}{s_1}{\Delta_1}\qquad
     \typestep{\Gamma;\Delta_0;\Delta_1}{\philist}{\Delta}}
     {\typestep{\Gamma}{\defaultssaif}{\Delta}}\\
-    &\rule{DF-While}{\typestep{\Gamma;\emptyset;\Delta_1}{\philist}{\Delta}\qquad
+    &\trule{DF-While}{\typestep{\Gamma;\emptyset;\Delta_1}{\philist}{\Delta}\qquad
     \typestmt{\Gamma \cup \Delta}{b}\qquad\typestep{\Gamma \cup \Delta}{s_0}{\Delta_1}}
     {\typestep{\Gamma}{\defaultssawhile}{\Delta}}
 \end{align*}
@@ -492,7 +492,7 @@ Then we prove some lemmas needed to establish the soundness of our dataflow anal
         &\E = \bsrule{EC-Seq}{\overset{\E_0}{\bigstep{s_0}{\sigma}{\store''}}
          \qquad \overset{\E_1}{\bigstep{s_1}{\store''}{\store'}}}
         {\bigstep{\defaultssaseq}{\store}{\store'}}\\
-        &\D = \rule{DF-Seq}{\overset{\D_0}{\typestep{\Gamma}{s_0}{\Delta_0}}\qquad
+        &\D = \trule{DF-Seq}{\overset{\D_0}{\typestep{\Gamma}{s_0}{\Delta_0}}\qquad
         \overset{\D_1}{\typestep{\Gamma \cup \Delta_0}{s_1}{\Delta_1}}}
         {\typestep{\Gamma}{\defaultssaseq}{\Delta_0 \cup \Delta_1}}
     \end{align*}
@@ -513,7 +513,7 @@ Then we prove some lemmas needed to establish the soundness of our dataflow anal
         \qquad 
         \overset{\E_1}{\bigsteppl{\philist}{\dom\store}{\store''}{\store'}}}
         {\bigstep{\defaultssaif}{\store}{\store'}}\\
-        &\D = \rule{DF-If}{
+        &\D = \trule{DF-If}{
         \overset{}{\typestmt{\Gamma}{b}}\qquad
         \overset{\D_0}{\typestep{\Gamma}{s_0}{\Delta_0}}\qquad \typestep{\Gamma}{s_1}{\Delta_1}\qquad
         \overset{\D_1}{\typestep{\Gamma;\Delta_0;\Delta_1}{\philist}{\Delta}}}
@@ -528,7 +528,7 @@ Then we prove some lemmas needed to establish the soundness of our dataflow anal
     \begin{align*}
         &\E = \bsrule{EC-Assign}{\overset{\E_0}{\bigstep{a}{\store}{\flagged{}}}}
         {\bigstep{\defaultstore}{\store}{\storeassign{\store}{X \mapsto \flagged{}}}}\\
-        &\D = \rule{DF-Assign}{\overset{\D_0}{\typestep{\Gamma}{a}{L}}}
+        &\D = \trule{DF-Assign}{\overset{\D_0}{\typestep{\Gamma}{a}{L}}}
         {\typestep{\Gamma}{\defaultstore}{[X \mapsto L]}}
     \end{align*}
     We apply~\autoref{lem:gamma-arithm} on $\E_0$ with $\D_0$,
@@ -542,7 +542,7 @@ Then we prove some lemmas needed to establish the soundness of our dataflow anal
         &\E = \bsrule{EC-While}{\overset{\E_0}{\bigsteppl{\philist}{\dom\store}{\store}{\store''}}\qquad
         \overset{\E_2}{\bigstepw{\defaultssawhile}{\dom\store}{\store''}{\excstore'}}}
         {\bigstep{\defaultssawhile}{\store}{\store'}}\\
-        &\D = \rule{DF-While}{\overset{\D_0}{\typestep{\Gamma;\emptyset;\Delta_1}{\philist}{\Delta}}\qquad
+        &\D = \trule{DF-While}{\overset{\D_0}{\typestep{\Gamma;\emptyset;\Delta_1}{\philist}{\Delta}}\qquad
         \overset{\D_1}{\typestmt{\Gamma \cup \Delta}{b}}\qquad
         \overset{\D_2}{\typestep{\Gamma \cup \Delta}{s_0}{\Delta_1}}}
         {\typestep{\Gamma}{\defaultssawhile}{\Delta}}
@@ -591,7 +591,7 @@ We then have the following (general) soundness property of the dataflow analysis
     Let $s, \Gamma$ be such that $s = \defaultsink$ and $\typestep{\Gamma}{s}{\Delta}$ (by $\D$).
     The sink invocation $s$ is \emph{safe}, if the derivation $\D$ has the shape
     \begin{align*}
-        \D = \rule{DF-Sink}{\typestep{\Gamma}{a}{L}}{\typestep{\Gamma}{\defaultsink}{\emptyset}}
+        \D = \trule{DF-Sink}{\typestep{\Gamma}{a}{L}}{\typestep{\Gamma}{\defaultsink}{\emptyset}}
     \end{align*}
     with $L = \lclean$.
 \end{definition}
@@ -613,7 +613,7 @@ We then have the following (general) soundness property of the dataflow analysis
     \begin{align*}
         \E = \bsrule{EC-SinkAbrt}{\overset{}{\bigstep{a}{\store}{\tracked{}}}}
         {\bigstep{\defaultsink}{\store}{\exception}}\\
-        \D = \rule{DF-Sink}{\overset{}{\typestep{\Gamma}{a}{L}}}
+        \D = \trule{DF-Sink}{\overset{}{\typestep{\Gamma}{a}{L}}}
         {\typestep{\Gamma}{\sink{a}}{\emptyset}}
     \end{align*}
     However, because all sinks are safe, we have $L = \lclean$.
@@ -623,7 +623,7 @@ We then have the following (general) soundness property of the dataflow analysis
     \begin{align*}
         &\E = \bsrule{EC-SeqAbrt}{\overset{\E_0}{\bigstep{s_0}{\sigma}{\exception}}}
         {\bigstep{\defaultssaseq}{\store}{\exception}}\\
-        &\D = \rule{DF-Seq}{\overset{\D_0}{\typestep{\Gamma}{s_0}{\Delta_0}}\qquad
+        &\D = \trule{DF-Seq}{\overset{\D_0}{\typestep{\Gamma}{s_0}{\Delta_0}}\qquad
         \overset{}{\typestep{\Gamma \cup \Delta_0}{s_1}{\Delta_1}}}
         {\typestep{\Gamma}{\defaultssaseq}{\Delta_0 \cup \Delta_1}}
     \end{align*}
@@ -635,7 +635,7 @@ We then have the following (general) soundness property of the dataflow analysis
         &\E = \bsrule{EC-Seq}{\overset{\E_0}{\bigstep{s_0}{\sigma}{\store''}} \qquad 
         \overset{\E_1}{\bigstep{s_1}{\store''}{\excstore'}}}
         {\bigstep{\defaultssaseq}{\store}{\excstore'}}\\    
-        &\D = \rule{DF-Seq}{\overset{\D_0}{\typestep{\Gamma}{s_0}{\Delta_0}}\qquad
+        &\D = \trule{DF-Seq}{\overset{\D_0}{\typestep{\Gamma}{s_0}{\Delta_0}}\qquad
         \overset{\D_1}{\typestep{\Gamma \cup \Delta_0}{s_1}{\Delta_1}}}
         {\typestep{\Gamma}{\defaultssaseq}{\Delta_0 \cup \Delta_1}}
     \end{align*}
@@ -646,7 +646,7 @@ We then have the following (general) soundness property of the dataflow analysis
         &\E = \bsrule{EC-While}{\bigsteppl{\philist}{\dom\store}{\store}{\store''} \qquad
         \overset{\E_0}{\bigstepw{\defaultssawhile}{\dom\store}{\store''}{\excstore'}}}
         {\bigstep{\defaultssawhile}{\store}{\excstore'}}\\
-        &\D = \rule{DF-While}{\overset{\D_0}{\typestep{\Gamma;\emptyset;\Delta_1}{\philist}{\Delta}}\qquad
+        &\D = \trule{DF-While}{\overset{\D_0}{\typestep{\Gamma;\emptyset;\Delta_1}{\philist}{\Delta}}\qquad
         \typestmt{\Gamma \cup \Delta}{b}\qquad
         \overset{\D_1}{\typestep{\Gamma \cup \Delta}{s_0}{\Delta_1}}}
         {\typestep{\Gamma}{\defaultssawhile}{\Delta}}
@@ -720,11 +720,11 @@ $\typestep{\Gamma}{s}{\Delta}$ (by $\D$) holds.
 As the poset $\lattice$ is finite, the fixpoint iteration terminates.
 The algorithm then outputs \text{HAS\_FLOW} if $\D$ contains a derivation of form
 \begin{equation*}
-    \rule{DF-Sink}{\typestep{\Gamma}{a}{\ltracked}}{\typestep{\Gamma}{\sink{a}}{\emptyset}}
+    \trule{DF-Sink}{\typestep{\Gamma}{a}{\ltracked}}{\typestep{\Gamma}{\sink{a}}{\emptyset}}
 \end{equation*}
 and, in the absence of that, outputs \text{UNKOWN} if $\D$ contains a derivation of form
 \begin{equation*}
-    \rule{DF-Sink}{\typestep{\Gamma}{a}{\lunknown}}{\typestep{\Gamma}{\sink{a}}{\emptyset}}
+    \trule{DF-Sink}{\typestep{\Gamma}{a}{\lunknown}}{\typestep{\Gamma}{\sink{a}}{\emptyset}}
 \end{equation*}
 and, in the absence of that, outputs \text{NO\_FLOW}.
 
