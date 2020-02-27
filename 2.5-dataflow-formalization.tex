@@ -361,7 +361,7 @@ Let $\join: \lattice \times \lattice \partialf \lattice$ be the (partially defin
 join operator on the poset.
 We require that its domain is maximal, i.e. if $L_1, L_2 \in \lattice$ have a least upper
 bound, it is $L_1 \join L_2$.
-Let $\Gamma, \Delta: \Loc \partialf \lattice$.
+Let $\Gamma, \Delta: \Loc \partialf \lattice$ with finite domain.
 Thus, we generalize the definition of $\Gamma$ and $\Delta$ here.
 The previous definition can be recovered by setting $\lattice$ to be the one-point set.
 
@@ -441,36 +441,28 @@ Judgement \fbox{$\typestep{\Gamma}{s}{\Delta}$}:
     \begin{align*}
         \gamma:\lattice &\to \P(\StoreDomain)\\
         L &\mapsto \begin{cases}
-            \{\tracked{} | n \in \Z\} & \text{if }L = \ltracked\\
-            \{\clean{} | n \in \Z\} & \text{if }L = \lclean\\
+            \{\flagged{} \in \StoreDomain \mid f = \textbf{t}\} & \text{if }L = \ltracked\\
+            \{\flagged{} \in \StoreDomain \mid  f = \textbf{c}\} & \text{if }L = \lclean\\
             \StoreDomain & \text{if }L = \lunknown\\
         \end{cases}
     \end{align*}
-    $\gamma(f) = \{\flagged{} | n \in \Z\}$.
     A store $\store$ \emph{matches a description} $\Gamma: \Loc \partialf \lattice$ if it holds that 
     $\dom\store = \dom\Gamma$ and $\forall X: \sigma(X) \in \gamma(\Gamma(X))$.
     We then write $\matches{\store}{\Gamma}$.
 \end{definition}
 
 First, we justify why the semantics contains disjoint unions when updating stores.
+Then we prove some lemmas needed to establish the soundness of our dataflow analysis.
 \begin{theorem}
     \label{thm:gamma-delta-disjoint}
     If $\typestep{\Gamma}{s}{\Delta}$ holds, then $\dom\Gamma \cap \dom\Delta = \emptyset$.
 \end{theorem}
 
-Then we prove some lemmas needed to establish the key properties of the semantics
-and the dataflow rules.
 \begin{lemma}
     \label{lem:gamma-arithm}
     Let $\E$ be the derivation of $\bigstep{a}{\sigma}{\flagged{}}$.
     If $\typestep{\Gamma}{a}{L}$ and $\store$ matches $\Gamma$, then $\flagged{} \in \gamma(L)$.
 \end{lemma}
-
-For the dataflow rules, there are theorems akin the preservation and progress results
-proven about type systems.
-These are then used to derive a general soundness result about using the dataflow rules
-to detect the possiblity of dataflow.
-Based on that, an algorithm is presented and proven to be sound.
 
 \begin{lemma}[Preservation-ish $\Phi$]
     \label{thm:preservation-phi}
@@ -594,7 +586,7 @@ Based on that, an algorithm is presented and proven to be sound.
 \end{proof}
 
 
-We also have the following (general) soundness property of the dataflow analysis:
+We then have the following (general) soundness property of the dataflow analysis:
 \begin{definition}[Safe Sink]
     Let $s, \Gamma$ be such that $s = \defaultsink$ and $\typestep{\Gamma}{s}{\Delta}$ (by $\D$).
     The sink invocation $s$ is \emph{safe}, if the derivation $\D$ has the shape
@@ -716,20 +708,26 @@ We also have the following (general) soundness property of the dataflow analysis
     Thus we can apply~\autoref{lem:df-soundness} to prove the theorem.
 \end{proof}
 
+We now describe a sound dataflow algorithm $\A(s, \Gamma_\text{ssa}, \Delta_\text{ssa})$.
+First, define $\Gamma$ by
+\begin{align*}
+    \Gamma: &\Gamma_s \to \lattice\\
+    &X \mapsto \lclean
+\end{align*}
+Then, by fixpoint iteration using the DF rules, a map $\Delta$ and a derivation tree $\D$ 
+are computed such that
+$\typestep{\Gamma}{s}{\Delta}$ (by $\D$) holds.
+As the poset $\lattice$ is finite, the fixpoint iteration terminates.
+The algorithm then outputs \text{HAS\_FLOW} if $\D$ contains a derivation of form
+\begin{equation*}
+    \rule{DF-Sink}{\typestep{\Gamma}{a}{\ltracked}}{\typestep{\Gamma}{\sink{a}}{\emptyset}}
+\end{equation*}
+and, in the absence of that, outputs \text{UNKOWN} if $\D$ contains a derivation of form
+\begin{equation*}
+    \rule{DF-Sink}{\typestep{\Gamma}{a}{\lunknown}}{\typestep{\Gamma}{\sink{a}}{\emptyset}}
+\end{equation*}
+and, in the absence of that, outputs \text{NO\_FLOW}.
+
 \begin{corollary}
-    Let $(s, \Gamma_s, \Delta_s)$ be a program in SSA form and define $\Gamma$ by
-    \begin{align*}
-        \Gamma: &\Gamma_s \to \lattice\\
-        &X \mapsto \lclean
-    \end{align*}
-    Let $\D$ be the derivation of $\typestep{\Gamma}{s}{\Delta}$ using the DF rules.
-    The algorithm that outputs \text{HAS\_FLOW} if $\D$ contains a derivation of form
-    \begin{equation*}
-        \rule{DF-Sink}{\typestep{\Gamma}{a}{\ltracked}}{\typestep{\Gamma}{\sink{a}}{\emptyset}}
-    \end{equation*}
-    and, in the absence of that, outputs \text{UNKOWN} if $\D$ contains a derivation of form
-    \begin{equation*}
-        \rule{DF-Sink}{\typestep{\Gamma}{a}{\lunknown}}{\typestep{\Gamma}{\sink{a}}{\emptyset}}
-    \end{equation*}
-    and, in the absence of that, outputs \text{NO\_FLOW}, is a sound dataflow algorithm.
+    The algorithm $\A(s, \Gamma_\text{ssa}, \Delta_\text{ssa})$ is a sound dataflow algorithm.
 \end{corollary}
