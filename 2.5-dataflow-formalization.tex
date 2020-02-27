@@ -24,14 +24,11 @@ We define the set $\StoreDomain =\{\flagged{} \mid n \in \textbf{Z}\}$.
 Stores are denoted with $\store \in \Sigma = \Loc \to \tilde{\textbf{Z}}$.
 Stores are function from locations to the set of tagged integer
 values.
-A further restriction on valid programs is that only up to one expression
-of the form $\textbf{source } a$ is allowed in a program.
-This is a technical restriction, making the proof later easier.
 
 The intuition here is that for all $n \in \textbf{Z}$, 
 each value is tagged by either \textbf{c} for clean or \textbf{t} for being tracked
 as having dataflow.
-A tracked value originates from the source, and is preserved by value-preserving
+A tracked value originates from a source, and is preserved by value-preserving
 operations (see the semantics below).
 The command $\defaultsink$ is a special marker for the dataflow sink.
 It aborts the program if a tracked value reaches the sink.
@@ -309,7 +306,7 @@ Proofs are omitted, as we prove these theorems in greater generality later.
 \begin{definition}[Dataflow]
     A tuple $(s, \initialstore, \Gamma, \Delta)$ of a program $s$ and initial store $\initialstore{}$ 
     with $\dom{\initialstore{}} = \Gamma$
-    has \emph{dataflow from the source to a sink} if
+    has \emph{dataflow from a source to a sink} if
     $\bigstep{s}{\initialstore{}}{\exception}$ holds.
     This means that the program aborts.
 \end{definition}
@@ -318,16 +315,13 @@ Proofs are omitted, as we prove these theorems in greater generality later.
     A \emph{dataflow algorithm} $\A(s, \Gamma, \Delta)$ computes, given a program $s$
     and a SSA type derivation $\typestep{\Gamma}{s}{\Delta}$,
     if there exists an initial store $\initialstore{}$ 
-    such that $(s, \initialstore, \Gamma, \Delta)$ has dataflow from the source to a sink.
-    $\A(s, \Gamma, \Delta) \in \{\text{HAS\_FLOW}, \text{NO\_FLOW}, \text{UNKOWN}\}$.
-    TODO: Do we really want unkown here? HAS FLOW is no guarantee, as dead code/unreachable paths 
-    are still reported as HAS FLOW, not as UNKOWN
-%    \text{HAS\_FLOW} indicates that it is ver
+    such that $(s, \initialstore, \Gamma, \Delta)$ has dataflow from a source to a sink.
+    We also require $\A(s, \Gamma, \Delta) \in \{\text{HAS\_FLOW}, \text{NO\_FLOW}, \text{UNKOWN}\}$.
 \end{definition}
 
 \begin{definition}[Soundness]
-    A dataflow algorithm is \emph{sound} if for any tuple $(s, \initialstore, \Gamma, \Delta)$ that
-    has dataflow it holds that $\A(s, \Gamma, \Delta) = \text{HAS\_FLOW}$ or
+    A dataflow algorithm is \emph{sound} if for all tuples $(s, \initialstore, \Gamma, \Delta)$ that
+    have dataflow it holds that $\A(s, \Gamma, \Delta) = \text{HAS\_FLOW}$ or
     $\A(s, \Gamma, \Delta) = \text{UNKNOWN}$.
 \end{definition}
 
@@ -377,11 +371,20 @@ Thus, it is either marked with \lclean{} (the variable
 is clean, i.e.\ does not contain a value originating from a dataflow source), \lunknown{}
 (it is unknown whether the variable contains a value originating from a source) or \ltracked{}
 (the variable contains a tracked value from a dataflow source).
-We define the following poset structure on it:
-TODO nice picture, \lunknown{} is the top element, no bottom element.
-Then the join operator is defined on the whole poset.
+We define the following poset structure, where the join operator is defined on the whole
+poset:
+\begin{figure}[h]
+    \centering
+    \begin{tikzpicture}
+        \node (u) at (0, 1) {$\lunknown$};
+        \node (c) at (-1, 0) {$\lclean$};
+        \node (t) at (1, 0) {$\ltracked$};
+        \draw[->] (c) -- (u);
+        \draw[->] (t) -- (u);
+    \end{tikzpicture}      
+\end{figure}
 
-We introduce the following judgements.
+We introduce the following judgements:
 \\
 Judgement \fbox{$\typestep{\Gamma}{a}{L}$}:
 \begin{align*}
