@@ -20,7 +20,7 @@ and call the resulting language dIMP (for dataflow IMP):
     &c \Coloneqq \dots \mid \defaultsink\\
     &f \Coloneqq \textbf{c} \mid \textbf{t}\\
 \end{align*}
-We define the set $\tilde{\textbf{Z}} =\{\flagged{} \mid n \in \textbf{Z}\}$.
+We define the set $\StoreDomain =\{\flagged{} \mid n \in \textbf{Z}\}$.
 Stores are denoted with $\store \in \Sigma = \Loc \to \tilde{\textbf{Z}}$.
 Stores are function from locations to the set of tagged integer
 values.
@@ -102,8 +102,8 @@ To facilitate the dataflow analysis, we describe a SSA form on dIMP with a concr
 syntax and semantics.
 We do not describe how to transform a dIMP program to a SSA-dIMP program, but 
 refer the reader to the literature, where different SSA construction algorithms are
-described. (TODO cite). Furthermore, there are correctness proofs of SSA construction
-available (TODO).
+described. Some even come with computer-verified correctness and minimality guarantees,
+we refer the reader to~\cite{verifiedssa}.
 
 The syntax for boolean and arithmetic expressions in SSA-dIMP is the same as in dIMP.
 However, the command syntax changes.
@@ -183,28 +183,33 @@ after executing the loop body.
 The sets $\Gamma$ and $\Delta$ are natural outputs of an algorithm that converts a 
 dIMP program into SSA-dIMP form.
 They prove that a (not necessarily minimal) SSA form was indeed achieved.
-TODO something about use of initial values, as they cannot have a definition
+Inputs to the program are provided in the initially provided store, and $\Gamma$
+has to contain the list of variables accessed by the program without definition in the program.
 
 \subsubsection*{The Semantics of SSA-dIMP}
 Stores are now partial functions $\store : \Sigma \partialf \Loc$ to indicate that
 variables have to be defined before they can be read.
-%Furthermore, when updating a store, we now use the syntax 
-%$\store \dunion [X \mapsto \flagged{}]$ to indicate that the store $\store$ did not
-%contain the variable $X$ before.
+The symbol $\dunion$ denotes a union of sets of which we assert that it is disjoint.
+When updating a store, we now use the syntax 
+$\store \dunion [X \mapsto \flagged{}]$ to indicate that the store $\store$ does not
+contain the variable $X$.
+\autoref{thm:ssa-gamma-delta-disjoint} in combination with ~\autoref{thm:ssa-progress}
+justify this notation.
 
 The judgment for booleans and arithmetic expressions does not change.
-As before, we use $\excstore{}$ to denote partial functions
-$\excstore{} \in (\Loc \partialf \StoreDomain) \cup \{\exception\}$.
-%where the evaluation of $\philist$ 
-%is combined with the variables in the store $\sigma$.
-% TODO cleanup
-For $\varphi$ nodes, we introduce to judgements - one that evaluates them to the first argument,
-and one that evalutes them to the second argument.
-Both judgements are provided with a filter $\filter \subset \dom\sigma$ that specifies which variables 
-to keep from the outer store.
-The symbol $\dunion$ denotes a union of sets of which we assert that it is disjoint.
+As before, we use $\excstore{}$ to denote stores that represent an \exception{}
+state or a partial function, i.e.\ $\excstore{} \in (\Loc \partialf \StoreDomain) \cup \{\exception\}$
+For $\varphi$ nodes, we introduce two judgements - one that evaluates all the variable definitions
+to the first argument, and one that evalutes them all to the second argument.
+Both judgements are provided with a filter $\filter \subseteq \dom\sigma$ that specifies which variables 
+from the outer store should be kept.
 The symbol $\store\restrict{\filter}$ denotes the restriction of the map $\store$
 to the domain $\filter$.
+In order to correctly model the execution of $\varphi$ nodes for \textbf{while} commands,
+a second judgment is set up.
+The regular command judmenent only populates the variables defined by the $\varphi$ nodes
+and then defers to a special while-command-judgement that evaluates all loop executions,
+evaluating the $\varphi$ nodes with the store after the loop body execution.
 \\
 Judgment \fbox{$\bigsteppl{\philist}{\filter}{\store}{\store'}$}:
 \begin{align*}
@@ -216,43 +221,8 @@ Judgment \fbox{$\bigsteppr{\philist}{\filter}{\store}{\store'}$}:
     &\bsrule{E$\Phi_2$-Assign}{}
     {\bigsteppr{\defaultphilistn}{\filter}{\store}{\storeassign{\store\restrict{\filter}}{X_1 \mapsto \store(Z_1),\ldots X_n \mapsto \store(Z_n)}}}\\
 \end{align*}
-
-In order to correctly model the execution of $\varphi$ nodes for \textbf{while} commands,
-a second judgment is set up.
-The regular command judmenent only populates the variables defined by the $\varphi$ nodes
-and then defers to a special while-command-judgement that evaluates all loop executions,
-evaluating the $\varphi$ nodes with the store after the loop body execution.
-
-With $\excstore{}: (\Loc \partialf \StoreDomain) \union \{\exception\}$ we have the following rules for the
- judgment \fbox{$\bigstep{c}{\store}{\excstore{}}$}:
-\begin{align*}
-    &\bsrule{EC-SinkAbrt}{\bigstep{a}{\store}{\tracked{}}}
-    {\bigstep{\defaultsink}{\store}{\exception}} \qquad
-    \bsrule{EC-Sink}{\bigstep{a}{\store}{\clean{}}}
-    {\bigstep{\defaultsink}{\store}{\store}} \qquad
-    \bsrule{EC-Skip}{}{\bigstep{\skipcmd}{\store}{\store}}\\
-    &\bsrule{EC-Seq}{\bigstep{s_0}{\sigma}{\store''} \qquad \bigstep{s_1}{\store''}{\excstore'}}
-    {\bigstep{\defaultssaseq}{\store}{\excstore'}}\qquad
-    \bsrule{EC-SeqAbrt}{\bigstep{s_0}{\sigma}{\exception}}
-    {\bigstep{\defaultssaseq}{\store}{\exception}} \\
-    &\bsrule{EC-IfTAbrt}{\bigstep{b}{\store}{\btrue}\qquad \bigstep{s_0}{\store}{\exception}}
-    {\bigstep{\defaultssaif}{\store}{\exception}}\\
-    &\bsrule{EC-IfFAbrt}{\bigstep{b}{\store}{\bfalse}\qquad \bigstep{s_1}{\store}{\exception}}
-    {\bigstep{\defaultssaif}{\store}{\exception}}\\
-    &\bsrule{EC-Assign}{\bigstep{a}{\store}{\flagged{}}}
-    {\bigstep{\defaultstore}{\store}{\storeassign{\store}{X \mapsto \flagged{}}}}\\
-    &\bsrule{EC-IfT}{\bigstep{b}{\store}{\btrue}\qquad \bigstep{s_0}{\store}{\store''}
-    \qquad \bigsteppl{\philist}{\dom\store}{\store''}{\store'}}
-    {\bigstep{\defaultssaif}{\store}{\store'}}\\
-    &\bsrule{EC-IfF}{\bigstep{b}{\store}{\bfalse}\qquad \bigstep{s_1}{\store}{\store''}
-    \qquad \bigsteppr{\philist}{\dom\store}{\store''}{\store'}}
-    {\bigstep{\defaultssaif}{\store}{\store'}}\\
-    &\bsrule{EC-While}{\bigsteppl{\philist}{\dom\store}{\store}{\store''} \qquad
-    \bigstepw{\defaultssawhile}{\dom\store}{\store''}{\excstore'}}
-    {\bigstep{\defaultssawhile}{\store}{\excstore'}}\\
-\end{align*}
-
-For while loops, we introduce a special judgment of the form \fbox{$\bigstepw{c}{\filter}{\store}{\excstore'{}}$}:
+\\
+Judgment \fbox{$\bigstepw{c}{\filter}{\store}{\excstore'{}}$}:
 \begin{align*}
     &\bsrule{EW-WhileF}{\bigstep{b}{\store}{\bfalse}}
     {\bigstepw{\defaultssawhile}{\filter}{\store}{\store}}\qquad\\
@@ -265,6 +235,35 @@ For while loops, we introduce a special judgment of the form \fbox{$\bigstepw{c}
     \bigstepw{\defaultssawhile}{\filter}{\store'''}{\excstore'}}
     {\bigstepw{\defaultssawhile}{\filter}{\store}{\excstore'}}
 \end{align*}
+\\
+Judgment \fbox{$\bigstep{c}{\store}{\excstore{}}$}:
+\begin{align*}
+    &\bsrule{EC-Seq}{\bigstep{s_0}{\sigma}{\store''} \qquad \bigstep{s_1}{\store''}{\excstore'}}
+    {\bigstep{\defaultssaseq}{\store}{\excstore'}}\qquad
+    \bsrule{EC-SeqAbrt}{\bigstep{s_0}{\sigma}{\exception}}
+    {\bigstep{\defaultssaseq}{\store}{\exception}} \\
+    &\bsrule{EC-IfTAbrt}{\bigstep{b}{\store}{\btrue}\qquad \bigstep{s_0}{\store}{\exception}}
+    {\bigstep{\defaultssaif}{\store}{\exception}} \qquad
+    \bsrule{EC-SinkAbrt}{\bigstep{a}{\store}{\tracked{}}}
+    {\bigstep{\defaultsink}{\store}{\exception}}\\
+    &\bsrule{EC-IfFAbrt}{\bigstep{b}{\store}{\bfalse}\qquad \bigstep{s_1}{\store}{\exception}}
+    {\bigstep{\defaultssaif}{\store}{\exception}} \qquad
+    \bsrule{EC-Sink}{\bigstep{a}{\store}{\clean{}}}
+    {\bigstep{\defaultsink}{\store}{\store}}\\
+    &\bsrule{EC-Assign}{\bigstep{a}{\store}{\flagged{}}}
+    {\bigstep{\defaultstore}{\store}{\storeassign{\store}{X \mapsto \flagged{}}}} \qquad
+    \bsrule{EC-Skip}{}{\bigstep{\skipcmd}{\store}{\store}}\\
+    &\bsrule{EC-IfT}{\bigstep{b}{\store}{\btrue}\qquad \bigstep{s_0}{\store}{\store''}
+    \qquad \bigsteppl{\philist}{\dom\store}{\store''}{\store'}}
+    {\bigstep{\defaultssaif}{\store}{\store'}}\\
+    &\bsrule{EC-IfF}{\bigstep{b}{\store}{\bfalse}\qquad \bigstep{s_1}{\store}{\store''}
+    \qquad \bigsteppr{\philist}{\dom\store}{\store''}{\store'}}
+    {\bigstep{\defaultssaif}{\store}{\store'}}\\
+    &\bsrule{EC-While}{\bigsteppl{\philist}{\dom\store}{\store}{\store''} \qquad
+    \bigstepw{\defaultssawhile}{\dom\store}{\store''}{\excstore'}}
+    {\bigstep{\defaultssawhile}{\store}{\excstore'}}\\
+\end{align*}
+
 \begin{conjecture}
     We conjecture that for every dIMP program $c$ with initial store $\initialstore$
     such that $\bigstep{c}{\initialstore}{\exception}$ there exists a equivalent program
@@ -280,11 +279,12 @@ for every bigstep derivation, all variables are defined before they are used.
 Proofs are omitted, as we prove these theorems in greater generality later.
 
 \begin{theorem}
-    %\label{thm:gamma-delta-disjoint}
+    \label{thm:ssa-gamma-delta-disjoint}
     If $\typestep{\Gamma}{s}{\Delta}$ holds, then $\Gamma \cap \Delta = \emptyset$.
 \end{theorem}
 
 \begin{theorem}
+    \label{thm:ssa-progress}
     If $\typestep{\Gamma}{s}{\Delta}$, $\text{dom } \store = \Gamma$ and
     $\bigstep{s}{\store}{\store'}$, then $\store' = \store \dunion \store_0$
     and $\dom{\store_0} = \Delta$.
