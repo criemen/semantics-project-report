@@ -1,0 +1,79 @@
+
+@exprparent = @stmt | @expr;
+
+types(
+  unique int id: @type,
+  string nodeName: string ref
+);
+
+literals(
+  unique int parent: @expr ref,
+  int value: int ref
+);
+
+phinodes(
+  unique int id: @phinode,
+  int parent: @stmt ref,
+  int assignedvar: @variable ref,
+  int firstvar: @variable ref,
+  int secondvar: @variable ref
+);
+
+vars(
+  unique int id: @variable,
+  string nodeName: string ref,
+  int typeid: @type ref
+);
+
+variableread(
+  unique int expr: @varaccess ref,
+  int variable: @variable ref
+);
+
+variableassign(
+  unique int assign: @assign ref,
+  int variable: @variable ref
+);
+
+
+#keyset[parent,idx]
+stmts(
+  unique int id: @stmt,
+  int kind: int ref,
+  int parent: @stmt ref,
+  int idx: int ref
+);
+
+
+#keyset[parent,idx]
+exprs(
+  unique int id: @expr,
+  int kind: int ref,
+  int typeid: @type ref,
+  int parent: @exprparent ref,
+  int idx: int ref
+);
+
+case @expr.kind of
+   1  = @intliteral
+|  2  = @addexpr
+|  3  = @subexpr
+|  4  = @mulexpr
+|  5  = @varaccess
+|  6  = @sourceexpr
+;
+
+@binaryexpr = 
+ @addexpr
+ | @subexpr
+ | @mulexpr
+
+
+case @stmt.kind of
+  0 = @skip
+| 1 = @assign
+| 2 = @seq
+| 3 = @ifstmt
+| 4 = @whilestmt
+| 5 = @sink
+;
