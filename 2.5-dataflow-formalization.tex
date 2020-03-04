@@ -211,12 +211,12 @@ evaluating the $\varphi$ nodes with the store after the loop body execution.
 Judgment \fbox{$\bigsteppl{\philist}{\filter}{\store}{\store'}$}:
 \begin{align*}
     &\bsrule{E$\Phi_1$-Assign}{}
-    {\bigsteppl{\defaultphilistn}{\filter}{\store}{\storeassign{\store\restrict{\filter}}{X_1 \mapsto \store(Y_1),\ldots X_n \mapsto \store(Y_n)}}}\\
+    {\bigsteppl{\defaultphilistn}{\filter}{\store}{\storeassign{\store\restrict{\filter}}{X_1 \mapsto \store(Y_1),\ldots, X_n \mapsto \store(Y_n)}}}\\
 \end{align*}
 Judgment \fbox{$\bigsteppr{\philist}{\filter}{\store}{\store'}$}:
 \begin{align*}
     &\bsrule{E$\Phi_2$-Assign}{}
-    {\bigsteppr{\defaultphilistn}{\filter}{\store}{\storeassign{\store\restrict{\filter}}{X_1 \mapsto \store(Z_1),\ldots X_n \mapsto \store(Z_n)}}}\\
+    {\bigsteppr{\defaultphilistn}{\filter}{\store}{\storeassign{\store\restrict{\filter}}{X_1 \mapsto \store(Z_1),\ldots, X_n \mapsto \store(Z_n)}}}\\
 \end{align*}
 \\
 Judgment \fbox{$\bigstepw{s}{\filter}{\store}{\excstore'{}}$}:

@@ -1,5 +1,12 @@
 % !TEX root = main.tex
 \begin{abstract}
-    \lipsum[1-2][1-20]
+    This project describes how a modern static analysis tool detects dataflow paths.
+    We formalize the dataflow algorithm in a reduced language without support for procedure calls
+    or objects in order to highlight how the dataflow library used by CodeQL works.
+    We prove the soundness of the formalized algorithm with respect to a tracing semantics
+    we developed.
+    Then we describe the implementation of the algorithm in QL, as well as a small improvement
+    that was contributed in the course of this project.
+    %\lipsum[1-2][1-20]
 \end{abstract}
 \tableofcontents

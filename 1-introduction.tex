@@ -1,18 +1,47 @@
 % !TEX root = main.tex
 \section{Introduction}
 \subsection{Static Analysis}
-\subsection{Description of CodeQL}
-% Quick history Overview
+Static analysis is the analysis of computer programs, while not executing the program.
+Usually, the static analysis has access to the source code of the analyzed program.
+Static analysis has several goals, among them are to support the programmer in finding (possible) mistakes and
+security issues in their programs.
+Furthermore, static analysis is also employed by compilers in order to optimize code.
+If for example a compiler can prove that a conditional statement is always false,
+a branch instruction can be avoided.
+In this project outside the course scope, we use a static analyser that is developed
+solely to find bugs and report them to the developers.
 
-% TODO add somewhere a note about the LGTM links and explain their persistence properties
+\subsection{Description of CodeQL}
+The software package we are using for static analysis is called \emph{CodeQL}.
+It was first developed by a company called Semmle and sold to corporate customers worldwide.
+Besides, open-source projects hosted on GitHub and other open-source platforms could
+get analysis results of their projects for free on the LGTM.com platform\footnote{LGTM 
+is an acronym for \emph{Looks good to me}, a common statement of reviewers before merging
+pull requests.}.
+
+In September 2019, GitHub announced that they bought Semmle.
+Following the acquisition, the CodeQL CLI utility was released to the general public,
+which allows the analysis of any software, not only publicly hosted one.
+However, the license specifies that any usage has to either be academic research,
+or that the analyzed codebase is released under an OSI-approved open-source license.
+Still, this was quite a step up from only having code that has been uploaded to
+GitHub analyzed.
+During this project, the CodeQL CLI utility was used under the academic research clause.
+
+Throughout the report, there are links to CodeQL analyses on open-source projects.
+These refer to a single analysis (called query in CodeQL lingo), as well as a specific result
+set associated with a project revision at the time of writing the report.
+We expect that these links are stable, i.e.\ the content does not change over time.
 % TODO terminology callable, argument, parameter
 
-\subsection{Architecture Outline}
-% TODO check again
-% overview paragraph is not very good/precise
-In this section, we will give a short overview of the CodeQL architecture, as well as where our
-project fits in. We describe the extraction process where source code is turned into a relational database,
-as well as the QL language and the libraries supporting the queries.
+
+\subsubsection*{Architecture of CodeQL}
+Now we give a short overview of the CodeQL architecture, as well as where our
+project fits in. 
+The CodeQL tool is built upon the domain specific language QL that enables declarative,
+logic-based programming.
+Every analysis of a program is described as a query of a relational database built using 
+the program's source code. These queries are written in QL.
 
 In order to analyze source code, it first needs to be processed into a database representation.
 For each language an \emph{extractor} parses the source code and outputs a database file.
@@ -23,21 +52,21 @@ For example, the Java database schema changed when preliminary support for the J
 added to the extractor.
 
 The \emph{database engine} allows users to query the database file produced by the extractor.
-Queries are written in the QL language.
+These queries, written in QL, implement the actual static analyses.
 Both the database engine and the QL language are agnostic to the language the analyzed source code 
 is written in.
-This allows developers at GitHub with relative easy to add support for new languages to the CodeQL ecosystem.
+This allows developers at GitHub with relative ease to support new languages in the CodeQL ecosystem.
 In theory, QL queries are also independent of the language the analyzed source code is written.
-However, in practice queries are always tied intimately to the language of the analyzed source code,
+However, in practice queries are tied to the language of the analyzed source code,
 as they depend on the language-specific database schema.
 Furthermore, queries can't gloss over language-specific semantics either {---} one example of many would be
 that signed integer overflow needs to be treated differently in Java than in C/C++.
 
-For each language, a set of \emph{libraries} supports the development of queries.
+For each language, a set of \emph{libraries} assists in the development of queries.
 These libraries are implemented in QL.
 The libraries implement features such as taint tracking, dataflow analysis or control flow graphs.
-For every supported language by the CodeQL analyzers, developers need to re-implement all of these libraries from
-scratch, as components can't be shared across languages.
+For every supported language by the CodeQL analyzers, developers usually re-implement all of these libraries from
+scratch, as sharing components across languages is quite difficult.
 The only exception is the dataflow library, which is separated into a language-agnostic and 
 language-specific part.
 This language-agnostic part of the dataflow library is shared between the libraries for Java, C/C++ and C\#.
@@ -49,16 +78,9 @@ sanitized properly for use in such a query.
 Queries often rely on the supporting libraries to do the heavy lifting, e.g.\ the SQL injection detection 
 is built on top of the dataflow library.
 
-
-% TODO
-The queries are accessible to researchers in academia and all open-source projects free of charge 
-via the \href{https://LGTM.com}{LGTM.com} online platform and the CodeQL CLI utility. % TODO font for LGTM
-Bugs can be reported via the issue tracker and the project takes pull requests.
-
-
 All queries as well as the supporting libraries are open-source and published 
 on GitHub\footnote{\url{https://github.com/Semmle/ql}}.
-The extractors and the query engine are available only in compiled form under a 
+Most of the extractors and the query engine are only available in compiled form under a 
 proprietary license\footnote{\url{https://github.com/github/codeql-cli-binaries}}.
 While the license is quite restrictive,
 usage of the CodeQL CLI utility for academic research is explicitly allowed.
@@ -68,14 +90,11 @@ both the shared and the language-specific part. We only implemented the language
 functionality, and an GitHub employee provided stubs for C/C++ and C\#.
 The individual features are discussed in the next chapters.
 
-% Every language has its own extractor, which parses source code into the language-specif%ic database scheme.
-% TODO? This database scheme evolves together with the language and extractor, 
-%The queries and the supporting libraries are all specific to the language being analyzed,
-%only the evaluator
+%For a detailed description of the QL language
 
-\subsection{Philosophy}
+\subsection{Philosophy of Bug Finding}
 Using static analysis for bug finding is lacking in the theoretical foundation {---} 
-analyses are usually neither sound nor complete.
+analyses are often neither sound nor complete.
 This means that a query can report \emph{false positives}, problems flagged by the query that 
 are not bugs at all.
 Furthermore, queries can also not report instances of a bug which are present in the code,
@@ -84,11 +103,14 @@ Obviously both false positives and negatives are not desirable, but static analy
 to reduce false positives as a means to reduce noise.
 If false positives are reduced, almost every problem flagged by an analysis is a real bug.
 This makes the static analyzer a very useful tool.
-% TODO reword
-% TODO general thing
 
-%\cite{qlpaper}
-\subsection{Evaluation Model}
+However, this makes it difficult to express in a theoretical framework to prove that 
+an analysis is useful, as this approach eludes an easy definition.
+In this report, we deal with this problem by reducing the complexity of the analyzed language,
+so in the theoretical setting we are dealing with a (provably) sound analysis.
+
+\subsection{Evaluation Model of QL}
+\cite{qlpaper}
 Every predicate is computed bottoms-up, so when a predicate is encountered, its
 tuple set is computed.
 Recursive predicates are computed as fixed-point iterations, which means that the database engine 
@@ -104,6 +126,8 @@ nodes by invoking \texttt{getSucc*}.
 \subsection{QL And Relational Database TODO title}
 At the heart of QL lives a relational database, and QL is designed to query a relational database.
 Every predicate, the basic notion of a BLA, can be regarded as a tuple.
+
+% TODO cite qlpaper
 
 % TODO can you build an infinite predicate, or does the compiler check that for you?
 % equivalent to SQL, but what about recursion?
