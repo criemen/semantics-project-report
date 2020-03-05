@@ -1,5 +1,5 @@
 class PhiNode extends @phinode {
-  string toString() { result = "phinode" }
+  string toString() { result = getAssignedVar().getName() + ":=phi(" + getFirstVar().getName() + "," + getSecondVar().getName() + ")" }
 
   DStmt getParent() { phinodes(this, result, _, _, _) }
 
@@ -123,8 +123,6 @@ class WhileStmt extends DStmt, @whilestmt {
   PhiNode getPhiNode() { result.getParent() = this }
 
   DStmt getBody() { result.isNthChildOf(this, 0) }
-
-  //DStmt getElseBranch() { result.isNthChildOf(this, 1) }
 }
 
 
@@ -136,11 +134,5 @@ class Variable extends @variable {
 
   string getName() { vars(this, result, _) }
 
-  /** Gets an expression on the right-hand side of an assignment to this variable. */
-  //Expr getAnAssignedValue() {
-  //  exists(LocalVariableDeclExpr e | e.getVariable() = this and result = e.getInit())
-  //  or
-  //  exists(AssignExpr e | e.getDest() = this.getAnAccess() and result = e.getSource())
-  //}
   string toString() { result = "Var " + this.getName() }
 }

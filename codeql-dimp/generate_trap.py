@@ -82,6 +82,17 @@ def seq(s1, s2):
     app(f"stmtparents(#{sid}, #{s2}, 1)")
     return sid
 
+def ifstmt(thenBranch, elseBranch):
+    sid = newStmt(3, "if")
+    app(f"stmtparents(#{sid}, #{thenBranch}, 0)")
+    app(f"stmtparents(#{sid}, #{elseBranch}, 1)")
+    return sid
+
+def whilestmt(body):
+    sid = newStmt(4, "while")
+    app(f"stmtparents(#{sid}, #{body}, 0)")
+    return sid
+
 def sink(expr):
     sid = newStmt(5, "sink")
     app(f"exprparents(#{sid}, #{expr}, 0)")
@@ -92,7 +103,21 @@ inttype()
 int3 = intLiteral(3)
 varX = newVar("X")
 varY = newVar("Y")
-assignseq = seq(assign(varX, int3), assign(varY, varAccess(varX)))
+varZ = newVar("Z")
+varA1 = newVar("A1")
+varA2 = newVar("A2")
+varA = newVar("A")
+
+whileL = whilestmt(seq(skip(), assign(varZ, source(varAccess(varY)))))
+phinode(whileL, varY, varX, varZ)
+seqfirst = seq(assign(varX, (intLiteral(4))), whileL)
+seqsecond = seq(seqfirst, sink(varAccess(varY)))
+ifS = ifstmt(assign(varA1, source(intLiteral(3))), assign(varA2, intLiteral(5)))
+phinode(ifS, varA, varA1, varA2)
+seqthird = seq(seqsecond, ifS)
+seq4 = seq(seqthird, sink(varAccess(varA)))
+
+#assignseq = seq(assign(varX, int3), assign(varY, varAccess(varX)))
 
 
 
