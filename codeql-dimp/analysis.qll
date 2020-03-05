@@ -43,7 +43,9 @@ class VarContext extends TypeContext, TVarContext {
 
   Tag getTag() { result = tag }
 
-  override string toString() { result = "TVarContext(...,...)" }
+  override string toString() {
+    result = "TVarContext(" + getVariable().getName() + "," + getTag() + ")"
+  }
 }
 
 // this implements the join operator on the poset
@@ -59,7 +61,7 @@ Tag joinTypeContexts(VarContext ctx1, VarContext ctx2) {
   result = joinTags(ctx1.getTag(), ctx2.getTag())
 }
 
-predicate tagExpression(TypeContext gamma, Expr e, Tag tag) {
+predicate tagExpression(TypeContext gamma, DExpr e, Tag tag) {
   e instanceof IntLiteral and
   tag instanceof Clean
   or
@@ -98,7 +100,7 @@ predicate tagPhiNode(
   )
 }
 
-predicate tagStmt(TypeContext gamma, Stmt stmt, TypeContext delta) {
+predicate tagStmt(TypeContext gamma, DStmt stmt, TypeContext delta) {
   stmt instanceof Skip and
   delta instanceof EmptyContext
   or
@@ -138,5 +140,15 @@ predicate tagStmt(TypeContext gamma, Stmt stmt, TypeContext delta) {
     tagStmt(gamma, stmt.(IfStmt).getThenBranch(), delta0) and
     tagStmt(gamma, stmt.(IfStmt).getElseBranch(), delta1) and
     tagPhiNode(gamma, delta0, delta1, stmt.(IfStmt).getPhiNode(), delta)
+  )
+  or
+  stmt instanceof WhileStmt and
+  exists(TypeContext delta0, EmptyContext emptyCtx |
+    tagPhiNode(gamma, emptyCtx, delta0, stmt.(WhileStmt).getPhiNode(), delta) and
+    (
+      tagStmt(gamma, stmt.(WhileStmt).getBody(), delta0)
+      or
+      tagStmt(delta, stmt.(WhileStmt).getBody(), delta0)
+    )
   )
 }

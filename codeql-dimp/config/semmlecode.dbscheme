@@ -36,22 +36,28 @@ variableassign(
 );
 
 
-#keyset[parent,idx]
+stmtparents(
+    int parent: @stmt ref,
+    int child: @stmt ref,
+    int idx: int ref
+);
+
 stmts(
   unique int id: @stmt,
-  int kind: int ref,
-  int parent: @stmt ref,
-  int idx: int ref
+  int kind: int ref
+);
+
+exprparents(
+    int parent: @exprparent ref,
+    int child: @expr ref,
+    int idx: int ref
 );
 
 
-#keyset[parent,idx]
 exprs(
   unique int id: @expr,
   int kind: int ref,
-  int typeid: @type ref,
-  int parent: @exprparent ref,
-  int idx: int ref
+  int typeid: @type ref
 );
 
 case @expr.kind of
