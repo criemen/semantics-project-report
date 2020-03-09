@@ -145,17 +145,22 @@ def band(b1, b2):
 inttype()
 varX = newVar("X")
 varY = newVar("Y")
+varZ = newVar("Z")
+
 #varZ = newVar("Z")
+#varA1 = newVar("A1")
+#varA2 = newVar("A2")
+#varA = newVar("A")
 
-def bla():
-    varZ = newVar("Z")
-    varA1 = newVar("A1")
-    varA2 = newVar("A2")
-    varA = newVar("A")
-
-#whileL = whilestmt(band(boolleq(varAccess(varX), varAccess(varY)), boolequality(intLiteral(3), intLiteral(4))), seq(skip(), assign(varZ, source(varAccess(varY)))))
+#whileL = whilestmt(boolliteral(0), seq(assign(varZ, source(varAccess(varY))), sink(varY)))
 #phinode(whileL, varY, varX, varZ)
 #seqfirst = seq(assign(varX, (intLiteral(4))), whileL)
+
+whileL = whilestmt(boolliteral(0), assign(varZ, source(varAccess(varX))))
+phinode(whileL, varY, varX, varZ)
+seqfirst = seq(assign(varX, (intLiteral(4))), whileL)
+seq(seqfirst, sink(varAccess(varY)))
+
 #seqsecond = seq(seqfirst, sink(varAccess(varY)))
 #ifS = ifstmt(bneg(boolleq(varAccess(varX), varAccess(varY))), assign(varA1, addition(source(intLiteral(3)), varAccess(varX))), assign(varA2, intLiteral(5)))
 #phinode(ifS, varA, varA1, varA2)
@@ -167,7 +172,9 @@ def bla():
 
 #bneg(boolleq(varAccess(varX), varAccess(varX))
 #sink(varAccess(varY))
-ifS = seq(seq(assign(varX, source(intLiteral(3))), assign(varY, intLiteral(4))), ifstmt(boolliteral(1), skip(), skip()))
+#ifS = seq(seq(assign(varX, source(intLiteral(3))), assign(varY, intLiteral(4))), ifstmt(boolliteral(1), sink(varAccess(varY)), sink(varAccess(varX))))
+#phinode(ifS, varX, varY, varZ)
+
 #ifstmt(boolliteral(1), skip(), skip())
 #toplevel = seq(assignseq, ifS)
 

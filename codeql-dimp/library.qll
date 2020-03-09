@@ -112,7 +112,7 @@ class Seq extends DStmt, @seq {
 
   DStmt getSecondStatement() { result.isNthChildOf(this, 1) }
 
-  override string toString() { result = "seq" }
+  override string toString() { result = getFirstStatement().toString() + " SEQ " +  getSecondStatement().toString()}
 }
 
 class IfStmt extends DStmt, @ifstmt {

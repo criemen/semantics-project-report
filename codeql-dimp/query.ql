@@ -20,6 +20,11 @@ query predicate ifstmt(DStmt toplevel, TypeContext gamma, TypeContext delta) {
 }
 
 
+query predicate seq(Seq stmt) {
+  any()
+}
+
+
 from Sink sink, TypeContext gamma, Tag tag
 where
   propagateContext(any(EmptyContext c), _, _, gamma, sink) and
