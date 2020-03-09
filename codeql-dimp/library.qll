@@ -1,5 +1,9 @@
 class PhiNode extends @phinode {
-  string toString() { result = getAssignedVar().getName() + ":=phi(" + getFirstVar().getName() + "," + getSecondVar().getName() + ")" }
+  string toString() {
+    result =
+      getAssignedVar().getName() + ":=phi(" + getFirstVar().getName() + "," +
+        getSecondVar().getName() + ")"
+  }
 
   DStmt getParent() { phinodes(this, result, _, _, _) }
 
@@ -14,13 +18,17 @@ class DExprParent extends @exprparent {
   string toString() { result = "DExprParent" }
 }
 
+class BExprParent extends @bexprparent {
+  string toString() { result = "BExprParent" }
+}
+
 abstract class DExpr extends @expr {
   abstract string toString();
 
   DExprParent getParent() { exprparents(result, this, _) }
 
   /** Gets the index of this statement as a child of its parent. */
-  int getIndex() {exprparents(_, this, result) }
+  int getIndex() { exprparents(_, this, result) }
 
   /** Holds if this statement is the child of the specified parent at the specified (zero-based) position. */
   predicate isNthChildOf(DExprParent parent, int index) {
@@ -71,7 +79,7 @@ abstract class DStmt extends @stmt {
   DStmt getParent() { stmtparents(result, this, _) }
 
   /** Gets the index of this statement as a child of its parent. */
-  int getIndex() {stmtparents(_, this, result) }
+  int getIndex() { stmtparents(_, this, result) }
 
   /** Holds if this statement is the child of the specified parent at the specified (zero-based) position. */
   predicate isNthChildOf(DStmt parent, int index) {
@@ -94,7 +102,9 @@ class Assign extends DStmt, @assign {
 
   DExpr getRhs() { result.isNthChildOf(this, 0) }
 
-  override string toString() { result = "assign(" + getDest().getName() + ", " + getRhs().toString() + ")" }
+  override string toString() {
+    result = "assign(" + getDest().getName() + ", " + getRhs().toString() + ")"
+  }
 }
 
 class Seq extends DStmt, @seq {
@@ -108,8 +118,9 @@ class Seq extends DStmt, @seq {
 class IfStmt extends DStmt, @ifstmt {
   override string toString() { result = "if" }
 
-  // TODO condition
-  PhiNode getPhiNode() { result.getParent() = this }
+  BExpr getCond() { result.getParent() = this }
+
+  PhiNode getAPhiNode() { result.getParent() = this }
 
   DStmt getThenBranch() { result.isNthChildOf(this, 0) }
 
@@ -119,12 +130,12 @@ class IfStmt extends DStmt, @ifstmt {
 class WhileStmt extends DStmt, @whilestmt {
   override string toString() { result = "while" }
 
-  // TODO condition
-  PhiNode getPhiNode() { result.getParent() = this }
+  BExpr getCond() { result.getParent() = this }
+
+  PhiNode getAPhiNode() { result.getParent() = this }
 
   DStmt getBody() { result.isNthChildOf(this, 0) }
 }
-
 
 class Variable extends @variable {
   /** Gets an access to this variable. */
@@ -135,4 +146,65 @@ class Variable extends @variable {
   string getName() { vars(this, result, _) }
 
   string toString() { result = "Var " + this.getName() }
+}
+
+abstract class BExpr extends @bexpr {
+  abstract string toString();
+
+  BExprParent getParent() { bexprparents(result, this, _) }
+
+  /** Gets the index of this statement as a child of its parent. */
+  int getIndex() { bexprparents(_, this, result) }
+
+  /** Holds if this statement is the child of the specified parent at the specified (zero-based) position. */
+  predicate isNthChildOf(BExprParent parent, int index) {
+    this.getParent() = parent and this.getIndex() = index
+  }
+}
+
+class BoolLiteral extends BExpr, @boolliteral {
+  boolean getValue() {
+    exists(int i |
+      boolliterals(this, i) and
+      if i = 0 then result = false else result = true
+    )
+  }
+
+  override string toString() { result = "BoolLiteral " + getValue().toString() }
+}
+
+class BEqual extends BExpr, @beq {
+  DExpr getFirstOperand() { result.isNthChildOf(this, 0) }
+
+  DExpr getSecondOperand() { result.isNthChildOf(this, 1) }
+
+  override string toString() {
+    result = "(" + getFirstOperand().toString() + " == " + getSecondOperand().toString() + ")"
+  }
+}
+
+class BLeq extends BExpr, @bleq {
+  DExpr getFirstOperand() { result.isNthChildOf(this, 0) }
+
+  DExpr getSecondOperand() { result.isNthChildOf(this, 1) }
+
+  override string toString() {
+    result = "(" + getFirstOperand().toString() + " <= " + getSecondOperand().toString() + ")"
+  }
+}
+
+class BNeg extends BExpr, @bneg {
+  BExpr getOperand() { result.isNthChildOf(this, 0) }
+
+  override string toString() { result = "neg(" + getOperand().toString() + ")" }
+}
+
+class BAnd extends BExpr, @band {
+  BExpr getFirstOperand() { result.isNthChildOf(this, 0) }
+
+  BExpr getSecondOperand() { result.isNthChildOf(this, 1) }
+
+  override string toString() {
+    result = "(" + getFirstOperand().toString() + " AND " + getSecondOperand().toString() + ")"
+  }
 }

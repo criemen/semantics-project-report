@@ -43,6 +43,13 @@ def intLiteral(val):
     app(f"literals(#{exprId}, {val})")
     return exprId
 
+def addition(e1, e2):
+    exprId = newExpr(2, "addition")
+    app(f"exprparents(#{exprId}, #{e1}, 0)")
+    app(f"exprparents(#{exprId}, #{e2}, 1)")
+    return exprId
+
+
 def varAccess(var):
     exprId = newExpr(5, "read var")
     app(f"variableread(#{exprId}, #{var})")
@@ -82,15 +89,17 @@ def seq(s1, s2):
     app(f"stmtparents(#{sid}, #{s2}, 1)")
     return sid
 
-def ifstmt(thenBranch, elseBranch):
+def ifstmt(cond, thenBranch, elseBranch):
     sid = newStmt(3, "if")
     app(f"stmtparents(#{sid}, #{thenBranch}, 0)")
     app(f"stmtparents(#{sid}, #{elseBranch}, 1)")
+    app(f"bexprparents(#{sid}, #{cond}, 0)")
     return sid
 
-def whilestmt(body):
+def whilestmt(cond, body):
     sid = newStmt(4, "while")
     app(f"stmtparents(#{sid}, #{body}, 0)")
+    app(f"bexprparents(#{sid}, #{cond}, 0)")
     return sid
 
 def sink(expr):
@@ -98,28 +107,69 @@ def sink(expr):
     app(f"exprparents(#{sid}, #{expr}, 0)")
     return sid
 
+def newBexpr(kind, s):
+    bexprId = nextId()
+    app(f"//bexpr {s}")
+    app(f"boolexprs(#{bexprId}, {kind})")
+    return bexprId
+
+def boolliteral(val):
+    bexprId = newBexpr(1, "boolliteral")
+    app(f"boolliterals(#{bexprId}, {val})")
+    return bexprId
+
+def boolequality(a1, a2):
+    bexprId = newBexpr(2, "booleq")
+    app(f"exprparents(#{bexprId}, #{a1}, 0)")
+    app(f"exprparents(#{bexprId}, #{a2}, 1)")
+    return bexprId
+
+def boolleq(a1, a2):
+    bexprId = newBexpr(3, "boolleq")
+    app(f"exprparents(#{bexprId}, #{a1}, 0)")
+    app(f"exprparents(#{bexprId}, #{a2}, 1)")
+    return bexprId
+
+def bneg(b1):
+    bexprId = newBexpr(4, "boolneg")
+    app(f"bexprparents(#{bexprId}, #{b1}, 0)")
+    return bexprId
+
+def band(b1, b2):
+    bexprId = newBexpr(5, "booland")
+    app(f"bexprparents(#{bexprId}, #{b1}, 0)")
+    app(f"bexprparents(#{bexprId}, #{b2}, 1)")
+    return bexprId
+
 
 inttype()
-int3 = intLiteral(3)
 varX = newVar("X")
 varY = newVar("Y")
-varZ = newVar("Z")
-varA1 = newVar("A1")
-varA2 = newVar("A2")
-varA = newVar("A")
+#varZ = newVar("Z")
 
-whileL = whilestmt(seq(skip(), assign(varZ, source(varAccess(varY)))))
-phinode(whileL, varY, varX, varZ)
-seqfirst = seq(assign(varX, (intLiteral(4))), whileL)
-seqsecond = seq(seqfirst, sink(varAccess(varY)))
-ifS = ifstmt(assign(varA1, source(intLiteral(3))), assign(varA2, intLiteral(5)))
-phinode(ifS, varA, varA1, varA2)
-seqthird = seq(seqsecond, ifS)
-seq4 = seq(seqthird, sink(varAccess(varA)))
+def bla():
+    varZ = newVar("Z")
+    varA1 = newVar("A1")
+    varA2 = newVar("A2")
+    varA = newVar("A")
 
-#assignseq = seq(assign(varX, int3), assign(varY, varAccess(varX)))
+#whileL = whilestmt(band(boolleq(varAccess(varX), varAccess(varY)), boolequality(intLiteral(3), intLiteral(4))), seq(skip(), assign(varZ, source(varAccess(varY)))))
+#phinode(whileL, varY, varX, varZ)
+#seqfirst = seq(assign(varX, (intLiteral(4))), whileL)
+#seqsecond = seq(seqfirst, sink(varAccess(varY)))
+#ifS = ifstmt(bneg(boolleq(varAccess(varX), varAccess(varY))), assign(varA1, addition(source(intLiteral(3)), varAccess(varX))), assign(varA2, intLiteral(5)))
+#phinode(ifS, varA, varA1, varA2)
+#seqthird = seq(seqsecond, ifS)
+#seq4 = seq(seqthird, sink(varAccess(varA)))
 
 
+#assignseq =  seq(assign(varX, source(intLiteral(3))), sink(varAccess(varX)))#seq(assign(varX, intLiteral(3)), assign(varY, varAccess(varX)))#, sink(varAccess(varY)))
+
+#bneg(boolleq(varAccess(varX), varAccess(varX))
+#sink(varAccess(varY))
+ifS = seq(seq(assign(varX, source(intLiteral(3))), assign(varY, intLiteral(4))), ifstmt(boolliteral(1), skip(), skip()))
+#ifstmt(boolliteral(1), skip(), skip())
+#toplevel = seq(assignseq, ifS)
 
 with open("test.trap","w") as f:
     f.write(trap)
