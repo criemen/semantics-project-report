@@ -1,5 +1,5 @@
 
-@exprparent = @stmt | @expr;
+@exprparent = @stmt | @expr | @bexpr;
 
 types(
   unique int id: @type,
@@ -53,7 +53,6 @@ exprparents(
     int idx: int ref
 );
 
-
 exprs(
   unique int id: @expr,
   int kind: int ref,
@@ -74,6 +73,31 @@ case @expr.kind of
  | @subexpr
  | @mulexpr
 
+boolexprs(
+  unique int id: @bexpr,
+  int kind: int ref
+);
+
+@bexprparent = @stmt | @bexpr
+
+bexprparents(
+    int parent: @bexprparent ref,
+    int child: @bexpr ref,
+    int idx: int ref
+);
+
+boolliterals(
+  unique int parent: @bexpr ref,
+  int value: int ref
+);
+
+case @bexpr.kind of
+  1 = @boolliteral
+| 2 = @beq
+| 3 = @bleq
+| 4 = @bneg
+| 5 = @band
+;
 
 case @stmt.kind of
   0 = @skip

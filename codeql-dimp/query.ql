@@ -15,15 +15,6 @@ query predicate program(TypeContext gamma, DStmt toplevel, TypeContext delta) {
 //  propagateContext(any(EmptyContext c), _, _, gamma, toplevel)
 //}
 
-query predicate ifstmt(DStmt toplevel, TypeContext gamma, TypeContext delta) {
-  tagStmt(gamma, toplevel.(IfStmt), delta)
-}
-
-
-query predicate seq(Seq stmt) {
-  any()
-}
-
 
 from Sink sink, TypeContext gamma, Tag tag
 where
