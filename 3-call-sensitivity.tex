@@ -17,12 +17,13 @@ that doesn't would be a bad design.
 As in this example can be determined statically at the callsite whether the logfile
 should be written to or not, a constant Boolean argument is passed to the called method.
 
-Furthermore, sometimes programmers even use a top-level
+On the other hand, sometimes programmers even use a top-level
 \java{if} statement, so depending on the
 value of the Boolean parameter, a function $f$ contains two entirely different implementations.
 In those cases, a design with two separate functions containg both implementations,
 i.e\ $f_1(\ldots) = f(\text{true}, \ldots)$ and $f_2(\ldots) = f(\text{false}, \ldots)$
-would be preferable from a software engineering perspective.
+would be preferable from a software engineering perspective. But as this patterns
+occurs in practice, it makes sense to handle it.
 
 In the context of static analysis it makes sense to support all patterns
 used by software developers.

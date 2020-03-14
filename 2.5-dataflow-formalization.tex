@@ -3,14 +3,10 @@
 
 In this section, we are going to formalize what we mean by dataflow,
 give a simple algorithm for computing dataflow and proving it is sound.
-We will furthermore use this formalization to prove that our
-path-sensitivity extension of the dataflow algorithm preserves soundness.
 
 We use the toy language IMP as presented in~\cite{sat}.
 The lecture notes themselves heavily borrow from~\cite{fsopl} for the
 presentation and semantics of IMP.
-We assume that the reader is familiar with the syntax and semantics of IMP
-as presented in section 2.1 of~\cite{sat}.
 
 \subsection{Syntax and Semantic of dIMP}
 We extend the syntax of IMP a little bit
@@ -39,7 +35,7 @@ printing the data to a terminal, or otherwise communicating with the outside wor
 
 
 There is a new judgment of the form 
-\fbox{$\bigstep{a}{\sigma}{\flagged{}}$}:
+\fbox{$\bigstep{a}{\sigma}{\flaggedn{}}$}:
 \begin{align*}
     &\bsrule{EA-Num}{}{\bigstep{\literalint}{\store}{\clean}} \qquad
     \bsrule{EA-Loc}{}{\bigstep{X}{\store}{\store(X)}}\qquad
@@ -87,8 +83,8 @@ Judgement \fbox{$\bigstep{c}{\sigma}{\excstore'}$}:
     &\bsrule{EC-WhileT}{\bigstep{b}{\sigma}{\btrue} \qquad \bigstep{c_0}{\store}{\store''}\qquad
     \bigstep{\defaultwhile}{\store''}{\excstore'}}
     {\bigstep{\defaultwhile}{\store}{\excstore'}}\\
-    &\bsrule{EC-Assign}{\bigstep{a}{\store}{\flagged{}}}
-    {\bigstep{\defaultstore}{\store}{\store{}[X \mapsto \flagged{}]}}
+    &\bsrule{EC-Assign}{\bigstep{a}{\store}{\flaggedn{}}}
+    {\bigstep{\defaultstore}{\store}{\store{}[X \mapsto \flaggedn{}]}}
 \end{align*}
 
 The judgement operations for booleans are modified to ignore the tracked-flag and work
@@ -247,8 +243,8 @@ Judgment \fbox{$\bigstep{s}{\store}{\excstore{}}$}:
     {\bigstep{\defaultssaif}{\store}{\exception}} \qquad
     \bsrule{EC-Sink}{\bigstep{a}{\store}{\clean{}}}
     {\bigstep{\defaultsink}{\store}{\store}}\\
-    &\bsrule{EC-Assign}{\bigstep{a}{\store}{\flagged{}}}
-    {\bigstep{\defaultstore}{\store}{\storeassign{\store}{X \mapsto \flagged{}}}} \qquad
+    &\bsrule{EC-Assign}{\bigstep{a}{\store}{\flaggedn{}}}
+    {\bigstep{\defaultstore}{\store}{\storeassign{\store}{X \mapsto \flaggedn{}}}} \qquad
     \bsrule{EC-Skip}{}{\bigstep{\skipcmd}{\store}{\store}}\\
     &\bsrule{EC-IfT}{\bigstep{b}{\store}{\btrue}\qquad \bigstep{s_0}{\store}{\store''}
     \qquad \bigsteppl{\philist}{\dom\store}{\store''}{\store'}}
@@ -460,8 +456,8 @@ Then we prove some lemmas needed to establish the soundness of our dataflow anal
 
 \begin{lemma}
     \label{lem:gamma-arithm}
-    Let $\E$ be the derivation of $\bigstep{a}{\sigma}{\flagged{}}$.
-    If $\typestep{\Gamma}{a}{L}$ and $\store$ matches $\Gamma$, then $\flagged{} \in \gamma(L)$.
+    Let $\E$ be a derivation of $\bigstep{a}{\sigma}{\flaggedn{}}$.
+    If $\typestep{\Gamma}{a}{L}$ and $\matches{\store}{\Gamma}$, then $\flaggedn{} \in \gamma(L)$.
 \end{lemma}
 
 \begin{lemma}[Preservation-ish $\Phi$]
@@ -470,7 +466,7 @@ Then we prove some lemmas needed to establish the soundness of our dataflow anal
     such that $\store'' = \store \dunion \store_0''\dunion \store{\_}$, $\matches{\store}{\Gamma}$, 
     $\matches{\store_0''}{\Delta_1}$ (or $\matches{\store_0''}{\Delta_2}$) and $\Theta = \dom\store$.
     Let $\typestep{\Gamma;\Delta_0;\Delta_1}{\Phi}{\Delta}$ by the DF rules.
-    Then we have that there exists $\store_0$ such that $\store' = \store \dunion \store_0$
+    Then there exists a $\store_0$ such that $\store' = \store \dunion \store_0$
     and $\matches{\store_0}{\Delta}$.
 \end{lemma}
 
@@ -478,7 +474,7 @@ Then we prove some lemmas needed to establish the soundness of our dataflow anal
     \label{thm:preservation}
     Suppose $\bigstep{s}{\store}{\store'}$ by $\E$, $\matches{\store}{\Gamma}$,
     and let $\typestep{\Gamma}{s}{\Delta}$ by $\D$ and the DF rules.
-    Then we have that there exists $\store_0$ such that $\store' = \store \dunion \store_0$
+    Then there exists a $\store_0$ such that $\store' = \store \dunion \store_0$
     and $\matches{\store_0}{\Delta}$.
 \end{theorem}
 \begin{proof}
@@ -521,19 +517,19 @@ Then we prove some lemmas needed to establish the soundness of our dataflow anal
     \end{align*}
     By IH on $\E_0$ with $\D_0$, we get that $\store'' = \store \dunion \store''_0$ and 
     $\matches{\store''_0}{\Delta_0}$.
-    The result then follows from~\autoref{thm:preservation-phi} on $\E_0$ with $\D_0$.\\
+    The result then follows from~\autoref{thm:preservation-phi} on $\E_1$ with $\D_1$.\\
     \textbf{Case 5:}
     $\E$ uses \textsc{EC-IfF}: analoguous.\\
     \textbf{Case 6:}
     \begin{align*}
-        &\E = \bsrule{EC-Assign}{\overset{\E_0}{\bigstep{a}{\store}{\flagged{}}}}
-        {\bigstep{\defaultstore}{\store}{\storeassign{\store}{X \mapsto \flagged{}}}}\\
+        &\E = \bsrule{EC-Assign}{\overset{\E_0}{\bigstep{a}{\store}{\flaggedn{}}}}
+        {\bigstep{\defaultstore}{\store}{\storeassign{\store}{X \mapsto \flaggedn{}}}}\\
         &\D = \trule{DF-Assign}{\overset{\D_0}{\typestep{\Gamma}{a}{L}}}
         {\typestep{\Gamma}{\defaultstore}{[X \mapsto L]}}
     \end{align*}
     We apply~\autoref{lem:gamma-arithm} on $\E_0$ with $\D_0$,
     and as $L$ matches $\flagged{}$, $\Delta = [X \mapsto L]$ matches the store
-    $[X \mapsto \flagged{}]$.
+    $[X \mapsto \flaggedn{}]$.
     ~\autoref{thm:gamma-delta-disjoint} implies that the union in the \textsc{EC-Assign}
     rule is actually disjoint.
     \\
@@ -566,7 +562,7 @@ Then we prove some lemmas needed to establish the soundness of our dataflow anal
             \overset{}{\bigstep{b}{\store_w}{\bfalse}}}
             {\bigstepw{\defaultssawhile}{\filter}{\store_w}{\store_w}}
         \end{align*}
-        Trivial, $\store_0 = \store_w^1$.\\
+        Trivial, taking $\store_0 = \store_w^1$.\\
         \emph{Subcase 2:}
         \begin{align*}
             \E^w = \bsrule{EW-WhileT}{\overset{}{\bigstep{b}{\store_w}{\btrue}} \enskip

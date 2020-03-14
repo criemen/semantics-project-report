@@ -19,6 +19,7 @@
 \NewDocumentCommand{\clean}{O{n}+o}{{#1}_{[\textbf{c}\IfValueT{#2}{_#2}]}}
 \NewDocumentCommand{\tracked}{O{n}+o}{{#1}_{[\textbf{t}\IfValueT{#2}{_#2}]}}
 \NewDocumentCommand{\flagged}{O{n}+o}{{#1}_{[{f}\IfValueT{#2}{_#2}]}}
+\NewDocumentCommand{\flaggedn}{O{n}}{\tilde{#1}}
 \newcommand{\source}[1]{\textbf{source }{#1}}
 \newcommand{\defaultsource}{\source{a}}
 \newcommand{\sink}[1]{\textbf{sink }{#1}}
