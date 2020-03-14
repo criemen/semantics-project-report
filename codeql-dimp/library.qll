@@ -112,7 +112,9 @@ class Seq extends DStmt, @seq {
 
   DStmt getSecondStatement() { result.isNthChildOf(this, 1) }
 
-  override string toString() { result = getFirstStatement().toString() + " SEQ " +  getSecondStatement().toString()}
+  override string toString() {
+    result = getFirstStatement().toString() + " SEQ " + getSecondStatement().toString()
+  }
 }
 
 class IfStmt extends DStmt, @ifstmt {
@@ -140,6 +142,9 @@ class WhileStmt extends DStmt, @whilestmt {
 class Variable extends @variable {
   /** Gets an access to this variable. */
   VarAccess getAnAccess() { variableread(result, this) }
+
+  /** Gets a phinode that reads this variable */
+  PhiNode getAPhiNode() { result.getFirstVar() = this or result.getSecondVar() = this }
 
   Assign getAnAssignStmt() { result.getDest() = this }
 

@@ -1,6 +1,4 @@
 # Created by .ignore support plugin (hsz.mobi)
-# don't commit binary data to repository
-/main.pdf
 ### TeX template
 ## Core latex/pdflatex auxiliary files:
 *.lof
@@ -353,7 +351,8 @@ fabric.properties
 .idea/misc.xml
 .idea/modules.xml
 .idea/vcs.xml
-report/_region_.tex
-report/main.pdf
-theory-assgn-1.iml
-__latexindent_temp.tex
+
+codeql-dimp/.cache
+
+main.pdf
+*.trap
