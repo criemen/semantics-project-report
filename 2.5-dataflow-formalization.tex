@@ -12,22 +12,29 @@ presentation and semantics of IMP.
 We extend the syntax of IMP a little bit
 and call the resulting language dIMP (for dataflow IMP):
 \begin{align*}
-    &a \Coloneqq \dots \mid \defaultsource\\
-    &c \Coloneqq \dots \mid \defaultsink\\
-    &f \Coloneqq \textbf{c} \mid \textbf{t}\\
+    n \in  \:       & \Z\\
+    \flaggedn{} \in \: & \StoreDomain = \{\flagged{} \mid n \in \Z\}\\
+    X \in  \:       & \Loc = \{x, y, z, sum, \ldots\}\\
+    a \Coloneqq \: &\literalint{} \mid X \mid a_0+a_1 \mid a_0-a_1 \mid a_0 \times a_1 \mid \defaultsource\\
+    t \Coloneqq \: & \btrue \mid \bfalse                                                \\
+    b \Coloneqq \: & t \mid a_0 = a_1 \mid a_0 \leq a_1 \mid \neg b_0 \mid b_0 \land b_1 \\
+    c \Coloneqq \: &\skipcmd \mid \defaultstore \mid \defaultseq \mid \defaultif \mid \defaultwhile \mid \defaultsink\\
+    f \Coloneqq \: & \textbf{c} \mid \textbf{t}\\
 \end{align*}
-We define the set $\StoreDomain =\{\flagged{} \mid n \in \textbf{Z}\}$.
 Stores are denoted with $\store \in \Sigma = \Loc \to \tilde{\textbf{Z}}$.
 Stores are function from locations to the set of tagged integer
 values.
 
-The intuition here is that for all $n \in \textbf{Z}$, 
+The intuition here is that for all $n \in \Z$, 
 each value is tagged by either \textbf{c} for clean or \textbf{t} for being tracked
 as having dataflow.
+If the tag is irrelevant in the current context, we write $\flaggedn{}$ for a tracked
+value.
 A tracked value originates from a source, and is preserved by value-preserving
 operations (see the semantics below).
 The command $\defaultsink$ is a special marker for the dataflow sink.
-It aborts the program if a tracked value reaches the sink.
+It aborts the program if a tracked value reaches the sink, thus indicating a policy 
+violation.
 %This ensures termination for all programs that have dataflow.
 In real programs, the dataflow source would likely be a procedure reading input,
 i.e.\ from a terminal, and the dataflow sink would likely be a procedure 
@@ -58,33 +65,32 @@ There is a new judgment of the form
 The Judgment $\langle c, \sigma \rangle \downarrow \sigma'$ is replaced by 
 $\bigstep{c}{\sigma}{\excstore'}$
 where $\excstore{}: (\Loc \to \StoreDomain) \cup \{\exception\}$.
-The state $\exception$ indicates that the program was aborted.
-Programs are aborted when a dataflow-tracked value reaches a sink.
+The state $\exception$ indicates that the program was aborted due to a policy violation.
 \\
 Judgement \fbox{$\bigstep{c}{\sigma}{\excstore'}$}:
 \begin{align*}
-    &\bsrule{EC-SinkAbrt}{\bigstep{a}{\store}{\tracked{}}}
-    {\bigstep{\defaultsink}{\store}{\exception}} \qquad
-    \bsrule{EC-Sink}{\bigstep{a}{\store}{\clean{}}}
-    {\bigstep{\defaultsink}{\store}{\store}} \qquad
-    \bsrule{EC-Skip}{}{\bigstep{\skipcmd}{\store}{\store}}\\
-    &\bsrule{EC-SeqAbrt}{\bigstep{c_0}{\sigma}{\exception}}
-    {\bigstep{\defaultseq}{\store}{\exception}} \qquad
-    \bsrule{EC-Seq}{\bigstep{c_0}{\sigma}{\store''} \qquad \bigstep{c_1}{\store''}{\excstore'}}
-    {\bigstep{\defaultseq}{\store}{\excstore'}}\\
+    &\bsrule{EC-Skip}{}{\bigstep{\skipcmd}{\store}{\store}}\qquad
+    \bsrule{EC-Assign}{\bigstep{a}{\store}{\flaggedn{}}}
+    {\bigstep{\defaultstore}{\store}{\store{}[X \mapsto \flaggedn{}]}}\\
+    &\bsrule{EC-Seq}{\bigstep{c_0}{\sigma}{\store''} \qquad \bigstep{c_1}{\store''}{\excstore'}}
+    {\bigstep{\defaultseq}{\store}{\excstore'}}\qquad
+    \bsrule{EC-SeqAbrt}{\bigstep{c_0}{\sigma}{\exception}}
+    {\bigstep{\defaultseq}{\store}{\exception}} \\
     &\bsrule{EC-IfT}{\bigstep{b}{\store}{\btrue}\qquad \bigstep{c_0}{\store}{\excstore'}}
     {\bigstep{\defaultif}{\store}{\excstore'}} \qquad
     \bsrule{EC-IfF}{\bigstep{b}{\store}{\bfalse}\qquad \bigstep{c_1}{\store}{\excstore'}}
     {\bigstep{\defaultif}{\store}{\excstore'}}\\
     &\bsrule{EC-WhileF}{\bigstep{b}{\sigma}{\bfalse}}
-    {\bigstep{\defaultwhile}{\store}{\store}} \qquad
-    \bsrule{EC-WhileTAbrt}{\bigstep{b}{\sigma}{\btrue} \qquad \bigstep{c_0}{\store}{\exception}}
-    {\bigstep{\defaultwhile}{\store}{\exception}}\\
+    {\bigstep{\defaultwhile}{\store}{\store}} \\
     &\bsrule{EC-WhileT}{\bigstep{b}{\sigma}{\btrue} \qquad \bigstep{c_0}{\store}{\store''}\qquad
     \bigstep{\defaultwhile}{\store''}{\excstore'}}
     {\bigstep{\defaultwhile}{\store}{\excstore'}}\\
-    &\bsrule{EC-Assign}{\bigstep{a}{\store}{\flaggedn{}}}
-    {\bigstep{\defaultstore}{\store}{\store{}[X \mapsto \flaggedn{}]}}
+    &\bsrule{EC-WhileTAbrt}{\bigstep{b}{\sigma}{\btrue} \qquad \bigstep{c_0}{\store}{\exception}}
+    {\bigstep{\defaultwhile}{\store}{\exception}}\\
+    &\bsrule{EC-Sink}{\bigstep{a}{\store}{\clean{}}}
+    {\bigstep{\defaultsink}{\store}{\store}} \qquad
+    \bsrule{EC-SinkAbrt}{\bigstep{a}{\store}{\tracked{}}}
+    {\bigstep{\defaultsink}{\store}{\exception}}\\
 \end{align*}
 
 The judgement operations for booleans are modified to ignore the tracked-flag and work
@@ -103,11 +109,9 @@ However, the command syntax changes.
 We now denote commands by $s$ (statement, or SSA-command) to highlight the differences
 from the commands denoted by $c$ in dIMP.
 \begin{align*}
-    s \Coloneqq &\:\skipcmd \mid \defaultsink \mid \defaultstore \mid \defaultssaseq 
-    \mid \defaultssaif\\
-    &\mid \defaultssawhile \\
+    s \Coloneqq &\:\skipcmd \mid \defaultstore \mid \defaultssaseq \mid \defaultssaif\\
+    &\mid \defaultssawhile  \mid \defaultsink \\
     \philist \Coloneqq &\: \defaultphilistn\\
-    %\Phi_{node} \Coloneqq &\:X \coloneqq \varphi(Y, Z)
 \end{align*}
 At every point where $\varphi$ nodes can placed in the control flow graph
 of a dIMP program, the syntax of SSA-dIMP has an explicit list of $\varphi$ nodes.

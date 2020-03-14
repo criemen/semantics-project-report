@@ -6,7 +6,7 @@ Usually, the static analysis has access to the source code of the analyzed progr
 Static analysis has several goals, among them are to support the programmer in finding (possible) mistakes and
 security issues in their programs.
 Furthermore, static analysis is also employed by compilers in order to optimize code.
-If for example a compiler can prove that a conditional statement is always false,
+If for example a compiler can prove that the condition expression of an if statement is always false,
 a branch instruction can be avoided.
 In this project outside the course scope, we use a static analyser that is developed
 solely to find bugs and report them to the developers.
@@ -14,14 +14,14 @@ solely to find bugs and report them to the developers.
 \subsection{Description of CodeQL}
 The software package we are using for static analysis is called \emph{CodeQL}.
 It was first developed by a company called Semmle and sold to corporate customers worldwide.
-Besides, open-source projects hosted on GitHub and other open-source platforms could
+Additionally, open-source projects hosted on GitHub and other open-source platforms could
 get analysis results of their projects for free on the LGTM.com platform\footnote{LGTM 
 is an acronym for \emph{Looks good to me}, a common statement of reviewers before merging
 pull requests.}.
 
 In September 2019, GitHub announced that they bought Semmle.
 Following the acquisition, the CodeQL CLI utility was released to the general public,
-which allows the analysis of any software, not only publicly hosted one.
+which allows the analysis of any software, not only publicly hosted projects.
 However, the license specifies that any usage has to either be academic research,
 or that the analyzed codebase is released under an OSI-approved open-source license.
 Still, this was quite a step up from only having code that has been uploaded to
@@ -31,15 +31,16 @@ During this project, the CodeQL CLI utility was used under the academic research
 Throughout the report, there are links to CodeQL analyses on open-source projects.
 These refer to a single analysis (called query in CodeQL lingo), as well as a specific result
 set associated with a project revision at the time of writing the report.
-We expect that these links are stable, i.e.\ the content does not change over time.
+We expect that these links are snapshots, i.e.\ as long as they are available,
+the content does not change.
 % TODO terminology callable, argument, parameter
 
 
 \subsubsection*{Architecture of CodeQL}
 Now we give a short overview of the CodeQL architecture, as well as where our
 project fits in. 
-The CodeQL tool is built upon the domain specific language QL that enables declarative,
-logic-based programming.
+The CodeQL tool is built upon the domain specific language QL\footnote{QL is an acronym for \emph{Query Language}}
+that enables declarative, logic-based programming.
 Every analysis of a program is described as a query of a relational database built using 
 the program's source code. These queries are written in QL.
 
@@ -65,7 +66,7 @@ that signed integer overflow needs to be treated differently in Java than in C/C
 For each language, a set of \emph{libraries} assists in the development of queries.
 These libraries are implemented in QL.
 The libraries implement features such as taint tracking, dataflow analysis or control flow graphs.
-For every supported language by the CodeQL analyzers, developers usually re-implement all of these libraries from
+For every language supported by the CodeQL analyzers, developers usually re-implement all of these libraries from
 scratch, as sharing components across languages is quite difficult.
 The only exception is the dataflow library, which is separated into a language-agnostic and 
 language-specific part.
@@ -73,7 +74,7 @@ This language-agnostic part of the dataflow library is shared between the librar
 
 Using those libraries, developers at GitHub write \emph{queries} to detect bugs in the analyzed program.
 For example, one query detects when variable dereference in Java might be null.
-Another query detects if user input ends up in a database query, without the user input being 
+Another query detects if user input may end up in a database query, without the user input being 
 sanitized properly for use in such a query.
 Queries often rely on the supporting libraries to do the heavy lifting, e.g.\ the SQL injection detection 
 is built on top of the dataflow library.
@@ -87,7 +88,7 @@ usage of the CodeQL CLI utility for academic research is explicitly allowed.
 
 Our project outside the course scope contributes improvements to the dataflow library,
 both the shared and the language-specific part. We only implemented the language-specific 
-functionality, and an GitHub employee provided stubs for C/C++ and C\#.
+functionality, and a GitHub employee provided stubs for C/C++ and C\#.
 The individual features are discussed in the next chapters.
 
 %For a detailed description of the QL language
@@ -107,7 +108,8 @@ This makes the static analyzer a very useful tool.
 However, this makes it difficult to express in a theoretical framework to prove that 
 an analysis is useful, as this approach eludes an easy definition.
 In this report, we deal with this problem by reducing the complexity of the analyzed language,
-so in the theoretical setting we are dealing with a (provably) sound analysis.
+so in the theoretical setting we are dealing with a (provably) sound analysis, i.e.\ 
+an analysis that has no false negatives.
 
 \subsection{Evaluation Model of QL}
 \cite{qlpaper}
