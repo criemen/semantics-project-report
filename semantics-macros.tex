@@ -28,7 +28,7 @@
 \newcommand{\initialstore}[1][\sigma]{\tilde{#1}}
 \newcommand{\Loc}{\textbf{Loc}}
 \newcommand{\partialf}{\rightharpoonup} %{\dashrightarrow}
-\newcommand{\StoreDomain}{\tilde{Z}}
+\newcommand{\StoreDomain}{\tilde{\textbf{Z}}}
 \newcommand{\exception}{\textbf{abrt}}
 \newcommand{\skipcmd}{\textbf{skip}}
 \newcommand{\seq}[2]{{#1}; {#2}}
@@ -58,9 +58,9 @@
 \newcommand{\rightphi}[1]{X_1 \mapsto {#1}(Z_1), \ldots}
 \newcommand{\dom}[1]{\text{dom }{#1}}
 \newcommand{\lattice}{\textbf{Ltc}}
-\newcommand{\lclean}{\textbf{c}}
-\newcommand{\lunknown}{\textbf{u}}
-\newcommand{\ltracked}{\textbf{t}}
+\newcommand{\lclean}{\tint_\textbf{c}}
+\newcommand{\lunknown}{\tint_\textbf{u}}
+\newcommand{\ltracked}{\tint_\textbf{t}}
 \newcommand{\join}{\mathbin\sqcup}
 % refine Join to be the unary lattice join
 %\let\Join\undefined
@@ -68,3 +68,8 @@
 \newcommand{\restrict}[1]{\raisebox{-.5ex}{$|$}_{#1}}
 \newcommand{\filter}{\Theta}
 \newcommand{\matches}[2]{{#1}:{#2}}
+\newcommand{\Tau}{\mathrm{T}}
+\newcommand{\tint}{\textbf{int}}
+\newcommand{\type}{\tau}
+%\newcommand*{\longeq}{\ratio\Longleftrightarrow}
+\newcommand{\longeq}{\;\Longleftrightarrow\;}

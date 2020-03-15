@@ -21,7 +21,7 @@ and call the resulting language dIMP (for dataflow IMP):
     c \Coloneqq \: &\skipcmd \mid \defaultstore \mid \defaultseq \mid \defaultif \mid \defaultwhile \mid \defaultsink\\
     f \Coloneqq \: & \textbf{c} \mid \textbf{t}\\
 \end{align*}
-Stores are denoted with $\store \in \Sigma = \Loc \to \tilde{\textbf{Z}}$.
+Stores are denoted with $\store \in \Sigma = \Loc \to \StoreDomain$.
 Stores are function from locations to the set of tagged integer
 values.
 
@@ -119,7 +119,13 @@ of a dIMP program, the syntax of SSA-dIMP has an explicit list of $\varphi$ node
 \subsubsection*{The SSA Type System}
 A program in SSA-dIMP is only valid if it conforms to the SSA properties.
 To enforce that, we describe a simple type system.
-Let $\Gamma, \Delta \subset \Loc$ be finite sets of variable names that fulfill the rules below.
+Every well-typed expression has type $\tint$, thus the set of all types is $\Tau = \{ \tint \}$.
+Let $\Gamma, \Delta: \Loc \partialf \Tau$ be partial maps with finite domain.
+These are the type contexts.
+We define the join operator $\join$ on $\Tau$ by $\tint \join \tint = \tint$.
+We will furthermore use $\dunion$ to be the union of maps, 
+where we assert that the domains of the maps are disjoint.
+
 We then show that these sets are enough to prove that the program is indeed in SSA form.
 The easiest way to get these sets is to run a SSA construction algorithm on a dIMP program.
 It is a gap in the provided proofs that we do not show that every dIMP program
@@ -127,40 +133,43 @@ can be transformed in a valid SSA-dIMP program (especially, we omit showing that
 $\varphi$ nodes will be placed exactly at the places they are allowed in the syntax
 of SSA-dIMP).
 \\
-Judgement \fbox{$\typestmt{\Gamma}{a}$}:
+Judgement \fbox{$\typestep{\Gamma}{a}{\tint}$}:
 \begin{align*}
-    &\trule{SSA-Num}{}{\typestmt{\Gamma}{\overline{n}}}\qquad
-    \trule{SSA-Loc}{}{\typestmt{\Gamma}{X}}\text{($X \in \Gamma$)}\qquad
-    \trule{SSA-Source}{\typestmt{\Gamma}{a}}{\typestmt{\Gamma}{\source{a}}}\\
-    &\trule{SSA-Plus}{\typestmt{\Gamma}{a_0}\qquad\typestmt{\Gamma}{a_1}}
-    {\typestmt{\Gamma}{a_0+a_1}}\quad
-    \trule{SSA-Minus}{\typestmt{\Gamma}{a_0}\qquad\typestmt{\Gamma}{a_1}}
-    {\typestmt{\Gamma}{a_0-a_1}}\quad
-    \trule{SSA-Times}{\typestmt{\Gamma}{a_0}\qquad\typestmt{\Gamma}{a_1}}
-    {\typestmt{\Gamma}{a_0 \times a_1}}
+    &\trule{SSA-Num}{}{\typestep{\Gamma}{\overline{n}}{\tint}}\qquad
+    \trule{SSA-Loc}{}{\typestep{\Gamma}{X}{\Gamma(X)}}\\
+    &\trule{SSA-Plus}{\typestep{\Gamma}{a_0}{\tint}\qquad\typestep{\Gamma}{a_1}{\tint}}
+    {\typestep{\Gamma}{a_0+a_1}{\tint}}\qquad
+    \trule{SSA-Minus}{\typestep{\Gamma}{a_0}{\tint}\qquad\typestep{\Gamma}{a_1}{\tint}}
+    {\typestep{\Gamma}{a_0-a_1}{\tint}}\\
+    &\trule{SSA-Times}{\typestep{\Gamma}{a_0}{\tint}\qquad\typestep{\Gamma}{a_1}{\tint}}
+    {\typestep{\Gamma}{a_0 \times a_1}{\tint}}\qquad
+    \trule{SSA-Source}{\typestep{\Gamma}{a}{\tint}}{\typestep{\Gamma}{\source{a}}{\tint}}\\
 \end{align*}
 Judgement \fbox{$\typestmt{\Gamma}{b}$}:
 \begin{align*}
-    &\trule{SSA-Eq}{\typestmt{\Gamma}{a_0}\qquad \typestmt{\Gamma}{a_1}}
-    {\typestmt{\Gamma}{a_0 = a_1}}\qquad
-    \trule{SSA-Leq}{\typestmt{\Gamma}{a_0}\qquad \typestmt{\Gamma}{a_1}}
+    &\trule{SSA-Bool}{}{\typestmt{\Gamma}{t}}\qquad
+    \trule{SSA-Eq}{\typestep{\Gamma}{a_0}{\tint}\qquad \typestep{\Gamma}{a_1}{\tint}}
+    {\typestmt{\Gamma}{a_0 = a_1}}\\
+    &\trule{SSA-Leq}{\typestep{\Gamma}{a_0}{\tint}\qquad \typestep{\Gamma}{a_1}{\tint}}
     {\typestmt{\Gamma}{a_0 \leq a_1}}\qquad
     \trule{SSA-Neg}{\typestmt{\Gamma}{b}}
-    {\typestmt{\Gamma}{\neg b}}\\
-    &\trule{SSA-And}{\typestmt{\Gamma}{b_1}\qquad\typestmt{\Gamma}{b_2}}
+    {\typestmt{\Gamma}{\neg b}}\qquad
+    \trule{SSA-And}{\typestmt{\Gamma}{b_1}\qquad\typestmt{\Gamma}{b_2}}
     {\typestmt{\Gamma}{b_1 \land b_2}}\\
 \end{align*}
 Judgement \fbox{$\typestep{\Gamma;\Delta_0;\Delta_1}{\philist}{\Delta}$}:
 \begin{align*}
-    &\trule{SSA-$\varphi$}{}{\typestep{\Gamma;\Delta_0;\Delta_1}{\defaultphilistn}{\{X_1, \ldots, X_n\}}}\\
-    &\text{(if for $i \in \{1, \ldots, n\}: X_i \notin \Gamma \land Y_i \in \Gamma \cup \Delta_0 \land Z_i \in \Gamma \cup \Delta_1
+    &\trule{SSA-$\varphi$}{}{\typestep{\Gamma;\Delta_0;\Delta_1}{\defaultphilistn}{[X_1 \mapsto \type_1, \ldots, X_n \mapsto \type_n]}}\\
+    &\text{(if for $i \in \{1, \ldots, n\}: X_i \notin \dom\Gamma \land \type_i = (\Gamma \cup \Delta_0)(Y_i) \join (\Gamma \cup \Delta_1)(Z_i)
     \land \forall j \neq i: X_j \neq X_i$)}
 \end{align*}
+Note that this implies that this rule is only applicable if $Y_i$, $Z_i$ exist in the respective domains
+of the partial functions.
+\\
 Judgement \fbox{$\typestep{\Gamma}{s}{\Delta}$}:
 \begin{align*}
-    &\trule{SSA-Sink}{\typestmt{\Gamma}{a}}{\typestep{\Gamma}{\sink{a}}{\emptyset}}\qquad
-    \trule{SSA-Skip}{}{\typestep{\Gamma}{\skipcmd}{\emptyset}}\\
-    &\trule{SSA-Assign}{\typestmt{\Gamma}{a}}{\typestep{\Gamma}{\defaultstore}{\{X\}}} \text{($X \notin \Gamma$)}\\
+    &\trule{SSA-Skip}{}{\typestep{\Gamma}{\skipcmd}{\emptyset}}\qquad
+    \trule{SSA-Assign}{\typestep{\Gamma}{a}{\tint}}{\typestep{\Gamma}{\defaultstore}{[X \mapsto \tint]}} \text{($X \notin \dom\Gamma$)}\\
     &\trule{SSA-Seq}{\typestep{\Gamma}{s_0}{\Delta_0}\qquad
     \typestep{\Gamma \cup \Delta_0}{s_1}{\Delta_1}}{\typestep{\Gamma}{\defaultssaseq}{\Delta_0 \cup \Delta_1}}\\
     &\trule{SSA-If}{\typestmt{\Gamma}{b}\qquad\typestep{\Gamma}{s_0}{\Delta_0}\qquad \typestep{\Gamma}{s_1}{\Delta_1}\qquad
@@ -168,7 +177,8 @@ Judgement \fbox{$\typestep{\Gamma}{s}{\Delta}$}:
     {\typestep{\Gamma}{\defaultssaif}{\Delta}}\\
     &\trule{SSA-While}{\typestep{\Gamma;\emptyset;\Delta_1}{\philist}{\Delta}\qquad
     \typestmt{\Gamma \cup \Delta}{b}\qquad\typestep{\Gamma \cup \Delta}{s_0}{\Delta_1}}
-    {\typestep{\Gamma}{\defaultssawhile}{\Delta}}
+    {\typestep{\Gamma}{\defaultssawhile}{\Delta}}\\
+    &\trule{SSA-Sink}{\typestep{\Gamma}{a}{\tint}}{\typestep{\Gamma}{\sink{a}}{\emptyset}}\\
 \end{align*}
 
 Note that by this definition, the first argument of $\varphi$ nodes for \textbf{if} commands
@@ -186,7 +196,6 @@ has to contain the list of variables accessed by the program without definition 
 \subsubsection*{The Semantics of SSA-dIMP}
 Stores are now partial functions $\store : \Sigma \partialf \Loc$ to indicate that
 variables have to be defined before they can be read.
-The symbol $\dunion$ denotes a union of sets of which we assert that it is disjoint.
 When updating a store, we now use the syntax 
 $\store \dunion [X \mapsto \flagged{}]$ to indicate that the store $\store$ does not
 contain the variable $X$.
@@ -235,30 +244,30 @@ Judgment \fbox{$\bigstepw{s}{\filter}{\store}{\excstore'{}}$}:
 \\
 Judgment \fbox{$\bigstep{s}{\store}{\excstore{}}$}:
 \begin{align*}
+    &\bsrule{EC-Skip}{}{\bigstep{\skipcmd}{\store}{\store}}\qquad
+    \bsrule{EC-Assign}{\bigstep{a}{\store}{\flaggedn{}}}
+    {\bigstep{\defaultstore}{\store}{\storeassign{\store}{X \mapsto \flaggedn{}}}} \\
     &\bsrule{EC-Seq}{\bigstep{s_0}{\sigma}{\store''} \qquad \bigstep{s_1}{\store''}{\excstore'}}
     {\bigstep{\defaultssaseq}{\store}{\excstore'}}\qquad
     \bsrule{EC-SeqAbrt}{\bigstep{s_0}{\sigma}{\exception}}
     {\bigstep{\defaultssaseq}{\store}{\exception}} \\
-    &\bsrule{EC-IfTAbrt}{\bigstep{b}{\store}{\btrue}\qquad \bigstep{s_0}{\store}{\exception}}
-    {\bigstep{\defaultssaif}{\store}{\exception}} \qquad
-    \bsrule{EC-SinkAbrt}{\bigstep{a}{\store}{\tracked{}}}
-    {\bigstep{\defaultsink}{\store}{\exception}}\\
-    &\bsrule{EC-IfFAbrt}{\bigstep{b}{\store}{\bfalse}\qquad \bigstep{s_1}{\store}{\exception}}
-    {\bigstep{\defaultssaif}{\store}{\exception}} \qquad
-    \bsrule{EC-Sink}{\bigstep{a}{\store}{\clean{}}}
-    {\bigstep{\defaultsink}{\store}{\store}}\\
-    &\bsrule{EC-Assign}{\bigstep{a}{\store}{\flaggedn{}}}
-    {\bigstep{\defaultstore}{\store}{\storeassign{\store}{X \mapsto \flaggedn{}}}} \qquad
-    \bsrule{EC-Skip}{}{\bigstep{\skipcmd}{\store}{\store}}\\
     &\bsrule{EC-IfT}{\bigstep{b}{\store}{\btrue}\qquad \bigstep{s_0}{\store}{\store''}
     \qquad \bigsteppl{\philist}{\dom\store}{\store''}{\store'}}
     {\bigstep{\defaultssaif}{\store}{\store'}}\\
     &\bsrule{EC-IfF}{\bigstep{b}{\store}{\bfalse}\qquad \bigstep{s_1}{\store}{\store''}
     \qquad \bigsteppr{\philist}{\dom\store}{\store''}{\store'}}
     {\bigstep{\defaultssaif}{\store}{\store'}}\\
+    &\bsrule{EC-IfTAbrt}{\bigstep{b}{\store}{\btrue}\qquad \bigstep{s_0}{\store}{\exception}}
+    {\bigstep{\defaultssaif}{\store}{\exception}} \qquad
+    \bsrule{EC-IfFAbrt}{\bigstep{b}{\store}{\bfalse}\qquad \bigstep{s_1}{\store}{\exception}}
+    {\bigstep{\defaultssaif}{\store}{\exception}} \\
     &\bsrule{EC-While}{\bigsteppl{\philist}{\dom\store}{\store}{\store''} \qquad
     \bigstepw{\defaultssawhile}{\dom\store}{\store''}{\excstore'}}
     {\bigstep{\defaultssawhile}{\store}{\excstore'}}\\
+    &\bsrule{EC-Sink}{\bigstep{a}{\store}{\clean{}}}
+    {\bigstep{\defaultsink}{\store}{\store}}\qquad
+    \bsrule{EC-SinkAbrt}{\bigstep{a}{\store}{\tracked{}}}
+    {\bigstep{\defaultsink}{\store}{\exception}}\\
 \end{align*}
 
 \begin{conjecture}
@@ -367,9 +376,9 @@ The previous definition can be recovered by setting $\lattice$ to be the one-poi
 
 For dataflow analysis, we have $\lattice = \{\lclean, \ltracked, \lunknown\}$.
 Every variable encountered in the program is marked with a value in \lattice.
-Thus, it is either marked with \lclean{} (the variable
-is clean, i.e.\ does not contain a value originating from a dataflow source), \lunknown{}
-(it is unknown whether the variable contains a value originating from a source) or \ltracked{}
+Thus, it is either marked with $\lclean{}$ (the variable
+is clean, i.e.\ does not contain a value originating from a dataflow source), $\lunknown{}$
+(it is unknown whether the variable contains a value originating from a source) or $\ltracked{}$
 (the variable contains a tracked value from a dataflow source).
 We define the following poset structure, where the join operator is defined on the whole
 poset:
@@ -390,28 +399,28 @@ Judgement \fbox{$\typestep{\Gamma}{a}{L}$}:
 \begin{align*}
     &\trule{DF-Num}{}{\typestep{\Gamma}{\overline{n}}{\lclean}}\qquad
     \trule{DF-Loc}{}{\typestep{\Gamma}{X}{\Gamma(X)}}\qquad
-    \trule{DF-Source}{\typestep{\Gamma}{a}{L}}
+    \trule{DF-Plus}{\typestep{\Gamma}{a_0}{L_0}\qquad\typestep{\Gamma}{a_1}{L_1}}
+    {\typestep{\Gamma}{a_0+a_1}{\lclean}}\\
+    &\trule{DF-Minus}{\typestep{\Gamma}{a_0}{L_0}\qquad\typestep{\Gamma}{a_1}{L_1}}
+    {\typestep{\Gamma}{a_0-a_1}{\lclean}}\qquad
+    \trule{DF-Times}{\typestep{\Gamma}{a_0}{L_0}\qquad\typestep{\Gamma}{a_1}{L_1}}
+    {\typestep{\Gamma}{a_0 \times a_1}{\lclean}}\\
+    &\trule{DF-Source}{\typestep{\Gamma}{a}{L}}
     {\typestep{\Gamma}{\source{a}}{\ltracked}}\\
-    &\trule{DF-Plus}{\typestep{\Gamma}{a_0}{L_0}\qquad\typestep{\Gamma}{a_1}{L_1}}
-    {\typestep{\Gamma}{a_0+a_1}{\lclean}}\qquad
-    \trule{DF-Minus}{\typestep{\Gamma}{a_0}{L_0}\qquad\typestep{\Gamma}{a_1}{L_1}}
-    {\typestep{\Gamma}{a_0-a_1}{\lclean}}\\
-    &\trule{DF-Times}{\typestep{\Gamma}{a_0}{L_0}\qquad\typestep{\Gamma}{a_1}{L_1}}
-    {\typestep{\Gamma}{a_0 \times a_1}{\lclean}}
 \end{align*}
 Judgement \fbox{$\typestmt{\Gamma}{b}$}:
 \begin{align*}
-    &\trule{DF-Eq}{\typestep{\Gamma}{a_0}{L_0}\qquad \typestep{\Gamma}{a_1}{L_1}}
-    {\typestmt{\Gamma}{a_0 = a_1}}\qquad
-    \trule{DF-Leq}{\typestep{\Gamma}{a_0}{L_0}\qquad \typestep{\Gamma}{a_1}{L_1}}
+    &\trule{DF-Bool}{}{\typestmt{\Gamma}{t}}\qquad
+    \trule{DF-Eq}{\typestep{\Gamma}{a_0}{L_0}\qquad \typestep{\Gamma}{a_1}{L_1}}
+    {\typestmt{\Gamma}{a_0 = a_1}}\\
+    &\trule{DF-Leq}{\typestep{\Gamma}{a_0}{L_0}\qquad \typestep{\Gamma}{a_1}{L_1}}
     {\typestmt{\Gamma}{a_0 \leq a_1}}\qquad
     \trule{DF-Neg}{\typestmt{\Gamma}{b}}
-    {\typestmt{\Gamma}{\neg b}}\\
-    &\trule{DF-And}{\typestmt{\Gamma}{b_1}\qquad\typestmt{\Gamma}{b_2}}
+    {\typestmt{\Gamma}{\neg b}}\qquad
+    \trule{DF-And}{\typestmt{\Gamma}{b_1}\qquad\typestmt{\Gamma}{b_2}}
     {\typestmt{\Gamma}{b_1 \land b_2}}\\
 \end{align*}
-We now redefine the meaning of $\dunion$ to be the union of maps, 
-where we assert that the domains of the maps are disjoint.\\
+\\
 Judgement \fbox{$\typestep{\Gamma;\Delta_0;\Delta_1}{\philist}{\Delta}$}:
 \begin{align*}
     &\trule{DF-$\varphi$}{}{\typestep{\Gamma;\Delta_0;\Delta_1}{\defaultphilistn}{[X_1 \mapsto L_1, \ldots, X_n \mapsto L_n]}}\\
@@ -422,9 +431,8 @@ Note that this implies that this rule is only applicable if $Y_i$, $Z_i$ exist i
 domains of the partial functions, and if the join exists as well.\\
 Judgement \fbox{$\typestep{\Gamma}{s}{\Delta}$}:
 \begin{align*}
-    &\trule{DF-Sink}{\typestep{\Gamma}{a}{L}}{\typestep{\Gamma}{\sink{a}}{[]}}\qquad
-    \trule{DF-Skip}{}{\typestep{\Gamma}{\skipcmd}{[]}}\\
-    &\trule{DF-Assign}{\typestep{\Gamma}{a}{L}}
+    &\trule{DF-Skip}{}{\typestep{\Gamma}{\skipcmd}{[]}}\qquad
+    \trule{DF-Assign}{\typestep{\Gamma}{a}{L}}
     {\typestep{\Gamma}{\defaultstore}{[X \mapsto L]}} \text{($X \notin \dom\Gamma$)}\\
     &\trule{DF-Seq}{\typestep{\Gamma}{s_0}{\Delta_0}\qquad
     \typestep{\Gamma \cup \Delta_0}{s_1}{\Delta_1}}{\typestep{\Gamma}{\defaultssaseq}{\Delta_0 \cup \Delta_1}}\\
@@ -433,22 +441,24 @@ Judgement \fbox{$\typestep{\Gamma}{s}{\Delta}$}:
     {\typestep{\Gamma}{\defaultssaif}{\Delta}}\\
     &\trule{DF-While}{\typestep{\Gamma;\emptyset;\Delta_1}{\philist}{\Delta}\qquad
     \typestmt{\Gamma \cup \Delta}{b}\qquad\typestep{\Gamma \cup \Delta}{s_0}{\Delta_1}}
-    {\typestep{\Gamma}{\defaultssawhile}{\Delta}}
+    {\typestep{\Gamma}{\defaultssawhile}{\Delta}}\\
+    &\trule{DF-Sink}{\typestep{\Gamma}{a}{L}}{\typestep{\Gamma}{\sink{a}}{[]}}\\
 \end{align*}
 
 \begin{definition}[Store-Matching]
     Let $\gamma:\lattice \to \P(\StoreDomain)$ by defined by
     \begin{align*}
-        \gamma:\lattice &\to \P(\StoreDomain)\\
-        L &\mapsto \begin{cases}
-            \{\flagged{} \in \StoreDomain \mid f = \textbf{t}\} & \text{if }L = \ltracked\\
-            \{\flagged{} \in \StoreDomain \mid  f = \textbf{c}\} & \text{if }L = \lclean\\
+        &\gamma:\lattice \to \P(\StoreDomain)\\
+        &\gamma(L) = \begin{cases}
+            \{\flagged{} \mid \flagged{} \in \StoreDomain \land f = \textbf{t}\} & \text{if }L = \ltracked\\
+            \{\flagged{} \mid \flagged{} \in \StoreDomain \land  f = \textbf{c}\} & \text{if }L = \lclean\\
             \StoreDomain & \text{if }L = \lunknown\\
         \end{cases}
     \end{align*}
-    A store $\store$ \emph{matches a description} $\Gamma: \Loc \partialf \lattice$ if it holds that 
-    $\dom\store = \dom\Gamma$ and $\forall X: \sigma(X) \in \gamma(\Gamma(X))$.
-    We then write $\matches{\store}{\Gamma}$.
+    A store $\store$ \emph{matches a description} $\Gamma: \Loc \partialf \lattice$ if it holds that
+    \begin{equation*}
+        \matches{\store}{\Gamma} \longeq \dom\store = \dom\Gamma \land \forall X: \sigma(X) \in \gamma(\Gamma(X))
+    \end{equation*}
 \end{definition}
 
 First, we justify why the semantics contains disjoint unions when updating stores.
