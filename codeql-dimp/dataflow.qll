@@ -55,8 +55,8 @@ predicate flowStep(DataFlowNode node1, DataFlowNode node2) {
   // node1 is an expression used in a sink, then we flow to the sink statement
   node1.(DFExprNode).getExpr() = node2.(DFStmtNode).getStmt().(Sink).getOperand()
   or
-  // node1 is an assign statement to a variable, then we flow to a read of the assigned-to
-  // variable (either a phi node read or a VarAccess expression)
+  // node1 is an assign statement to a variable, then we flow to a read of the 
+  // assigned-to variable (either a phi node read or a VarAccess expression)
   node1 instanceof DFStmtNode and
   exists(DStmt stmt | node1.(DFStmtNode).getStmt() = stmt |
     stmt.(Assign).getDest().getAnAccess() = node2.(DFExprNode).getExpr()
@@ -65,9 +65,13 @@ predicate flowStep(DataFlowNode node1, DataFlowNode node2) {
   )
 }
 
-predicate sourceNode(DataFlowNode node) { node.(DFExprNode).getExpr() instanceof SourceExpr }
+predicate sourceNode(DataFlowNode node) {
+   node.(DFExprNode).getExpr() instanceof SourceExpr
+}
 
-predicate sinkNode(DataFlowNode node) { node.(DFStmtNode).getStmt() instanceof Sink }
+predicate sinkNode(DataFlowNode node) { 
+  node.(DFStmtNode).getStmt() instanceof Sink
+}
 
 predicate reaches(DataFlowNode source, DataFlowNode node) {
   sourceNode(source) and

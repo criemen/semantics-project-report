@@ -30,7 +30,8 @@ abstract class DExpr extends @expr {
   /** Gets the index of this statement as a child of its parent. */
   int getIndex() { exprparents(_, this, result) }
 
-  /** Holds if this statement is the child of the specified parent at the specified (zero-based) position. */
+  /** Holds if this statement is the child of the specified parent at the 
+  specified (zero-based) position. */
   predicate isNthChildOf(DExprParent parent, int index) {
     this.getParent() = parent and this.getIndex() = index
   }
@@ -46,7 +47,8 @@ class VarAccess extends DExpr, @varaccess {
   /** Gets the variable accessed by this variable access. */
   Variable getVariable() { variableread(this, result) }
 
-  override string toString() { result = "VarAccess " + this.getVariable().getName() }
+  override string toString() { result = "VarAccess " + 
+    this.getVariable().getName() }
 }
 
 abstract class BinaryExpr extends DExpr, @binaryexpr {
@@ -81,7 +83,8 @@ abstract class DStmt extends @stmt {
   /** Gets the index of this statement as a child of its parent. */
   int getIndex() { stmtparents(_, this, result) }
 
-  /** Holds if this statement is the child of the specified parent at the specified (zero-based) position. */
+  /** Holds if this statement is the child of the specified parent at the 
+  specified (zero-based) position. */
   predicate isNthChildOf(DStmt parent, int index) {
     this.getParent() = parent and this.getIndex() = index
   }
@@ -113,7 +116,8 @@ class Seq extends DStmt, @seq {
   DStmt getSecondStatement() { result.isNthChildOf(this, 1) }
 
   override string toString() {
-    result = getFirstStatement().toString() + " SEQ " + getSecondStatement().toString()
+    result = getFirstStatement().toString() + " SEQ " + 
+      getSecondStatement().toString()
   }
 }
 
@@ -144,7 +148,8 @@ class Variable extends @variable {
   VarAccess getAnAccess() { variableread(result, this) }
 
   /** Gets a phinode that reads this variable */
-  PhiNode getAPhiNode() { result.getFirstVar() = this or result.getSecondVar() = this }
+  PhiNode getAPhiNode() { result.getFirstVar() = this 
+    or result.getSecondVar() = this }
 
   Assign getAnAssignStmt() { result.getDest() = this }
 
@@ -161,7 +166,8 @@ abstract class BExpr extends @bexpr {
   /** Gets the index of this statement as a child of its parent. */
   int getIndex() { bexprparents(_, this, result) }
 
-  /** Holds if this statement is the child of the specified parent at the specified (zero-based) position. */
+  /** Holds if this statement is the child of the specified parent at the 
+  specified (zero-based) position. */
   predicate isNthChildOf(BExprParent parent, int index) {
     this.getParent() = parent and this.getIndex() = index
   }
@@ -184,7 +190,8 @@ class BEqual extends BExpr, @beq {
   DExpr getSecondOperand() { result.isNthChildOf(this, 1) }
 
   override string toString() {
-    result = "(" + getFirstOperand().toString() + " == " + getSecondOperand().toString() + ")"
+    result = "(" + getFirstOperand().toString() + " == " + 
+      getSecondOperand().toString() + ")"
   }
 }
 
@@ -194,7 +201,8 @@ class BLeq extends BExpr, @bleq {
   DExpr getSecondOperand() { result.isNthChildOf(this, 1) }
 
   override string toString() {
-    result = "(" + getFirstOperand().toString() + " <= " + getSecondOperand().toString() + ")"
+    result = "(" + getFirstOperand().toString() + " <= " + 
+     getSecondOperand().toString() + ")"
   }
 }
 
@@ -210,6 +218,7 @@ class BAnd extends BExpr, @band {
   BExpr getSecondOperand() { result.isNthChildOf(this, 1) }
 
   override string toString() {
-    result = "(" + getFirstOperand().toString() + " AND " + getSecondOperand().toString() + ")"
+    result = "(" + getFirstOperand().toString() + " AND " + 
+     getSecondOperand().toString() + ")"
   }
 }

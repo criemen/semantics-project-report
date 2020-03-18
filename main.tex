@@ -25,11 +25,25 @@ urlcolor={blue!80!black}
 \input{0-abstract-toc}
 \input{1-introduction}
 \input{2.5-dataflow-formalization}
+\input{2.6-ssa-dimp-ql}
 %\include{2-dataflow-library}
 \include{3-call-sensitivity}
 %\include{4-path-sensitivity}
 %\include{5-conclusion}
 \include{6-bibliography}
+\newpage
+\section{Appendix}
+\subsection{Database Scheme}
+\label{lst:dbscheme}
+\inputminted[linenos]{sql}{codeql-dimp/config/semmlecode.dbscheme}
+\subsection{library.qll}
+\label{lst:library}
+\inputminted[linenos]{java}{codeql-dimp/library.qll}
+\subsection{dataflow.qll}
+\label{lst:dataflow}
+\inputminted[linenos]{java}{codeql-dimp/dataflow.qll}
+\subsection{query.ql}
+\label{lst:query}
+\inputminted[linenos]{java}{codeql-dimp/query.ql}
 
 \end{document}
-
