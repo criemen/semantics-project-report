@@ -1,7 +1,7 @@
 import library
 
 newtype TNode =
-  TExprNode(DExpr e) or
+  TExprNode(DExpr e) {e instanceof VarAccess or e instanceof SourceExpr} or
   TStmtNode(DStmt stmt) or
   TPhiNode(PhiNode phinode)
 
@@ -40,6 +40,12 @@ class DFPhiNode extends DataFlowNode, TPhiNode {
 }
 
 predicate flowStep(DataFlowNode node1, DataFlowNode node2) {
+  // node1 is an expression that is assigned to, then we flow to the assign statement
+  node1.(DFExprNode).getExpr() = node2.(DFStmtNode).getStmt().(Assign).getRhs()
+  or
+  // node1 is an expression used in a sink, then we flow to the sink statement
+  node1.(DFExprNode).getExpr() = node2.(DFStmtNode).getStmt().(Sink).getOperand()
+  or
   // flow from a variable defined in a phi node to a read of the variable
   // in either another phi node or a variable access
   node1 instanceof DFPhiNode and
@@ -49,19 +55,13 @@ predicate flowStep(DataFlowNode node1, DataFlowNode node2) {
     phiNode.getAssignedVar().getAPhiNode() = node2.(DFPhiNode).getPhiNode()
   )
   or
-  // node1 is an expression that is assigned to, then we flow to the assign statement
-  node1.(DFExprNode).getExpr() = node2.(DFStmtNode).getStmt().(Assign).getRhs()
-  or
-  // node1 is an expression used in a sink, then we flow to the sink statement
-  node1.(DFExprNode).getExpr() = node2.(DFStmtNode).getStmt().(Sink).getOperand()
-  or
   // node1 is an assign statement to a variable, then we flow to a read of the 
   // assigned-to variable (either a phi node read or a VarAccess expression)
   node1 instanceof DFStmtNode and
-  exists(DStmt stmt | node1.(DFStmtNode).getStmt() = stmt |
-    stmt.(Assign).getDest().getAnAccess() = node2.(DFExprNode).getExpr()
+  exists(Assign assign | node1.(DFStmtNode).getStmt() = assign |
+    assign.getDest().getAnAccess() = node2.(DFExprNode).getExpr()
     or
-    stmt.(Assign).getDest().getAPhiNode() = node2.(DFPhiNode).getPhiNode()
+    assign.getDest().getAPhiNode() = node2.(DFPhiNode).getPhiNode()
   )
 }
 

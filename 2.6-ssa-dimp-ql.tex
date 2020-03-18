@@ -11,8 +11,17 @@ The implementation itself is very easy, but the structure follows the
 dataflow library used for Java.
 It is useful, because it demonstrates how to bridge the gap between
 the theoretical description of the algorithm with the soundness proof
-as in section TODO ref and the actual implementation of dataflow
-in QL for languages like java.
+as in \autoref{sec:df-theory} and the actual implementation of dataflow
+in QL for languages like Java.
+However, all the features that complicate the dataflow library for Java have been 
+omitted.
+The most complicated feature is that the Java dataflow library supports tracking 
+flow through fields, i.e.\ if a variable that received data from a source 
+is assigned to a field in an object, and a sink later reads from that field,
+dataflow is detected.
+Furthermore, the Java dataflow library is an interprocedural analysis.
+Thus, the implementation has to be done very carefully to exhibit good
+performance on large projects.
 
 \subsection{The Database Scheme}
 The database scheme is given in full in the \hyperref[lst:dbscheme]{appendix}.
@@ -73,16 +82,19 @@ if statement, and the else branch the second.
 
 \subsection{The Dataflow Algorithm}
 \subsubsection*{The Dataflow Graph}
-As the algorithm in section TODO computes a type for all expressions and statements in the program,
+As the algorithm in \autoref{sec:df-theory} computes a type for all expressions and statements in the program,
 it implicitly runs on the AST.
 However, typing the whole program, while nice from the theoretical perspective, is 
 inefficient if we want to only detect the possibility of dataflow.
 
-The algorithm runs on a subset of the AST.
+The algorithm in practice as given in \hyperref[lst:dataflow]{dataflow.qll} runs on a subset of the AST.
 Furthermore, it uses a graph structure we call the \emph{dataflow graph} to keep
 track of which expressions and statements potentially get data from a source.
-The nodes of that graph are made up by all expressions, statements and phi nodes of the program.
-These are the relevant elements of the AST that are involved in actually determining
+The nodes of that graph are made up by all expressions of kind variable access and source,
+statements and phi nodes of the program.
+We can restrict the node set to these expression kinds, as all other expression kinds
+are always tagged with $\lclean$, and thus never take part in a dataflow computation.
+The node set contains  exactly the relevant elements of the AST that are involved in determining
 if a program has dataflow or not.
 
 We define the \texttt{flowStep} relation on the node set.
@@ -92,6 +104,32 @@ A big difference to the typing rules is that we do not distinguish between $\ltr
 we only have one kind of edge that indicates that tracked data potentially flows 
 from one node to another.
 
+We can understand the typing problem as a graph problem, as the insight is that
+dataflow always includes two (different) steps - there has to be a source at which 
+the tracked value is introduced, and there has to be a sink which reads the tracked value.
+Without either, the program is safe.
+
+By looking at the typing rule for statements, we see that only assign and sink statements
+use the tracking marker assigned to the arithmetic expression used in that statement.
+Thus, there is an edge from the right-hand side of an assignment (the expression) 
+to the node for the assign statement, as well as from the operand from the sink 
+to the node for the sink statement.
+
+The other cases in \texttt{flowStep} take care of tracking variables.
+
+
+By looking at the typing rule for expression, we see that only expressions that possibly 
+result in a non-clean marker are source expressions and variable reads.
+Both get special treatment in \texttt{flowStep} - sources because we do not care
+if something flows to a source,
+as the result will always have a tracked marker anyways.
+Thus, sources are not handled in \texttt{flowStep} at all.
+Sources are later considered, though.
+The tracked marker for variable reads is fully determined by the type context,
+which we only implicitly compute.
+
+
+
 A node in the dataflow graph has an incoming edge if:
 It is of type expression and it has type $\ltracked$ or $\lunknown$.
 The only exception to this are sources that don't have incoming edges.
@@ -100,5 +138,14 @@ $\ltracked$ or $\lunknown$.
 
 
 
+As last step, the predicate \texttt{reaches}
+computes the transitive closure of \texttt{flowStep}, beginning with all nodes
+that are source expressions.
 
 \subsection{The Query}
+The query is given in \hyperref[lst:query]{query.ql}.
+It is very simple, it outputs a list of pairs of sources and sinks if the
+sink is reachable from the source.
+If the list is empty, the program is safe and it is guaranteed by~\autoref{thm:soundness-df}
+that the program has no dataflow.
+If the list is not empty, no assertion about the program correctness can be given.

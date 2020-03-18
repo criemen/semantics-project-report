@@ -362,6 +362,7 @@ TODO these definitions need to be fixed with UNKNOWN, as an algorithm outputting
 \end{remark}
 
 \subsection{A General Setting For Flow Analysis}
+\label{sec:df-theory}
 In this section, we extend the type system presented for SSA to be viable as a
 general-purpose constraint system.
 This constraint system can then be solved via fixed-point iteration.
@@ -702,6 +703,7 @@ We then have the following (general) soundness property of the dataflow analysis
 \end{proof}
 
 \begin{theorem}[Soundness of the DF rules]
+    \label{thm:soundness-df}
     Let $(s, \Gamma_{ssa}, \Delta_{ssa})$ be a program in SSA form and let $\store$ be a store
     with $\dom\store = \Gamma_{ssa}$.
     Let $\E$ be the bigstep derivation of $\bigstep{s}{\store}{\excstore{}'}$.
