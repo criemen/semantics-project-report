@@ -1,7 +1,7 @@
 % !TEX root = main.tex
 \section{Implementation of a Dataflow Library in QL for SSA-dIMP}
 
-In this section, we describe an implementation of the algorithm described in the
+In this section, we describe an implementation of the algorithm schema described in the
 last section.
 The implementation is written in QL.
 As part of the project, we implemented a library and a database scheme for SSA-dIMP.
@@ -81,7 +81,6 @@ This hides the implementation detail that the then branch is the first child of 
 if statement, and the else branch the second.
 
 \subsection{The Dataflow Algorithm}
-\subsubsection*{The Dataflow Graph}
 As the algorithm in \autoref{sec:df-theory} computes a type for all expressions and statements in the program,
 it implicitly runs on the AST.
 However, typing the whole program, while nice from the theoretical perspective, is 
@@ -97,17 +96,26 @@ are always tagged with $\lclean$, and thus never take part in a dataflow computa
 The node set contains  exactly the relevant elements of the AST that are involved in determining
 if a program has dataflow or not.
 
-We define the \texttt{flowStep} relation on the node set.
-It can be understod as the edge set of the dataflow graph and implements the
-essence of the typing rules.
-A big difference to the typing rules is that we do not distinguish between $\ltracked$ and $\lunknown$,
-we only have one kind of edge that indicates that tracked data potentially flows 
-from one node to another.
-
-We can understand the typing problem as a graph problem, as the insight is that
+We can understand the typing problem as a graph problem, as
 dataflow always includes two (different) steps - there has to be a source at which 
 the tracked value is introduced, and there has to be a sink which reads the tracked value.
 Without either, the program is safe.
+
+We define the \texttt{flowStep} relation on the node set.
+It contains the tuple $(\textit{node1}, \textit{node2})$ if \textit{node2} is using
+data from the node \textit{node1}.
+It can be understod as the edge set of the dataflow graph and implements the
+essence of the typing rules.
+A big difference to the typing rules is that we do not distinguish between $\ltracked$ and $\lunknown$.
+We only have one kind of edge that indicates that data potentially flows 
+from one node to another.
+This means that if an expression node has type $\ltracked$ or $\lunknown$,
+all downstream expression nodes on a path from the first expression node 
+have type either $\ltracked$ or $\lunknown$.
+Thus, the edges of the dataflow graph indicate along which paths dataflow tracking propagates
+throughout the program.
+We combine this propagation information with the location of the sinks and sources 
+to detect potential dataflow.
 
 By looking at the typing rule for statements, we see that only assign and sink statements
 use the tracking marker assigned to the arithmetic expression used in that statement.
@@ -116,34 +124,64 @@ to the node for the assign statement, as well as from the operand from the sink
 to the node for the sink statement.
 
 The other cases in \texttt{flowStep} take care of tracking variables.
-
-
 By looking at the typing rule for expression, we see that only expressions that possibly 
 result in a non-clean marker are source expressions and variable reads.
-Both get special treatment in \texttt{flowStep} - sources because we do not care
-if something flows to a source,
-as the result will always have a tracked marker anyways.
-Thus, sources are not handled in \texttt{flowStep} at all.
-Sources are later considered, though.
+Sources are ignored in \texttt{flowStep}, because we do not care
+if something flows to a source, as the result will always have a tracked marker anyways.
+Thus, sources are not handled in \texttt{flowStep} at all, and only considered later.
+
 The tracked marker for variable reads is fully determined by the type context,
-which we only implicitly compute.
-
-
-
-A node in the dataflow graph has an incoming edge if:
-It is of type expression and it has type $\ltracked$ or $\lunknown$.
-The only exception to this are sources that don't have incoming edges.
-It is of type statement, and the statement is the parent of an expression that has type
-$\ltracked$ or $\lunknown$.
-
-
+which we do not explicitly compute.
+In the implicit formulation, a variable access gets the tracking marker of its definition,
+which is, because the program is in SSA form, unique.
+If the variable definition is an assign statement, this follows immediately from the
+\textsc{DF-Assign} rule - the variable is tagged with the marker of the expression.
+Thus, we have an edge from the expression node to that of the 
+If the variable is defined in a $\varphi$-node, we have compute the least upper bound of 
+both variables that make up the $\varphi$-node.
+This is implicit in the algorithm, as the $\varphi$-node will have an incoming edge if 
+at least one of the variables is marked with $\ltracked$ or $\lunknown$.
+However, in both cases, we have flow from a variable definition (either an assign
+statement or a $\varphi$-node) to a variable read (either a VarAccess expression, 
+or another $\varphi$-node).
 
 As last step, the predicate \texttt{reaches}
 computes the transitive closure of \texttt{flowStep}, beginning with all nodes
 that are source expressions.
+Thus, as sources are always marked with $\ltracked$ and paths in the dataflow
+graph indicate that the tracked status propagate along these paths, any path 
+from a source to a sink indicates the presence of (possible) dataflow.
+Or, in terms of the soundness guarantee, the absence of any of these paths 
+implies that the program does not contain dataflow.
+
+\subsubsection*{On the Relation of the Algorithm to the DF Typing Rules}
+As explained above, this algorithm runs already on SSA-dIMP, not dIMP.
+Thus, we assume that the SSA construction already took place.
+As explained in TODO, any dIMP program can be transformed into an equivalent
+SSA-dIMP program.
+This transformation also (implicitly) takes care of the concrete semantics of e.g.\ 
+while and if statements - the dataflow algorithm only expects correctly placed $\varphi$-nodes,
+and does not depend on the semantics of the individual statements.
+
+If, for example, a repeat-until loop construct would be added to the language,
+SSA-dIMP could be easily extended with that loop construct by adding a new statement 
+kind to the database and implementing the library.
+However, the dataflow algorithm itself would work without any changes, assuming that
+the $\varphi$-node placement is correct.
+This is very different from the algorithm schema above, that depends intimately on the 
+typing schema, and this might be puzzling at first.
+This apparent contradiction can be resolved by seeing that the DF typing 
+rules serve two purposes - first, they are a refinement of the SSA typing rules,
+and second, they describe an approximation on where dataflow occurs.
+
+As the dataflow algorithm as presented here assumes that the program is already in 
+SSA form, it can do substantially less than what is described in the DF rules.
+In particular, it only has to worry about the introduction of flow in expressions,
+and the propagation of the tracked marking to variable stores and to sinks.
+Thus, it can safely skip the entire part of the rules that deal with scoping.
 
 \subsection{The Query}
-The query is given in \hyperref[lst:query]{query.ql}.
+The query actually implementing the user-facing analysis is given in \hyperref[lst:query]{query.ql}.
 It is very simple, it outputs a list of pairs of sources and sinks if the
 sink is reachable from the source.
 If the list is empty, the program is safe and it is guaranteed by~\autoref{thm:soundness-df}

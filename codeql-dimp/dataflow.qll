@@ -40,7 +40,8 @@ class DFPhiNode extends DataFlowNode, TPhiNode {
 }
 
 predicate flowStep(DataFlowNode node1, DataFlowNode node2) {
-  // node1 is an expression that is assigned to, then we flow to the assign statement
+  // node1 is an expression that is assigned to a variable, then we flow to the
+  // assign statement
   node1.(DFExprNode).getExpr() = node2.(DFStmtNode).getStmt().(Assign).getRhs()
   or
   // node1 is an expression used in a sink, then we flow to the sink statement
