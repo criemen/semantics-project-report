@@ -277,6 +277,7 @@ Judgment \fbox{$\bigstep{s}{\store}{\excstore{}}$}:
     {\bigstep{\defaultsink}{\store}{\exception}}\\
 \end{align*}
 
+\subsubsection*{The dIMP To SSA-dIMP Transformation}
 \begin{conjecture}
     TODO this needs work
     
@@ -287,6 +288,59 @@ Judgment \fbox{$\bigstep{s}{\store}{\excstore{}}$}:
     $\dom{\store_0} = \Gamma$ and $\forall X \in \Gamma: \store_0(X) = \store(X)$.
 \end{conjecture}
 
+We show by example how the SSA construction works.
+We consider the following dIMP program:
+\begin{figure}[h]
+    \begin{minted}{pascal}
+        // loop counter
+        I := X;
+        Z := source 1;
+        while I > 0
+            I := I - 1;
+            if Z < 100 then
+                Z := Z * X
+            else
+                Z := Z
+        ;
+        sink Z
+    \end{minted}    
+    \caption{The example dIMP program}
+    \label{fig:dimp-example}
+\end{figure}
+After transformation, an equivalent SSA-dIMP program is
+
+TODO move source to then branch
+
+TODO same figure for both
+TODO add while *do*
+\begin{figure}[h]
+    \begin{minted}[escapeinside=||,mathescape=true]{pascal}
+        I0 := X;
+        Z0 := source 1;
+        while [Z4 := |$\varphi$|(Z0, Z3), I2 := |$\varphi$|(I0, I1)]; I2 > 0
+            I1 := I2 - 1;
+            if Z4 < 100 then
+                Z1 := Z4 * X
+            else
+                Z2 := Z4
+            ;[Z3 := |$\varphi$|(Z1, Z2)]
+        ;
+        sink Z4
+    \end{minted}    
+    \caption{The example program transformed to SSA-dIMP}
+    \label{fig:ssa-dimp-example}
+\end{figure}
+The maps $\Gamma$ and $\Delta$ can be easily inferred, except for the while loop,
+where the maps do not immediately can be inferred by using the rules.
+Thus, as part of the transformation, we give the maps $\Delta$ and 
+$\Delta_1$ as in rule $\textsc{SSA-While}$ for the while loop in the example program:
+$\Delta = [Z_4 \mapsto \tint, I_2 \mapsto \tint]$ and $\Delta_1 = [I_3 \mapsto \tint, Z_3 \mapsto \tint]$.
+
+This SSA form is obviously not unique, as the variable naming is not canonical.
+Furthermore, the number of $\varphi$-nodes in the example program is minimal,
+but no such assertions is made by the typing rules.
+
+\subsubsection*{Correctnes Results}
 We state that a SSA-dIMP program together with the SSA type derivation
 is in fact in SSA form - each variable is defined only once.
 Furthermore, the structure of the bigstep derivation trees imply that 
