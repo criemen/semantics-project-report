@@ -204,26 +204,40 @@ step 1 DF graph step 2 mark DF graph step 3 theorem turn marking on DF graph int
 
 \begin{figure}[h]
     \begin{tikzpicture}[roundnode/.style={rectangle,rounded corners=1ex,draw=black!100,thick},->,thick]
-        \node[roundnode] (source) at (0, 1) {$\source{1}$};
-        \node[roundnode] (storez0) at (0, 0) {$\storecmd{Z0}{\source{1}}$};
-        \node[roundnode] (phiz4) at (0, -1) {$\phistore{Z4}{Z0}{Z3}$};
-        \node[roundnode] (mult) at (6, -2) {VarAccess $Z4$ (Context: $Z4 * X$)};
-        \node[roundnode] (storemult) at (6, -3) {$\storecmd{Z1}{Z4 * X}$};
-        \node[roundnode] (varaccessz4) at (0, -2) {VarAccess $Z4$};
-        \node[roundnode] (storez2) at (0, -3) {$\storecmd{Z2}{Z4}$};
-        \node[roundnode] (phiz3) at (0, -4) {$\phistore{Z3}{Z1}{Z2}$};
-        \node[roundnode] (varaccessz42) at (-4,-2) {VarAccess $Z4$};
-        \node[roundnode] (sink) at (-4,-3) {$\sink{Z4}$};
-        \draw (source.south) -- (storez0.north);
-        \draw (storez0.south) -- (phiz4.north);
-        \draw (phiz4.north east) -- (mult.north);
-        \draw (storemult.west) -- (phiz3.east);
-        \draw (phiz4.south) -- (varaccessz4.north);
-        \draw (varaccessz4.south) -- (storez2.north);
-        \draw (storez2.south) -- (phiz3.north);
-        \draw[->,thick] (phiz3.west) to [out=180,in=180] (phiz4.west);
-        \draw[->,thick] (phiz4.north west) -- (varaccessz42.north);
-        \draw[->,thick] (varaccessz42.south) -- (sink.north);
+        \node[roundnode] (storez0) at(0, 0) {$\storecmd{Z0}{1}$};
+        \node[roundnode] (phiz3) at (0, -1) {$\phistore{Z3}{Z0}{Z2}$};
+        \node[roundnode] (varaccessbool) at (5, -1) {VarAccess $Z3$ (Parent: $Z3 < 100$)};
+        \node[roundnode] (multvaraccess) at (5, -2) {VarAccess $Z3$ (Parent: $Z3 * X$)};
+        \node[roundnode] (multvaraccess2) at (0, 1) {VarAccess $X$ (Parent: $Z3 * X$)};
+        \node[roundnode] (source) at (5, -3) {$\source{Z3 * X}$};
+        \node[roundnode] (storemult) at (5, -4) {$\storecmd{Z1}{\source{Z3 * X}}$};
+        \node[roundnode] (varaccessz4) at (0, -2) {VarAccess $Z3$};
+        \node[roundnode] (storez1) at (0, -3) {$\storecmd{Z1}{Z3}$};
+        \node[roundnode] (phiz2) at (0, -4) {$\phistore{Z2}{Z1}{Z1}$};
+        \node[roundnode] (varaccessz42) at (-4, -2) {VarAccess $Z3$};
+        \node[roundnode] (sink) at (-4, -3) {$\sink{Z3}$};
+        \draw (storez0.south) -- (phiz3.north);
+        \draw (phiz3.east) -- (varaccessbool.west);
+        \draw (phiz3.east) -- (multvaraccess.west);
+        \draw (storemult.west) -- (phiz2.east);
+        \draw (phiz3.south) -- (varaccessz4.north);
+        \draw (varaccessz4.south) -- (storez1.north);
+        \draw (storez1.south) -- (phiz2.north);
+        \draw (phiz2.west) to [out=180,in=180] (phiz3.west);
+        \draw (phiz3.north west) -- (varaccessz42.north);
+        \draw (varaccessz42.south) -- (sink.north);
+        \draw (source.south) -- (storemult.north);
+        \node[roundnode] (ivarx) at (0, 7) {VarAccess $X$};
+        \node[roundnode] (i0getsx) at (0, 6) {$\storecmd{I0}{X}$};
+        \node[roundnode] (phii2) at (0, 5) {$\phistore{I2}{I0}{I1}$};
+        \node[roundnode] (readi21) at (-4, 4) {VarAccess $I2$ (Parent: $I2 > 0$)};
+        \node[roundnode] (readi22) at (4, 4) {VarAccess $I2$ (Parent: $I2 - 1$)};
+        \node[roundnode] (writei1) at (7, 3) {$\storecmd{I1}{I2 - I1}$};
+        \draw (ivarx.south) -- (i0getsx.north);
+        \draw (i0getsx.south) -- (phii2.north);
+        \draw (phii2.south) -- (readi21.north);
+        \draw (phii2.south) -- (readi22.north);
+        \draw (writei1.north) to [in=0] (phii2.east);
     \end{tikzpicture}
     
     \caption{The dataflow graph for the example program}
