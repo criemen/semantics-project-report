@@ -158,7 +158,7 @@ varZ = newVar("Z")
 
 whileL = whilestmt(boolliteral(0), assign(varZ, source(varAccess(varX))))
 phinode(whileL, varY, varX, varZ)
-seqfirst = seq(assign(varX, (intLiteral(4))), whileL)
+seqfirst = seq(assign(varX, source(intLiteral(4))), whileL)
 seq(seqfirst, sink(varAccess(varY)))
 
 #seqsecond = seq(seqfirst, sink(varAccess(varY)))

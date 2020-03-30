@@ -1,7 +1,7 @@
 import dataflow
 
-from DataFlowNode source, DataFlowNode sink
+from DataFlowNode sink, boolean unknown
 where
-reaches(source, sink) and
-sinkNode(sink)
-select source, sink
+markNodes(sink, unknown) //and
+//sinkNode(sink)
+select sink, unknown

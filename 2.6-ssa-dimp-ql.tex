@@ -181,7 +181,7 @@ and the propagation of the tracked marking to variable stores and to sinks.
 Thus, it can safely skip the entire part of the rules that deal with scoping.
 
 \subsubsection*{Example}
-At last, we show the dataflow graph for the example program(\autoref{fig:ssa-dimp-example}).
+At last, we show the dataflow graph for the example program (\autoref{fig:ssa-dimp-example}).
 Note that nodes without edges are \emph{not} included to keep the graph at a manageable size.
 Node types (expression, $\varphi$ or statement) are not indicated, but are obvious from context.
 Furthermore, the place of the variable accesses in the AST is only indicated when it is 
@@ -197,30 +197,31 @@ TODO call SSA-dIMP structured dIMP and the other one flat/graph SSA
 
 TODO include all dataflow node/edges
 
-TODO strip down algorithm to not include sources
 TODO ssa same name in if 
 TODO source Z0
 
 step 1 DF graph step 2 mark DF graph step 3 theorem turn marking on DF graph into safe "blue" typing
 
 \begin{figure}[h]
-    \begin{tikzpicture}[roundnode/.style={rectangle,rounded corners=1ex,draw=black!100,thick}]
+    \begin{tikzpicture}[roundnode/.style={rectangle,rounded corners=1ex,draw=black!100,thick},->,thick]
         \node[roundnode] (source) at (0, 1) {$\source{1}$};
         \node[roundnode] (storez0) at (0, 0) {$\storecmd{Z0}{\source{1}}$};
         \node[roundnode] (phiz4) at (0, -1) {$\phistore{Z4}{Z0}{Z3}$};
         \node[roundnode] (mult) at (6, -2) {VarAccess $Z4$ (Context: $Z4 * X$)};
+        \node[roundnode] (storemult) at (6, -3) {$\storecmd{Z1}{Z4 * X}$};
         \node[roundnode] (varaccessz4) at (0, -2) {VarAccess $Z4$};
         \node[roundnode] (storez2) at (0, -3) {$\storecmd{Z2}{Z4}$};
         \node[roundnode] (phiz3) at (0, -4) {$\phistore{Z3}{Z1}{Z2}$};
         \node[roundnode] (varaccessz42) at (-4,-2) {VarAccess $Z4$};
         \node[roundnode] (sink) at (-4,-3) {$\sink{Z4}$};
-        \draw[->,thick] (source.south) -- (storez0.north);
-        \draw[->,thick] (storez0.south) -- (phiz4.north);
-        \draw[->,thick] (phiz4.north east) -- (mult.north);
-        \draw[->,thick] (phiz4.south) -- (varaccessz4.north);
-        \draw[->,thick] (varaccessz4.south) -- (storez2.north);
-        \draw[->,thick] (storez2.south) -- (phiz3.north);
-        \draw[->,thick] (phiz3.east) to [out=0,in=0] (phiz4.east); %.. controls(2,-2) ..
+        \draw (source.south) -- (storez0.north);
+        \draw (storez0.south) -- (phiz4.north);
+        \draw (phiz4.north east) -- (mult.north);
+        \draw (storemult.west) -- (phiz3.east);
+        \draw (phiz4.south) -- (varaccessz4.north);
+        \draw (varaccessz4.south) -- (storez2.north);
+        \draw (storez2.south) -- (phiz3.north);
+        \draw[->,thick] (phiz3.west) to [out=180,in=180] (phiz4.west);
         \draw[->,thick] (phiz4.north west) -- (varaccessz42.north);
         \draw[->,thick] (varaccessz42.south) -- (sink.north);
     \end{tikzpicture}

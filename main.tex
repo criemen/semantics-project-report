@@ -1,4 +1,14 @@
+
+\documentclass[12pt,a4paper,bibliography=totoc]{scrartcl}
 \input{preamble}
+
+% not in preamble so it can be shared with Ipe
+\usepackage{minted}
+\usemintedstyle{github}
+\newminted{java}{linenos}
+\newmintinline[java]{java}{linenos}
+
+
 \bibliography{report}
 
 \input{semantics-macros.tex}
