@@ -1,7 +1,7 @@
 import dataflow
 
-from DataFlowNode sink, boolean unknown
+from DataFlowNode sink, TNodeLabel label
 where
-markNodes(sink, unknown) //and
+nodeLabel(sink, label) //and
 //sinkNode(sink)
-select sink, unknown
+select sink, label.toString()

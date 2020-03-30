@@ -2,7 +2,7 @@ import library
 
 newtype TNode =
   TExprNode(DExpr e) { e instanceof VarAccess or e instanceof SourceExpr } or
-  TStmtNode(DStmt stmt) or
+  TStmtNode(DStmt stmt) { stmt instanceof Sink or stmt instanceof Assign } or
   TPhiNode(PhiNode phinode)
 
 abstract class DataFlowNode extends TNode {
@@ -76,27 +76,6 @@ newtype TNodeLabel =
   LClean()
 
 /**
- * Marks each dataflow node according to the lattice.
- * For expression nodes, the tracking directly corresponds to the type assigned
- * by the DF typing system.
- *
- * This predicate computes the best label that a node can have, i.e. the most
- * specific one of the candidate labels computed by `nodeLabelCand`.
- */
-predicate nodeLabel(DataFlowNode node, TNodeLabel label) {
-  nodeLabelCand(node, LUnknown()) and
-  nodeLabelCand(node, LTracked()) and
-  label = LTracked()
-  or
-  nodeLabelCand(node, LUnknown()) and
-  nodeLabelCand(node, LClean()) and
-  label = LClean()
-  or
-  nodeLabelCand(node, label) and
-  not nodeLabelCand(node, any(TNodeLabel l | l != label))
-}
-
-/**
  * Computes all applicable node label candidates.
  * Only computes labels on the subset of nodes that are reachable by `flowStep`
  * from sources in the dataflow graph.
@@ -130,10 +109,32 @@ predicate nodeLabelCand(DataFlowNode node, TNodeLabel label) {
   )
 }
 
+/**
+ * Marks each dataflow node according to the lattice.
+ * For expression nodes, the tracking directly corresponds to the type assigned
+ * by the DF typing system.
+ *
+ * This predicate computes the best label that a node can have, i.e. the most
+ * specific one of the candidate labels computed by `nodeLabelCand`.
+ */
+predicate nodeLabel(DataFlowNode node, TNodeLabel label) {
+  nodeLabelCand(node, LUnknown()) and
+  nodeLabelCand(node, LTracked()) and
+  label = LTracked()
+  or
+  nodeLabelCand(node, LUnknown()) and
+  nodeLabelCand(node, LClean()) and
+  label = LClean()
+  or
+  nodeLabelCand(node, label) and
+  not nodeLabelCand(node, any(TNodeLabel l | l != label))
+}
+
 /*
  * Computes possible dataflow on a reduced lattice with only clean and unknown.
  * A node not in this predicate is marked with clean.
  */
+
 predicate reaches(DataFlowNode source, DataFlowNode node) {
   sourceNode(source) and
   flowStep*(source, node)

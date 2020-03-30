@@ -83,37 +83,47 @@ if statement, and the else branch the second.
 \subsection{The Dataflow Algorithm}
 As the algorithm in \autoref{sec:df-theory} computes a type for all expressions and statements in the program,
 it implicitly runs on the AST.
-However, typing the whole program, while nice from the theoretical perspective, is 
-inefficient if we want to only detect the possibility of dataflow.
+The algorithm in practice is given in \hyperref[lst:dataflow]{dataflow.qll}.
 
-The algorithm in practice as given in \hyperref[lst:dataflow]{dataflow.qll} runs on a subset of the AST.
-Furthermore, it uses a graph structure we call the \emph{dataflow graph} to keep
-track of which expressions and statements potentially get data from a source.
-The nodes of that graph are made up by all expressions of kind variable access and source,
-statements and phi nodes of the program.
+\subsubsection*{Step 1 - The Dataflow Graph}
+Typing an entire AST to detect dataflow is quite inefficient, so the algorithm
+runs on a different graph, the \emph{dataflow graph}.
+Its node set is a subset of the node set of the AST.
+
+The dataflow graph keeps track of which expressions and statements potentially get data from a source.
+The node set of the dataflow graph contains all AST nodes of the following form:
+\begin{itemize}
+    \item all expressions of kind variable access and source
+    \item statements of kinds assign and sink
+    \item all $\varphi$-nodes
+\end{itemize}
+
+All of these nodes then get tagged in step 2 with a label.
+For the expressions, this directly corresponds to the type in the refined type system
+as presented in~\autoref{sec:df-theory}.
+For assign statements and $\varphi$-nodes, this label corresponds to the type of 
+the variable that is defined, and for sinks the label corresponds to the type
+of the expression that is passed to the sink.
+
 We can restrict the node set to these expression kinds, as all other expression kinds
-are always tagged with $\lclean$, and thus never take part in a dataflow computation.
-The node set contains  exactly the relevant elements of the AST that are involved in determining
+are always tagged with $\lclean$.
+The only relevant statements for dataflow are assign and sink, as all DF rules for the 
+other statements just pass through labels, but don't define new labels.
+Thus, the node set contains  exactly the relevant elements of the AST that are involved in determining
 if a program has dataflow or not.
 
-We can understand the typing problem as a graph problem, as
-dataflow always includes two (different) steps - there has to be a source at which 
-the tracked value is introduced, and there has to be a sink which reads the tracked value.
-Without either, the program is safe.
-
-We define the \texttt{flowStep} relation on the node set.
+Building the dataflow graph is done by defining the \texttt{flowStep} relation on the node set.
 It contains the tuple $(\textit{node1}, \textit{node2})$ if \textit{node2} is using
 data from the node \textit{node1}.
-It can be understod as the edge set of the dataflow graph and implements the
-essence of the typing rules.
-A big difference to the typing rules is that we do not distinguish between $\ltracked$ and $\lunknown$.
-We only have one kind of edge that indicates that data potentially flows 
-from one node to another.
-This means that if an expression node has type $\ltracked$ or $\lunknown$,
-all downstream expression nodes on a path from the first expression node 
-have type either $\ltracked$ or $\lunknown$.
+Formulated differently, if there is an edge in the dataflow graph from \textit{node1}
+to \textit{node2} it means that the labelling of \textit{node1} influences
+the label of \textit{node2}.
 Thus, the edges of the dataflow graph indicate along which paths dataflow tracking propagates
 throughout the program.
+
+For example, if an expression node has type $\ltracked$ or $\lunknown$,
+all downstream expression nodes on a path from the first expression node 
+have type either $\ltracked$ or $\lunknown$ (and not $\lclean$).
 We combine this propagation information with the location of the sinks and sources 
 to detect potential dataflow.
 
@@ -144,6 +154,13 @@ at least one of the variables is marked with $\ltracked$ or $\lunknown$.
 However, in both cases, we have flow from a variable definition (either an assign
 statement or a $\varphi$-node) to a variable read (either a VarAccess expression, 
 or another $\varphi$-node).
+
+\subsubsection*{Step 2 - Labeling Nodes}
+As second step, the algorithm computes a labelling of the nodes of the dataflow graph.
+This labelling can be used to easily determine if a program is safe to execute or not.
+Furthermore, this labelling can be used to construct a typing derivation (by the DF-rules)
+of the program.
+
 
 As last step, the predicate \texttt{reaches}
 computes the transitive closure of \texttt{flowStep}, beginning with all nodes
@@ -181,11 +198,12 @@ and the propagation of the tracked marking to variable stores and to sinks.
 Thus, it can safely skip the entire part of the rules that deal with scoping.
 
 \subsubsection*{Example}
-At last, we show the dataflow graph for the example program (\autoref{fig:ssa-dimp-example}).
-Note that nodes without edges are \emph{not} included to keep the graph at a manageable size.
+We now show the dataflow graph for the example program (\autoref{fig:ssa-dimp-example}).
 Node types (expression, $\varphi$ or statement) are not indicated, but are obvious from context.
 Furthermore, the place of the variable accesses in the AST is only indicated when it is 
 not clear from the context.
+However, every node in the dataflow graph is also a node in the AST, so all the variable accesses
+of one variable are different nodes in the dataflow graph.
 
 TODO add note that there is dataflow
 
@@ -195,10 +213,6 @@ TODO modify analysis to include unknown/for sure
 
 TODO call SSA-dIMP structured dIMP and the other one flat/graph SSA
 
-TODO include all dataflow node/edges
-
-TODO ssa same name in if 
-TODO source Z0
 
 step 1 DF graph step 2 mark DF graph step 3 theorem turn marking on DF graph into safe "blue" typing
 
