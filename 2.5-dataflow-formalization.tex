@@ -3,10 +3,6 @@
 
 %TODO:
 %- I'm getting more and more convinced that the formulation of the rule DF-phi should be purely declarative and constraint-based. That is, replace the equality "L_i = (x) \sqcup (y)" in the side condition with two inequational constraints "(x) \sqsubseteq L_i, and (y)  \sqsubseteq L_i", but _not_ that L_i is the least element of Ltc with that property. The soundness proof should still work with that formulation (as long as the ordering on Ltc is compatible with the concretization function gamma, in the sense that L sqsubset L' implies gamma(L) subset gamma(L')), and there's really no need to hard-code any particular, deterministic way of choosing L_i into the rule, because the whole type inference system is nondeterministic anyway, due to the way Delta (or Delta1) has to be "guessed" in DF-While. 
-%- You keep referring to the construction in Section 2.4 as an "algorithm". It is not. It is a _specification_ of what the DF analysis is supposed to compute, together with a theorem motivating why this specification is sensible in the first place. Your only mention of an actual algorithm seems to be on p.17, "by fixpoint iteration using the DF rules", which is so non-specific and superficial as to be nearly useless. Surely any actual algorithm can be described as pseudocode, or as a set of inference rules that can clearly be executed without an oracle, so that we can compare and contrast the "theoretical" formulation of the algorithm with the "practical" one, as expressed in QL. 
-% from the typing rule we extract constraints, and the DF
-% analyzer only looks at phi nodes
-% TODO example from dIMP to SSA-dIMP
 
 In this section, we are going to formalize what we mean by dataflow,
 give a simple algorithm for computing dataflow and proving it is sound.
