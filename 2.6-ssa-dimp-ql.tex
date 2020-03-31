@@ -88,7 +88,9 @@ The algorithm in practice is given in \hyperref[lst:dataflow]{dataflow.qll}.
 \subsubsection*{Step 1 - The Dataflow Graph}
 Typing an entire AST to detect dataflow is quite inefficient, so the algorithm
 runs on a different graph, the \emph{dataflow graph}.
-Its node set is a subset of the node set of the AST.
+It is a datastructure that makes it easy to compute a typing derivation as needed to
+detect dataflow.
+The node set of the dataflow graph is a subset of the node set of the AST.
 
 The dataflow graph keeps track of which expressions and statements potentially get data from a source.
 The node set of the dataflow graph contains all AST nodes of the following form:
@@ -113,19 +115,18 @@ Thus, the node set contains  exactly the relevant elements of the AST that are i
 if a program has dataflow or not.
 
 Building the dataflow graph is done by defining the \texttt{flowStep} relation on the node set.
-It contains the tuple $(\textit{node1}, \textit{node2})$ if \textit{node2} is using
-data from the node \textit{node1}.
-Formulated differently, if there is an edge in the dataflow graph from \textit{node1}
-to \textit{node2} it means that the labelling of \textit{node1} influences
-the label of \textit{node2}.
-Thus, the edges of the dataflow graph indicate along which paths dataflow tracking propagates
-throughout the program.
+It contains the tuple $(\textit{node1}, \textit{node2})$ if the label of \textit{node2} is directly affected
+by the label of \textit{node1}.
+Thus, the edges of the dataflow graph indicate along which paths dataflow tracking marker propagate
+through the program.
 
-For example, if an expression node has type $\ltracked$ or $\lunknown$,
+For example, if an expression node has type $\ltracked$,
 all downstream expression nodes on a path from the first expression node 
 have type either $\ltracked$ or $\lunknown$ (and not $\lclean$).
 We combine this propagation information with the location of the sinks and sources 
 to detect potential dataflow.
+
+The rules to construct the dataflow graph are as follows:
 
 By looking at the typing rule for statements, we see that only assign and sink statements
 use the tracking marker assigned to the arithmetic expression used in that statement.
@@ -133,88 +134,21 @@ Thus, there is an edge from the right-hand side of an assignment (the expression
 to the node for the assign statement, as well as from the operand from the sink 
 to the node for the sink statement.
 
-The other cases in \texttt{flowStep} take care of tracking variables.
-By looking at the typing rule for expression, we see that only expressions that possibly 
-result in a non-clean marker are source expressions and variable reads.
-Sources are ignored in \texttt{flowStep}, because we do not care
-if something flows to a source, as the result will always have a tracked marker anyways.
-Thus, sources are not handled in \texttt{flowStep} at all, and only considered later.
+The other cases in \texttt{flowStep} deal with variable definitions.
+There is an edge from every variable definition (which is either a $\varphi$-node or 
+an assign statement) to all users of that variable, i.e. to all expressions of kind
+variable access, as well as all $\varphi$-nodes that have the variable as input.
+Formulated differently, there is an edge from a variable definition to all of its uses.
 
-The tracked marker for variable reads is fully determined by the type context,
-which we do not explicitly compute.
-In the implicit formulation, a variable access gets the tracking marker of its definition,
-which is, because the program is in SSA form, unique.
-If the variable definition is an assign statement, this follows immediately from the
-\textsc{DF-Assign} rule - the variable is tagged with the marker of the expression.
-Thus, we have an edge from the expression node to that of the 
-If the variable is defined in a $\varphi$-node, we have compute the least upper bound of 
-both variables that make up the $\varphi$-node.
-This is implicit in the algorithm, as the $\varphi$-node will have an incoming edge if 
-at least one of the variables is marked with $\ltracked$ or $\lunknown$.
-However, in both cases, we have flow from a variable definition (either an assign
-statement or a $\varphi$-node) to a variable read (either a VarAccess expression, 
-or another $\varphi$-node).
+There are no incoming edges for source expressions, as the result of a source expression
+is always tainted.
 
-\subsubsection*{Step 2 - Labeling Nodes}
-As second step, the algorithm computes a labelling of the nodes of the dataflow graph.
-This labelling can be used to easily determine if a program is safe to execute or not.
-Furthermore, this labelling can be used to construct a typing derivation (by the DF-rules)
-of the program.
-
-
-As last step, the predicate \texttt{reaches}
-computes the transitive closure of \texttt{flowStep}, beginning with all nodes
-that are source expressions.
-Thus, as sources are always marked with $\ltracked$ and paths in the dataflow
-graph indicate that the tracked status propagate along these paths, any path 
-from a source to a sink indicates the presence of (possible) dataflow.
-Or, in terms of the soundness guarantee, the absence of any of these paths 
-implies that the program does not contain dataflow.
-
-\subsubsection*{On the Relation of the Algorithm to the DF Typing Rules}
-As explained above, this algorithm runs already on SSA-dIMP, not dIMP.
-Thus, we assume that the SSA construction already took place.
-As explained in TODO, any dIMP program can be transformed into an equivalent
-SSA-dIMP program.
-This transformation also (implicitly) takes care of the concrete semantics of e.g.\ 
-while and if statements - the dataflow algorithm only expects correctly placed $\varphi$-nodes,
-and does not depend on the semantics of the individual statements.
-
-If, for example, a repeat-until loop construct would be added to the language,
-SSA-dIMP could be easily extended with that loop construct by adding a new statement 
-kind to the database and implementing the library.
-However, the dataflow algorithm itself would work without any changes, assuming that
-the $\varphi$-node placement is correct.
-This is very different from the algorithm schema above, that depends intimately on the 
-typing schema, and this might be puzzling at first.
-This apparent contradiction can be resolved by seeing that the DF typing 
-rules serve two purposes - first, they are a refinement of the SSA typing rules,
-and second, they describe an approximation on where dataflow occurs.
-
-As the dataflow algorithm as presented here assumes that the program is already in 
-SSA form, it can do substantially less than what is described in the DF rules.
-In particular, it only has to worry about the introduction of flow in expressions,
-and the propagation of the tracked marking to variable stores and to sinks.
-Thus, it can safely skip the entire part of the rules that deal with scoping.
-
-\subsubsection*{Example}
 We now show the dataflow graph for the example program (\autoref{fig:ssa-dimp-example}).
 Node types (expression, $\varphi$ or statement) are not indicated, but are obvious from context.
 Furthermore, the place of the variable accesses in the AST is only indicated when it is 
 not clear from the context.
-However, every node in the dataflow graph is also a node in the AST, so all the variable accesses
+However, as every node in the dataflow graph is also a node in the AST, all the variable accesses
 of one variable are different nodes in the dataflow graph.
-
-TODO add note that there is dataflow
-
-TODO second example without flow, show how to recover "blue" typing from that
-
-TODO modify analysis to include unknown/for sure 
-
-TODO call SSA-dIMP structured dIMP and the other one flat/graph SSA
-
-
-step 1 DF graph step 2 mark DF graph step 3 theorem turn marking on DF graph into safe "blue" typing
 
 \begin{figure}[h]
     \begin{tikzpicture}[roundnode/.style={rectangle,rounded corners=1ex,draw=black!100,thick},->,thick]
@@ -257,11 +191,138 @@ step 1 DF graph step 2 mark DF graph step 3 theorem turn marking on DF graph int
     \caption{The dataflow graph for the example program}
 \end{figure}
 
+\subsubsection*{Step 2 - Labeling Nodes}
+As second step, the algorithm computes a labelling of the nodes of the dataflow graph.
+This labelling can be used to easily determine if a program is safe to execute or not.
+Furthermore, this labelling can be used to construct a typing derivation (by the DF-rules)
+of the program.
+Note that in the dataflow graph, all $\varphi$-nodes have indegree 2, whereas all
+non-$\varphi$-nodes have indegree 0 or 1.
+
+First, the predicate \texttt{nodeLabelCand} computes a set of candidate labels 
+for each node in the dataflow graph:
+The labelling starts at nodes in the graph without incoming edges.
+These can be labelled with $\ltracked$ (if the node is an expression node of kind source),
+or with $\lclean$ otherwise (the node represents a read of a variable initialized outside
+of the program, an variable assignment of an expression that is marked as clean).
+
+All $\varphi$-nodes are marked with $\lunknown$.
+If all incoming edges to a $\varphi$-node agree on a label, this label is then
+also applied to the $\varphi$-node.
+
+All non-$\varphi$-nodes that have an incoming edge inherit all tracking markers from
+the previous node.
+
+As second step, the predicate \texttt{nodeLabel} computes the best label for each node 
+among all candidate labels:
+If a node is both marked with $\lclean$ and $\lunknown$ or both with $\ltracked$
+and $\lunknown$, the more specific marking is chosen.
+By construction, the algorithm never marks a node with both $\lclean$ and $\ltracked$,
+as nodes without incoming edges only get a single label, and $\varphi$-nodes only 
+propagate a label if all immediate predecessors have the smae label.
+
+With that information, the dataflow query can report all nodes of type sink.
+If any of them has the label $\lunknown$ or $\ltracked$, then we know that the sink
+is unsafe, because it (potentially) reads from a source.
+
+\subsubsection*{Step 3 - Building  a Typing Derivation}
+While the information in step 2 is enough to detect unsafe sinks,
+which is needed to apply~\autoref{thm:soundness-df},
+we can use the computed labels to build a typing derivation for the whole program
+using the DF rules.
+
+Remember that the DF rules are non-deterministic only in the rule \textsc{DF-While},
+so the process of building a typing derivation is straight-forward, except for while loops.
+
+The initial map $\Gamma$ is given by mapping all variables that are defined in 
+the initial store to $\lclean$.
+
+The typing rules for booleans are satisfied by the assumption that the program 
+is well-typed with respect to the SSA rules.
+
+Expressions that have a label assigned to them in \texttt{nodeLabel} get that label.
+All other expressions are typed with $\lclean$.
+Using this, we immediately get the map $\Delta$ for the rule $\textsc{DF-Assign}$.
+
+For all other statements, we compute the derivation tree recursively,
+following the rules.
+At any place where the rule \textsc{DF-$\varphi$} is used, the map $\Delta$ 
+is determined by the labels of the respective $\varphi$-nodes in $\texttt{nodeLabel}$.
+Using this, we can compute the map $\Delta_1$ used in \textsc{DF-While} using the
+standard recursive procedure, as $\Gamma \union \Delta$ is now defined.
+This alleviates the need to guess for this rule.
+All other rules can directly be used to infer the type derivation.
+
+\subsubsection*{On the Relation of the Algorithm to the DF Typing Rules}
+As explained above, this algorithm runs already on SSA-dIMP, not dIMP.
+Thus, we assume that the SSA construction already took place.
+As conjectured in~\autoref{con:dimp-to-ssa}, any dIMP program can be transformed into an equivalent
+SSA-dIMP program.
+This transformation also (implicitly) takes care of the concrete semantics of e.g.\ 
+while and if statements - the dataflow algorithm only expects correctly placed $\varphi$-nodes,
+and does not depend on the semantics of the individual statements.
+
+If, for example, a repeat-until loop construct would be added to the language,
+SSA-dIMP could be easily extended with that loop construct by adding a new statement 
+kind to the database and implementing the library.
+However, the dataflow algorithm itself would work without any changes, assuming that
+the $\varphi$-node placement is correct.
+This is very different from the algorithm schema with the DF rules that depends intimately on the 
+typing schema, and this might be puzzling at first.
+This apparent contradiction can be resolved by seeing that the DF typing 
+rules serve two purposes - first, they are a refinement of the SSA typing rules,
+and second, they describe an approximation on where dataflow occurs.
+
+As the dataflow algorithm as presented here assumes that the program is already in 
+SSA form, it can do substantially less than what is described in the DF rules.
+In particular, it only has to worry about the introduction of flow in expressions,
+and the propagation of the tracked marking to variable stores and to sinks.
+Thus, it can safely skip the entire part of the rules that deal with scoping.
+
+%The tracked marker for variable reads is fully determined by the type context,
+%which we do not explicitly compute.
+%In the implicit formulation, a variable access gets the tracking marker of its definition,
+%which is, because the program is in SSA form, unique.
+%If the variable definition is an assign statement, this follows immediately from the
+%\textsc{DF-Assign} rule - the variable is tagged with the marker of the expression.
+%Thus, we have an edge from the expression node to that of the 
+%If the variable is defined in a $\varphi$-node, we have compute the least upper bound of 
+%both variables that make up the $\varphi$-node.
+%This is implicit in the algorithm, as the $\varphi$-node will have an incoming edge if 
+%at least one of the variables is marked with $\ltracked$ or $\lunknown$.
+%However, in both cases, we have flow from a variable definition (either an assign
+%statement or a $\varphi$-node) to a variable read (either a VarAccess expression, 
+%or another $\varphi$-node).
+
+\subsubsection*{Simplification of the Algorithm}
+In practice, we can optimize the algorithm even more.
+This is done by reducing the lattice and only keeping $\lclean$ and $\lunknown$.
+Then, we do not need an explicit node label anymore, a predicate can now
+keep track of all nodes that are marked with $\lunknown$ (the only relevant nodes 
+for dataflow).
+Furthermore, we can restrict ourselves to connected components of the dataflow graph
+that start in a source node.
+All other parts of the dataflow graph can be discarded, as they do not contribute 
+to detecting dataflow.
+In fact, nodes in this restricted dataflow are marked with $\lunknown$ if there
+exists a path from a source to the node.
+Especially, this means a program is (potentially) dangerous if there exists a path
+from a node of type source to a node of type sink.
+This problem can be solved very efficiently.
+The QL implementation can be found in the predicate \texttt{reaches},
+that computes all reachable nodes from a sink.
+If this predicate contains any sink nodes, the program is deemed unsafe.
+
+This algorithm marks the same programs as unsafe as the previously proposed implementation,
+but it does obviously not include the distinction between $\lunknown$ and $\ltracked$,
+and thus does not allow the reconstruction of a typing derivation using the DF rules.
+
+For example, when applied to the example dataflow graph, one can see that there is 
+a path from the source to the sink, so that program is unsafe.
 
 \subsection{The Query}
 The query actually implementing the user-facing analysis is given in \hyperref[lst:query]{query.ql}.
-It is very simple, it outputs a list of pairs of sources and sinks if the
-sink is reachable from the source.
+It is very simple, it outputs a list of sinks if their label is either unknown or tracked.
 If the list is empty, the program is safe and it is guaranteed by~\autoref{thm:soundness-df}
 that the program has no dataflow.
 If the list is not empty, no assertion about the program correctness can be given.

@@ -134,8 +134,6 @@ predicate nodeLabel(DataFlowNode node, TNodeLabel label) {
  * Computes possible dataflow on a reduced lattice with only clean and unknown.
  * A node not in this predicate is marked with clean.
  */
-
-predicate reaches(DataFlowNode source, DataFlowNode node) {
-  sourceNode(source) and
-  flowStep*(source, node)
+predicate reaches(DataFlowNode node) {
+  exists(DataFlowNode source | sourceNode(source) | flowStep*(source, node))
 }
