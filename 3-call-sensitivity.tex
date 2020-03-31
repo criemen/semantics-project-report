@@ -107,7 +107,7 @@ Thus, the computation of dataflow is improved, and from a theoretical perspectiv
 there are no drawbacks associated with the changes.
 
 \subsection{Description of Implementation}
-Remember that the dataflow algorithm works by computing sets of candidate nodes that 
+The QL dataflow algorithm works by computing sets of candidate nodes that 
 in each phase are filtered to exclude nodes that are not part of the final dataflow graph.
 Call context sensitivity is also implemented as a filter of candidate nodes
 that are available for local flow steps.
@@ -197,4 +197,3 @@ Only the predicate \texttt{isUnreachableInCall} would need to be modified
 to also detects unreachable basic blocks in the presence of enum constant arguments.
 Thus, adding support for enum constants is a software engineering effort
 with no significant academic interest.
-
