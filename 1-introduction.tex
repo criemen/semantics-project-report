@@ -112,24 +112,68 @@ so in the theoretical setting we are dealing with a (provably) sound analysis, i
 an analysis that has no false negatives.
 
 \subsection{Evaluation Model of QL}
-\cite{qlpaper}
-Every predicate is computed bottoms-up, so when a predicate is encountered, its
-tuple set is computed.
-Recursive predicates are computed as fixed-point iterations, which means that the database engine 
-first adds the tuple sets arising from the base cases, and then from the recursive cases, until
-no more tuples can be added. (TODO improve).
-Mutual recursions are TODO.
+QL is an object-oriented logic programming language built on top of Datalog.
+However, its syntax is very much inspired by Java, so it might look weird to the 
+experienced logic programmer at first.
+The paper~\cite{qlpaper} provides a thorough introduction to QL, gives a 
+formal syntax, semantics and a translation to ordinary Datalog.
+This subsection provides a short overview about the evaluation model that should
+enable the reader to understand this report.
+
+At the root of QL is the concept of a \emph{predicate}.
+A predicate contains a finite set of tuples of typed data.
+There are two types of predicates in QL.
+
+The contents of tables in the database are exposed to the programmer as \emph{database 
+predicates} --- these are pre-defined in the program and can only be queried, but not modified.
+The types and names of these predicates are specified in the relational database schema.
+An example of a database schema for a small language (introduced later) can be 
+seen in the appendix.
+The data for these predicates is provided by the extractor (according to the database schema),
+and loaded at runtime by the database engine.
+
+All other predicates in a QL program are \emph{user-provided predicates}.
+These predicates are built declaratively.
+Thus, the programmer states, using first-order predicate logic,
+which data tuples belong in a predicate.
+However, the programmer can not control how that query is executed.
+It is the sole task of the query engine to come up with and optimize a 
+query plan suitable for execution on the database.
+
+These user-provided predicates can often separated in two parts:
+Base case(s), i.e.\ disjuncts that contain a list of logical requirements for data 
+to be part of the predicate, without invoking recursion.
+Recursive case(s), i.e.\ disjuncts that declare how existing members of the predicate 
+can be used to generate new members of the predicate.
+For example, a predicate that traverses a binary tree might contain a base case that visits 
+the root node, and then two recursive cases that visit the two children (if they exist).
+
+Unlike Prolog, the probably best-known logic programming language, QL uses forward 
+chaining.
+This means that it uses the existing tuples in a predicate and applies the declarative
+rules in the predicate as long as new tuples are generated.
+In other words, the QL database engine computes the set of tuples that are a least fixed point 
+of the first-order formulae of the user-defined predicates.
+In a general setting, this fixed-point might not always exist.
+To ensure existence of least fixed-points while allowing recursion,
+QL only allows recursion if the predicate appears under an even number of negations.
+
+Another rule that is needed to ensure termination is that all data included in a tuple 
+ranges over a finite domain.
+For data types defined in the database, this is trivially true.
+For numbers, booleans and strings, this is ensured by requiring that they are bound 
+in the predicate body, for example by restricting their values to a finite set of constants,
+or by restricting their values to be in another predicate.
+
+One of the user-provided predicates is designated to be the \emph{query predicate}.
+Its content is provided as the output of a running a query.
+Often, a query predicate will contain source code locations together with a message,
+explaining a problem that was detected at that location.
 
 Another useful feature of QL is that it includes syntactic sugar to compute the reflexive-transitive
-and the transitive closure of predicates.
+and the transitive closure of binary predicates.
 For example, a predicate \texttt{getSucc} on control flow nodes gives the set of all reachable
 nodes by invoking \texttt{getSucc*}.
 
-\subsection{QL And Relational Database TODO title}
-At the heart of QL lives a relational database, and QL is designed to query a relational database.
-Every predicate, the basic notion of a BLA, can be regarded as a tuple.
-
-% TODO cite qlpaper
-
-% TODO can you build an infinite predicate, or does the compiler check that for you?
-% equivalent to SQL, but what about recursion?
+For the details of the object model, as well as more details of the evaluation, we refer
+the interested reader to~\cite{qlpaper}.
