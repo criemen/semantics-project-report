@@ -86,6 +86,7 @@ it implicitly runs on the AST.
 The algorithm in practice is given in \hyperref[lst:dataflow]{dataflow.qll}.
 
 \subsubsection*{Step 1 - The Dataflow Graph}
+TODO change
 Typing an entire AST to detect dataflow is quite inefficient, so the algorithm
 runs on a different graph, the \emph{dataflow graph}.
 It is a datastructure that makes it easy to compute a typing derivation as needed to
@@ -150,6 +151,9 @@ not clear from the context.
 However, as every node in the dataflow graph is also a node in the AST, all the variable accesses
 of one variable are different nodes in the dataflow graph.
 
+TODO line numbers (maybe)
+TODO QL dump of graph
+
 \begin{figure}[h]
     \begin{tikzpicture}[roundnode/.style={rectangle,rounded corners=1ex,draw=black!100,thick},->,thick]
         \node[roundnode] (storez0) at(0, 0) {$\storecmd{Z0}{1}$};
@@ -199,6 +203,8 @@ of the program.
 Note that in the dataflow graph, all $\varphi$-nodes have indegree 2, whereas all
 non-$\varphi$-nodes have indegree 0 or 1.
 
+TODO explain this much better
+
 First, the predicate \texttt{nodeLabelCand} computes a set of candidate labels 
 for each node in the dataflow graph:
 The labelling starts at nodes in the graph without incoming edges.
@@ -219,13 +225,18 @@ If a node is both marked with $\lclean$ and $\lunknown$ or both with $\ltracked$
 and $\lunknown$, the more specific marking is chosen.
 By construction, the algorithm never marks a node with both $\lclean$ and $\ltracked$,
 as nodes without incoming edges only get a single label, and $\varphi$-nodes only 
-propagate a label if all immediate predecessors have the smae label.
+propagate a label if all immediate predecessors have the same label.
 
 With that information, the dataflow query can report all nodes of type sink.
 If any of them has the label $\lunknown$ or $\ltracked$, then we know that the sink
 is unsafe, because it (potentially) reads from a source.
 
 \subsubsection*{Step 3 - Building  a Typing Derivation}
+TODO change name of the section, not as part of the algorithm itself
+used to prove correctness/certificate
+
+TODO include non-empty deltas for commands for SSA-dIMP program
+
 While the information in step 2 is enough to detect unsafe sinks,
 which is needed to apply~\autoref{thm:soundness-df},
 we can use the computed labels to build a typing derivation for the whole program
@@ -314,11 +325,15 @@ that computes all reachable nodes from a sink.
 If this predicate contains any sink nodes, the program is deemed unsafe.
 
 This algorithm marks the same programs as unsafe as the previously proposed implementation,
-but it does obviously not include the distinction between $\lunknown$ and $\ltracked$,
-and thus does not allow the reconstruction of a typing derivation using the DF rules.
+but it does obviously not include the distinction between $\lunknown$ and $\ltracked$.
+The theoretical groundwork as laid out in~\autoref{sec:df-theory} can be applied,
+but using a two-point lattice with elements $\lunknown$ and $\lclean$ instead.
+The soundness proof goes through essentially unchanged.
+Thus, a typing derivation using the DF rules (with the simplified lattice) 
+can be reconstructed, as explained above.
 
-For example, when applied to the example dataflow graph, one can see that there is 
-a path from the source to the sink, so that program is unsafe.
+The example can also be adapted: In the example dataflow graph, one can easily
+see that there is a path from the source to the sink, so that program is unsafe.
 
 \subsection{The Query}
 The query actually implementing the user-facing analysis is given in \hyperref[lst:query]{query.ql}.
