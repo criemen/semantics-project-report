@@ -288,7 +288,7 @@ Judgment \fbox{$\bigstep{s}{\store}{\excstore{}}$}:
 We show by example how the SSA construction works.
 We consider the following dIMP program:
 \begin{figure}[h]
-    \begin{minted}{pascal}
+    \begin{minted}[linenos]{pascal}
         // loop counter
         I := X;
         Z := 1;
@@ -310,7 +310,7 @@ TODO same figure for both
 
 
 \begin{figure}[h]
-    \begin{minted}[escapeinside=||,mathescape=true]{pascal}
+    \begin{minted}[escapeinside=||,mathescape=true,linenos]{pascal}
         I0 := X;
         Z0 := 1;
         while [Z3 := |$\varphi$|(Z0, Z2), I2 := |$\varphi$|(I0, I1)]; I2 > 0 do

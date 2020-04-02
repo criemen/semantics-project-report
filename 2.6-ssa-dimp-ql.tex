@@ -86,10 +86,9 @@ it implicitly runs on the AST.
 The algorithm in practice is given in \hyperref[lst:dataflow]{dataflow.qll}.
 
 \subsubsection*{Step 1 - The Dataflow Graph}
-TODO change
-Typing an entire AST to detect dataflow is quite inefficient, so the algorithm
-runs on a different graph, the \emph{dataflow graph}.
-It is a datastructure that makes it easy to compute a typing derivation as needed to
+The algorithm given here (unlike the DF rules) does not run on the entire AST of the program,
+but on a different graph, the \emph{dataflow graph}.
+It is a datastructure that makes it easy to compute the typing derivation needed to
 detect dataflow.
 The node set of the dataflow graph is a subset of the node set of the AST.
 
@@ -231,16 +230,10 @@ With that information, the dataflow query can report all nodes of type sink.
 If any of them has the label $\lunknown$ or $\ltracked$, then we know that the sink
 is unsafe, because it (potentially) reads from a source.
 
-\subsubsection*{Step 3 - Building  a Typing Derivation}
-TODO change name of the section, not as part of the algorithm itself
-used to prove correctness/certificate
-
-TODO include non-empty deltas for commands for SSA-dIMP program
-
-While the information in step 2 is enough to detect unsafe sinks,
-which is needed to apply~\autoref{thm:soundness-df},
-we can use the computed labels to build a typing derivation for the whole program
-using the DF rules.
+\subsubsection*{Recovering a Typing Derivation from a Labelled Dataflow Graph}
+The information computed in step 2 is enough to detect unsafe sinks.
+However, we can even go a step further and use the computed labels to build a
+typing derivation for the whole program using the DF rules.
 
 Remember that the DF rules are non-deterministic only in the rule \textsc{DF-While},
 so the process of building a typing derivation is straight-forward, except for while loops.
@@ -263,6 +256,13 @@ Using this, we can compute the map $\Delta_1$ used in \textsc{DF-While} using th
 standard recursive procedure, as $\Gamma \union \Delta$ is now defined.
 This alleviates the need to guess for this rule.
 All other rules can directly be used to infer the type derivation.
+
+Applied on example program as presented in~\autoref{fig:ssa-dimp-example}, we 
+get the following (non-empty) $\Delta$ maps for the statements in the program:
+TODO
+
+Given these, the whole derivation tree can be easily written down.
+It is omitted here mainly for space reasons.
 
 \subsubsection*{On the Relation of the Algorithm to the DF Typing Rules}
 As explained above, this algorithm runs already on SSA-dIMP, not dIMP.
