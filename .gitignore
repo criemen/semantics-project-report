@@ -359,4 +359,5 @@ main.pdf
 codeql-dimp/build-db
 codeql-dimp/db/
 codeql-dimp/test-output
+codeql-dimp/codeql-dimp.testproj
 

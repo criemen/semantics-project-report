@@ -485,11 +485,11 @@ Judgement \fbox{$\typestmt{\Gamma}{b}$}:
 Judgement \fbox{$\typestep{\Gamma;\Delta_0;\Delta_1}{\philist}{\Delta}$}:
 \begin{align*}
     &\trule{DF-$\varphi$}{}{\typestep{\Gamma;\Delta_0;\Delta_1}{\defaultphilistn}{[X_1 \mapsto L_1, \ldots, X_n \mapsto L_n]}}\\
-    &\text{(if for $i \in \{1, \ldots, n\}: X_i \notin \dom\Gamma \land L_i = (\Gamma \dunion \Delta_0)(Y_i) \join (\Gamma \dunion \Delta_1)(Z_i)
+    &\text{(if for $i \in \{1, \ldots, n\}: X_i \notin \dom\Gamma \land (\Gamma \dunion \Delta_0)(Y_i) \leq L_i \land (\Gamma \dunion \Delta_1)(Z_i) \leq L_i
     \land \forall j \neq i: X_j \neq X_i$)}
 \end{align*}
 Note that this implies that this rule is only applicable if $Y_i$, $Z_i$ exist in the respective
-domains of the partial functions, and if the join exists as well.\\
+domains of the partial functions, and if $L_i$ satisfying the constraints exists as well.\\
 Judgement \fbox{$\typestep{\Gamma}{s}{\Delta}$}:
 \begin{align*}
     &\trule{DF-Skip}{}{\typestep{\Gamma}{\skipcmd}{[]}}\qquad
