@@ -197,8 +197,6 @@ As second step, the algorithm computes a labelling of the nodes of the dataflow 
 This labelling can be used to easily determine if a program is safe to execute or not.
 Furthermore, this labelling can be used to construct a typing derivation (by the DF-rules)
 of the program.
-Note that in the dataflow graph, all $\varphi$-nodes have indegree 2, whereas all
-non-$\varphi$-nodes have indegree 0 or 1.
 
 As QL is built to be a query language, programming in QL is significantly different
 from imperative general-purpose programming languages.
@@ -209,63 +207,66 @@ algorithm iterates.
 A work list would keep track of nodes that need to be visited.
 
 In QL, both is not possible.
-Instead, we compute a \emph{set} of labels for each node that are applicable, according
-to the DF rules.
-This is done by the predicate \texttt{nodeLabelCand}, that computes a set of candidate labels 
-for each node in the dataflow graph.
+Instead, the helper predicate \texttt{nodeLabelCand} computes a \emph{set} of
+labels for each node.
+Each label of a node belongs to one or more execution flows of the program 
+that would result in that label being assigned.
 
-While the algorithm runs, this set of labels per node may increase.
-When the algorithm ends iterating, we pick the most precise label for each node
-(according to the poset structure).
-For example, a $\varphi$-node first gets assigned the set of labels $\{\lunknown\}$
-(according to the DF rules, $\lunknown$ is always a valid label for a variable defined
-in a $\varphi$-node).
-However, while the algorithm is running it may discover that both inputs to the 
-$\varphi$-node can be marked with $\lclean$, so the set of labels for that $\varphi$-node
-after the algorithm finishes is $\{\lunknown, \lclean\}$.
-Then the $\varphi$-node gets the label $\lclean$, as it is the most precise label
-in that set.
-
-The algorithm bootstraps the recursion by providing the (potentially sub-optimal)
-label $\lunknown$ for $\varphi$-nodes, 
-$\ltracked$ for sources, and $\lclean$ for all nodes in the dataflow graph without
-incoming edges that are not sources.
+Each source is marked with $\{\ltracked\}$, as in every program execution,
+a source produce in a tracked value.
+Furthermore, all nodes in the dataflow graph without
+incoming edges that are not sources are marked with $\{\lclean\}$.
 Nodes without incoming edges (that are not sources) represent either variable reads 
 from variables defined in the initial store (these are clean by assumption), or 
 assignments that read an expression that is clean by the DF rules, for example
 a store of the result of a multiplication or addition.
 
-The algorithm uses the following propagation rules:
-All non-source, non-$\varphi$ nodes with an incoming edge receive all labels of their
-predecessor.
-If all incoming edges to a $\varphi$-node agree on a label, this label is then
-added to the set of applicable labels of the $\varphi$-node.
+Remember that in the dataflow graph, an edge from \textit{node1} to \textit{node2}
+indicates that the label of \textit{node1} affects the label of \textit{node2}.
+Thus, we propagate node labels along the edges of the dataflow path.
+Every node receives all the labels of its predecessor(s), this includes
+$\varphi$-nodes.
 
-The second step is implemented in the predicate \texttt{nodeLabel}.
-It computes the best label for each node among all candidate labels:
-If a node is both marked with $\lclean$ and $\lunknown$ or both with $\ltracked$
-and $\lunknown$, the more specific marking is chosen.
-By construction, the algorithm never marks a node with both $\lclean$ and $\ltracked$,
-as nodes without incoming edges only get a single label, and $\varphi$-nodes only 
-propagate a label if all immediate predecessors have the same label.
+A $\varphi$-node indicates that two different control flows merge at the point
+the $\varphi$-node is placed.
+At analysis time, we do not know which branch(es) will be taken by the program,
+so we approximate this behaviour by assuming tha all branches will be taken at some point.
+Thus, we propagate both incoming labels, even if they disagree.
+This is different from the DF rules, that mandate that a single label is chosen
+for a $\varphi$-node.
+
+After all nodes are labelled with a set of labels, we still need to pick one label
+that correctly describes the node.
+This second step is implemented in the predicate \texttt{nodeLabel}.
+The predicate computes the best label for each node using the candidate labels.
+It does so by taking the join in the poset of all the labels assigned to each node.
+
+If a node is both marked with $\lclean$ and $\ltracked$ it means that different
+program execution paths result in a different tracked-marker for that node.
+Thus, the node is marked with $\lunknown$.
+
+If a node is marked with only one label (either $\lclean$ or $\lunknown$), 
+that label is chosen, as it holds regardless of the program execution.
 
 With that information, the dataflow query can report all nodes of type sink.
 If any of them has the label $\lunknown$ or $\ltracked$, then we know that the sink
 is unsafe, because it (potentially) reads from a source.
 
-To see how the candidate label computation work, recall the dataflow graph
+To see how the candidate label computation works in practice, recall the dataflow graph
 from~\autoref{fig:df-graph}.
 We have included the annotated dataflow graph here at several stages of the algorithm:
 \begin{enumerate}
-    \item After the static initialization phase, but before the recursive label propagation starts: ~\autoref{fig:label-graph-1}
-    \item In the middle of the recursive label propagation: ~\autoref{fig:label-graph-2}
-    \item After the algorithm has finished computing candidate node labels: ~\autoref{fig:label-graph-3}
+    \item After the static initialization phase, but before the label propagation starts:
+     ~\autoref{fig:label-graph-1}
+    \item After the label propagation: ~\autoref{fig:label-graph-2}
+    \item After the computation of the final node labels (i.e. the \texttt{nodeLabel} predicate):
+     ~\autoref{fig:label-graph-3}
 \end{enumerate}
 
 \begin{figure}[h]
     \begin{tikzpicture}[roundnode/.style={rectangle,rounded corners=1ex,draw=black!100,thick},->,thick]
         \node[roundnode] (storez0) at(0, 1) {$\storecmd{Z0}{1}$ $\{\lclean\}$};
-        \node[roundnode] (phiz3) at (0, 0) {$\phistore{Z3}{Z0}{Z2}$ $\{\lunknown\}$};
+        \node[roundnode] (phiz3) at (0, 0) {$\phistore{Z3}{Z0}{Z2}$};
         \node[roundnode] (varaccessbool) at (6, 0) {VarAccess $Z3$};
         \node[roundnode] (multvaraccess) at (6, -1) {VarAccess $Z3$};
         \node[roundnode] (source) at (6, -2) {$\source{Z3 * X}$  $\{\ltracked\}$};
@@ -273,7 +274,7 @@ We have included the annotated dataflow graph here at several stages of the algo
         \node[roundnode] (multvaraccess2) at (0, 2) {VarAccess $X$  $\{\lclean\}$};
         \node[roundnode] (varaccessz4) at (0, -1) {VarAccess $Z3$ };
         \node[roundnode] (storez1) at (0, -2) {$\storecmd{Z1}{Z3}$ };
-        \node[roundnode] (phiz2) at (0, -3) {$\phistore{Z2}{Z1}{Z1}$  $\{\lunknown\}$};
+        \node[roundnode] (phiz2) at (0, -3) {$\phistore{Z2}{Z1}{Z1}$  };
         \node[roundnode] (varaccessz42) at (-5, -3) {VarAccess $Z3$ };
         \node[roundnode] (sink) at (-5, -4) {$\sink{Z3}$};
         \draw (storez0.south) -- (phiz3.north);
@@ -289,7 +290,7 @@ We have included the annotated dataflow graph here at several stages of the algo
         \draw (source.south) -- (storemult.north);
         \node[roundnode] (ivarx) at (0, 7) {VarAccess $X$ $\{\lclean\}$};
         \node[roundnode] (i0getsx) at (0, 6) {$\storecmd{I0}{X}$};
-        \node[roundnode] (phii2) at (0, 5) {$\phistore{I2}{I0}{I1}$  $\{\lunknown\}$};
+        \node[roundnode] (phii2) at (0, 5) {$\phistore{I2}{I0}{I1}$};
         \node[roundnode] (readi21) at (-4, 4) {VarAccess $I2$ };
         \node[roundnode] (readi22) at (4, 4) {VarAccess $I2$ };
         \node[roundnode] (writei1) at (7, 3) {$\storecmd{I1}{I2 - I1}$  $\{\lclean\}$};
@@ -308,17 +309,17 @@ We have included the annotated dataflow graph here at several stages of the algo
 \begin{figure}[h]
     \begin{tikzpicture}[roundnode/.style={rectangle,rounded corners=1ex,draw=black!100,thick},->,thick]
         \node[roundnode] (storez0) at(0, 1) {$\storecmd{Z0}{1}$ $\{\lclean\}$};
-        \node[roundnode] (phiz3) at (0, 0) {$\phistore{Z3}{Z0}{Z2}$ $\{\lunknown\}$};
-        \node[roundnode] (varaccessbool) at (6, 0) {VarAccess $Z3$ $\{\lunknown\}$};
-        \node[roundnode] (multvaraccess) at (6, -1) {VarAccess $Z3$ $\{\lunknown\}$};
+        \node[roundnode] (phiz3) at (0, 0) {$\phistore{Z3}{Z0}{Z2}$ $\{\lclean, \ltracked\}$};
+        \node[roundnode] (varaccessbool) at (6, 0) {VarAccess $Z3$ $\{\lclean, \ltracked\}$};
+        \node[roundnode] (multvaraccess) at (6, -1) {VarAccess $Z3$ $\{\lclean, \ltracked\}$};
         \node[roundnode] (source) at (6, -2) {$\source{Z3 * X}$  $\{\ltracked\}$};
         \node[roundnode] (storemult) at (6, -3) {$\storecmd{Z1}{\source{Z3 * X}}$  $\{\ltracked\}$};
         \node[roundnode] (multvaraccess2) at (0, 2) {VarAccess $X$  $\{\lclean\}$};
-        \node[roundnode] (varaccessz4) at (0, -1) {VarAccess $Z3$ $\{\lunknown\}$};
-        \node[roundnode] (storez1) at (0, -2) {$\storecmd{Z1}{Z3}$  $\{\lunknown\}$};
-        \node[roundnode] (phiz2) at (0, -3) {$\phistore{Z2}{Z1}{Z1}$  $\{\lunknown\}$};
-        \node[roundnode] (varaccessz42) at (-5, -3) {VarAccess $Z3$  $\{\lunknown\}$};
-        \node[roundnode] (sink) at (-5, -4) {$\sink{Z3}$ $\{\lunknown\}$};
+        \node[roundnode] (varaccessz4) at (0, -1) {VarAccess $Z3$ $\{\lclean, \ltracked\}$};
+        \node[roundnode] (storez1) at (0, -2) {$\storecmd{Z1}{Z3}$  $\{\lclean, \ltracked\}$};
+        \node[roundnode] (phiz2) at (0, -3) {$\phistore{Z2}{Z1}{Z1}$  $\{\lclean, \ltracked\}$};
+        \node[roundnode] (varaccessz42) at (-5, -3) {VarAccess $Z3$  $\{\lclean, \ltracked\}$};
+        \node[roundnode] (sink) at (-5, -4) {$\sink{Z3}$ $\{\lclean, \ltracked\}$};
         \draw (storez0.south) -- (phiz3.north);
         \draw (phiz3.east) -- (varaccessbool.west);
         \draw (phiz3.east) -- (multvaraccess.west);
@@ -332,9 +333,9 @@ We have included the annotated dataflow graph here at several stages of the algo
         \draw (source.south) -- (storemult.north);
         \node[roundnode] (ivarx) at (0, 7) {VarAccess $X$ $\{\lclean\}$};
         \node[roundnode] (i0getsx) at (0, 6) {$\storecmd{I0}{X}$ $\{\lclean\}$};
-        \node[roundnode] (phii2) at (0, 5) {$\phistore{I2}{I0}{I1}$  $\{\lunknown\}$};
-        \node[roundnode] (readi21) at (-4, 4) {VarAccess $I2$ $\{\lunknown\}$};
-        \node[roundnode] (readi22) at (4, 4) {VarAccess $I2$ $\{\lunknown\}$};
+        \node[roundnode] (phii2) at (0, 5) {$\phistore{I2}{I0}{I1}$  $\{\lclean\}$};
+        \node[roundnode] (readi21) at (-4, 4) {VarAccess $I2$ $\{\lclean\}$};
+        \node[roundnode] (readi22) at (4, 4) {VarAccess $I2$ $\{\lclean\}$};
         \node[roundnode] (writei1) at (7, 3) {$\storecmd{I1}{I2 - I1}$  $\{\lclean\}$};
         \draw (ivarx.south) -- (i0getsx.north);
         \draw (i0getsx.south) -- (phii2.north);
@@ -343,7 +344,7 @@ We have included the annotated dataflow graph here at several stages of the algo
         \draw (writei1.north) to [in=0] (phii2.east);
     \end{tikzpicture}
     
-    \caption{The annotated dataflow graph during the label propagation}
+    \caption{The annotated dataflow after the label propagation}
     \label{fig:label-graph-2}
 \end{figure}
 
@@ -376,9 +377,9 @@ We have included the annotated dataflow graph here at several stages of the algo
         \draw (source.south) -- (storemult.north);
         \node[roundnode] (ivarx) at (0, 7) {VarAccess $X$ $\{\lclean\}$};
         \node[roundnode] (i0getsx) at (0, 6) {$\storecmd{I0}{X}$ $\{\lclean\}$};
-        \node[roundnode] (phii2) at (0, 5) {$\phistore{I2}{I0}{I1}$  $\{\lunknown, \lclean\}$};
-        \node[roundnode] (readi21) at (-4, 4) {VarAccess $I2$ $\{\lunknown, \lclean\}$};
-        \node[roundnode] (readi22) at (4, 4) {VarAccess $I2$ $\{\lunknown, \lclean\}$};
+        \node[roundnode] (phii2) at (0, 5) {$\phistore{I2}{I0}{I1}$  $\{\lclean\}$};
+        \node[roundnode] (readi21) at (-4, 4) {VarAccess $I2$ $\{\lclean\}$};
+        \node[roundnode] (readi22) at (4, 4) {VarAccess $I2$ $\{\lclean\}$};
         \node[roundnode] (writei1) at (7, 3) {$\storecmd{I1}{I2 - I1}$  $\{\lclean\}$};
         \draw (ivarx.south) -- (i0getsx.north);
         \draw (i0getsx.south) -- (phii2.north);
@@ -387,7 +388,7 @@ We have included the annotated dataflow graph here at several stages of the algo
         \draw (writei1.north) to [in=0] (phii2.east);
     \end{tikzpicture}
     
-    \caption{The annotated dataflow graph after the label propagation}
+    \caption{The annotated dataflow graph after selecting one label for each node}
     \label{fig:label-graph-3}
 \end{figure}
 

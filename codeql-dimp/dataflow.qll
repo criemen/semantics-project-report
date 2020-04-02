@@ -92,9 +92,9 @@ class CleanNodeLabel extends NodeLabel, LClean {
 }
 
 /**
- * Computes all applicable node label candidates.
- * Only computes labels on the subset of nodes that are reachable by `flowStep`
- * from sources in the dataflow graph.
+ * Propagates node labels through the dataflow graph.
+ * A node can have multiple (even conflicting) labels, this is addressed
+ * in `nodeLabel`.
  */
 predicate nodeLabelCand(DataFlowNode node, NodeLabel label) {
   // Regardless where in the tree we are, a source node results in a tracked
@@ -109,19 +109,8 @@ predicate nodeLabelCand(DataFlowNode node, NodeLabel label) {
     not exists(DataFlowNode prev | flowStep(prev, node)) and
     label = LClean()
     or
-    // node is not a phi node, so we propagate the label(s) from the previous node
-    not node instanceof DFPhiNode and
+    // propagate the label(s) from the previous node
     exists(DataFlowNode prev | flowStep(prev, node) and nodeLabelCand(prev, label))
-    or
-    // node is a phi node, so we either propagate the previous unknown state if all
-    // input nodes have a matching state, or unknown
-    node instanceof DFPhiNode and
-    (
-      forex(DataFlowNode prev | flowStep(prev, node) | nodeLabelCand(prev, label))
-      or
-      exists(DataFlowNode prev | flowStep(prev, node) and nodeLabelCand(prev, _)) and
-      label = LUnknown()
-    )
   )
 }
 
@@ -130,17 +119,13 @@ predicate nodeLabelCand(DataFlowNode node, NodeLabel label) {
  * For expression nodes, the tracking directly corresponds to the type assigned
  * by the DF typing system.
  *
- * This predicate computes the best label that a node can have, i.e. the most
- * specific one of the candidate labels computed by `nodeLabelCand`.
+ * This predicate uses `nodeLabelCand` - if there is only one candidate label,
+ * it is taken, otherwise the lattice join of the labels is taken.
  */
 predicate nodeLabel(DataFlowNode node, NodeLabel label) {
-  nodeLabelCand(node, LUnknown()) and
-  nodeLabelCand(node, LTracked()) and
-  label = LTracked()
-  or
-  nodeLabelCand(node, LUnknown()) and
   nodeLabelCand(node, LClean()) and
-  label = LClean()
+  nodeLabelCand(node, LTracked()) and
+  label = LUnknown()
   or
   nodeLabelCand(node, label) and
   not nodeLabelCand(node, any(NodeLabel l | l != label))
