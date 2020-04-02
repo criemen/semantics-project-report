@@ -189,6 +189,7 @@ of one variable are different nodes in the dataflow graph.
     \end{tikzpicture}
     
     \caption{The dataflow graph for the example program}
+    \label{fig:df-graph}
 \end{figure}
 
 \subsubsection*{Step 2 - Labeling Nodes}
@@ -251,6 +252,152 @@ propagate a label if all immediate predecessors have the same label.
 With that information, the dataflow query can report all nodes of type sink.
 If any of them has the label $\lunknown$ or $\ltracked$, then we know that the sink
 is unsafe, because it (potentially) reads from a source.
+
+To see how the candidate label computation work, recall the dataflow graph
+from~\autoref{fig:df-graph}.
+We have included the annotated dataflow graph here at several stages of the algorithm:
+\begin{enumerate}
+    \item After the static initialization phase, but before the recursive label propagation starts: ~\autoref{fig:label-graph-1}
+    \item In the middle of the recursive label propagation: ~\autoref{fig:label-graph-2}
+    \item After the algorithm has finished computing candidate node labels: ~\autoref{fig:label-graph-3}
+\end{enumerate}
+
+\begin{figure}[h]
+    \begin{tikzpicture}[roundnode/.style={rectangle,rounded corners=1ex,draw=black!100,thick},->,thick]
+        \node[roundnode] (storez0) at(0, 1) {$\storecmd{Z0}{1}$ $\{\lclean\}$};
+        \node[roundnode] (phiz3) at (0, 0) {$\phistore{Z3}{Z0}{Z2}$ $\{\lunknown\}$};
+        \node[roundnode] (varaccessbool) at (6, 0) {VarAccess $Z3$};
+        \node[roundnode] (multvaraccess) at (6, -1) {VarAccess $Z3$};
+        \node[roundnode] (source) at (6, -2) {$\source{Z3 * X}$  $\{\ltracked\}$};
+        \node[roundnode] (storemult) at (6, -3) {$\storecmd{Z1}{\source{Z3 * X}}$};
+        \node[roundnode] (multvaraccess2) at (0, 2) {VarAccess $X$  $\{\lclean\}$};
+        \node[roundnode] (varaccessz4) at (0, -1) {VarAccess $Z3$ };
+        \node[roundnode] (storez1) at (0, -2) {$\storecmd{Z1}{Z3}$ };
+        \node[roundnode] (phiz2) at (0, -3) {$\phistore{Z2}{Z1}{Z1}$  $\{\lunknown\}$};
+        \node[roundnode] (varaccessz42) at (-5, -3) {VarAccess $Z3$ };
+        \node[roundnode] (sink) at (-5, -4) {$\sink{Z3}$};
+        \draw (storez0.south) -- (phiz3.north);
+        \draw (phiz3.east) -- (varaccessbool.west);
+        \draw (phiz3.east) -- (multvaraccess.west);
+        \draw (storemult.west) -- (phiz2.east);
+        \draw (phiz3.south) -- (varaccessz4.north);
+        \draw (varaccessz4.south) -- (storez1.north);
+        \draw (storez1.south) -- (phiz2.north);
+        \draw (phiz2.west) to [out=180,in=180] (phiz3.west);
+        \draw (phiz3.north west) -- (varaccessz42.north);
+        \draw (varaccessz42.south) -- (sink.north);
+        \draw (source.south) -- (storemult.north);
+        \node[roundnode] (ivarx) at (0, 7) {VarAccess $X$ $\{\lclean\}$};
+        \node[roundnode] (i0getsx) at (0, 6) {$\storecmd{I0}{X}$};
+        \node[roundnode] (phii2) at (0, 5) {$\phistore{I2}{I0}{I1}$  $\{\lunknown\}$};
+        \node[roundnode] (readi21) at (-4, 4) {VarAccess $I2$ };
+        \node[roundnode] (readi22) at (4, 4) {VarAccess $I2$ };
+        \node[roundnode] (writei1) at (7, 3) {$\storecmd{I1}{I2 - I1}$  $\{\lclean\}$};
+        \draw (ivarx.south) -- (i0getsx.north);
+        \draw (i0getsx.south) -- (phii2.north);
+        \draw (phii2.south) -- (readi21.north);
+        \draw (phii2.south) -- (readi22.north);
+        \draw (writei1.north) to [in=0] (phii2.east);
+    \end{tikzpicture}
+    
+    \caption{The annotated dataflow graph after the initialization phase}
+    \label{fig:label-graph-1}
+\end{figure}
+
+
+\begin{figure}[h]
+    \begin{tikzpicture}[roundnode/.style={rectangle,rounded corners=1ex,draw=black!100,thick},->,thick]
+        \node[roundnode] (storez0) at(0, 1) {$\storecmd{Z0}{1}$ $\{\lclean\}$};
+        \node[roundnode] (phiz3) at (0, 0) {$\phistore{Z3}{Z0}{Z2}$ $\{\lunknown\}$};
+        \node[roundnode] (varaccessbool) at (6, 0) {VarAccess $Z3$ $\{\lunknown\}$};
+        \node[roundnode] (multvaraccess) at (6, -1) {VarAccess $Z3$ $\{\lunknown\}$};
+        \node[roundnode] (source) at (6, -2) {$\source{Z3 * X}$  $\{\ltracked\}$};
+        \node[roundnode] (storemult) at (6, -3) {$\storecmd{Z1}{\source{Z3 * X}}$  $\{\ltracked\}$};
+        \node[roundnode] (multvaraccess2) at (0, 2) {VarAccess $X$  $\{\lclean\}$};
+        \node[roundnode] (varaccessz4) at (0, -1) {VarAccess $Z3$ $\{\lunknown\}$};
+        \node[roundnode] (storez1) at (0, -2) {$\storecmd{Z1}{Z3}$  $\{\lunknown\}$};
+        \node[roundnode] (phiz2) at (0, -3) {$\phistore{Z2}{Z1}{Z1}$  $\{\lunknown\}$};
+        \node[roundnode] (varaccessz42) at (-5, -3) {VarAccess $Z3$  $\{\lunknown\}$};
+        \node[roundnode] (sink) at (-5, -4) {$\sink{Z3}$ $\{\lunknown\}$};
+        \draw (storez0.south) -- (phiz3.north);
+        \draw (phiz3.east) -- (varaccessbool.west);
+        \draw (phiz3.east) -- (multvaraccess.west);
+        \draw (storemult.west) -- (phiz2.east);
+        \draw (phiz3.south) -- (varaccessz4.north);
+        \draw (varaccessz4.south) -- (storez1.north);
+        \draw (storez1.south) -- (phiz2.north);
+        \draw (phiz2.west) to [out=180,in=180] (phiz3.west);
+        \draw (phiz3.north west) -- (varaccessz42.north);
+        \draw (varaccessz42.south) -- (sink.north);
+        \draw (source.south) -- (storemult.north);
+        \node[roundnode] (ivarx) at (0, 7) {VarAccess $X$ $\{\lclean\}$};
+        \node[roundnode] (i0getsx) at (0, 6) {$\storecmd{I0}{X}$ $\{\lclean\}$};
+        \node[roundnode] (phii2) at (0, 5) {$\phistore{I2}{I0}{I1}$  $\{\lunknown\}$};
+        \node[roundnode] (readi21) at (-4, 4) {VarAccess $I2$ $\{\lunknown\}$};
+        \node[roundnode] (readi22) at (4, 4) {VarAccess $I2$ $\{\lunknown\}$};
+        \node[roundnode] (writei1) at (7, 3) {$\storecmd{I1}{I2 - I1}$  $\{\lclean\}$};
+        \draw (ivarx.south) -- (i0getsx.north);
+        \draw (i0getsx.south) -- (phii2.north);
+        \draw (phii2.south) -- (readi21.north);
+        \draw (phii2.south) -- (readi22.north);
+        \draw (writei1.north) to [in=0] (phii2.east);
+    \end{tikzpicture}
+    
+    \caption{The annotated dataflow graph during the label propagation}
+    \label{fig:label-graph-2}
+\end{figure}
+
+
+
+\begin{figure}[h]
+    \begin{tikzpicture}[roundnode/.style={rectangle,rounded corners=1ex,draw=black!100,thick},->,thick]
+        \node[roundnode] (storez0) at(0, 1) {$\storecmd{Z0}{1}$ $\{\lclean\}$};
+        \node[roundnode] (phiz3) at (0, 0) {$\phistore{Z3}{Z0}{Z2}$ $\{\lunknown\}$};
+        \node[roundnode] (varaccessbool) at (6, 0) {VarAccess $Z3$ $\{\lunknown\}$};
+        \node[roundnode] (multvaraccess) at (6, -1) {VarAccess $Z3$ $\{\lunknown\}$};
+        \node[roundnode] (source) at (6, -2) {$\source{Z3 * X}$  $\{\ltracked\}$};
+        \node[roundnode] (storemult) at (6, -3) {$\storecmd{Z1}{\source{Z3 * X}}$  $\{\ltracked\}$};
+        \node[roundnode] (multvaraccess2) at (0, 2) {VarAccess $X$  $\{\lclean\}$};
+        \node[roundnode] (varaccessz4) at (0, -1) {VarAccess $Z3$ $\{\lunknown\}$};
+        \node[roundnode] (storez1) at (0, -2) {$\storecmd{Z1}{Z3}$  $\{\lunknown\}$};
+        \node[roundnode] (phiz2) at (0, -3) {$\phistore{Z2}{Z1}{Z1}$  $\{\lunknown\}$};
+        \node[roundnode] (varaccessz42) at (-5, -3) {VarAccess $Z3$  $\{\lunknown\}$};
+        \node[roundnode] (sink) at (-5, -4) {$\sink{Z3}$ $\{\lunknown\}$};
+        \draw (storez0.south) -- (phiz3.north);
+        \draw (phiz3.east) -- (varaccessbool.west);
+        \draw (phiz3.east) -- (multvaraccess.west);
+        \draw (storemult.west) -- (phiz2.east);
+        \draw (phiz3.south) -- (varaccessz4.north);
+        \draw (varaccessz4.south) -- (storez1.north);
+        \draw (storez1.south) -- (phiz2.north);
+        \draw (phiz2.west) to [out=180,in=180] (phiz3.west);
+        \draw (phiz3.north west) -- (varaccessz42.north);
+        \draw (varaccessz42.south) -- (sink.north);
+        \draw (source.south) -- (storemult.north);
+        \node[roundnode] (ivarx) at (0, 7) {VarAccess $X$ $\{\lclean\}$};
+        \node[roundnode] (i0getsx) at (0, 6) {$\storecmd{I0}{X}$ $\{\lclean\}$};
+        \node[roundnode] (phii2) at (0, 5) {$\phistore{I2}{I0}{I1}$  $\{\lunknown, \lclean\}$};
+        \node[roundnode] (readi21) at (-4, 4) {VarAccess $I2$ $\{\lunknown, \lclean\}$};
+        \node[roundnode] (readi22) at (4, 4) {VarAccess $I2$ $\{\lunknown, \lclean\}$};
+        \node[roundnode] (writei1) at (7, 3) {$\storecmd{I1}{I2 - I1}$  $\{\lclean\}$};
+        \draw (ivarx.south) -- (i0getsx.north);
+        \draw (i0getsx.south) -- (phii2.north);
+        \draw (phii2.south) -- (readi21.north);
+        \draw (phii2.south) -- (readi22.north);
+        \draw (writei1.north) to [in=0] (phii2.east);
+    \end{tikzpicture}
+    
+    \caption{The annotated dataflow graph after the label propagation}
+    \label{fig:label-graph-3}
+\end{figure}
+
+It can be seen in the example how $I2$ gets first marked with $\lunknown$, but 
+as we can prove that it is clean (both definitions turn out to be clean),
+we later add the more specific label $\lclean$.
+In the last step, the label for $I2$ then gets refined from $\{\lunknown, \lclean\}$
+to $\lclean$.
+The variable $Z3$, however, stays with $\lunknown$.
+%One of the inputs to the $\varphi$-node
 
 \subsubsection*{Recovering a Typing Derivation from a Labelled Dataflow Graph}
 The information computed in step 2 is enough to detect unsafe sinks.
