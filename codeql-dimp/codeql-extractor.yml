@@ -1,0 +1,10 @@
+name: "generate_trap"
+display_name: "DIMP"
+version: 0.1.0
+column_kind: "utf8"
+file_types:
+  - name: generate_trap
+    display_name: Generate_Trap
+    extensions:
+      - .dimp
+legacy_qltest_extraction: true

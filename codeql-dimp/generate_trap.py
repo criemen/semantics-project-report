@@ -1,3 +1,14 @@
+#!/usr/bin/python
+# main.py
+import sys
+
+if __name__ == "__main__":
+    with open('args.txt', 'w') as f:
+        f.write(f"Arguments count: {len(sys.argv)}")
+        for i, arg in enumerate(sys.argv):
+            f.write(f"Argument {i:>6}: {arg}")
+
+
 trap = ""
 
 def app(s):
@@ -49,6 +60,19 @@ def addition(e1, e2):
     app(f"exprparents(#{exprId}, #{e2}, 1)")
     return exprId
 
+
+def subtraction(e1, e2):
+    exprId = newExpr(3, "subtraction")
+    app(f"exprparents(#{exprId}, #{e1}, 0)")
+    app(f"exprparents(#{exprId}, #{e2}, 1)")
+    return exprId
+
+
+def mul(e1, e2):
+    exprId = newExpr(4, "mul")
+    app(f"exprparents(#{exprId}, #{e1}, 0)")
+    app(f"exprparents(#{exprId}, #{e2}, 1)")
+    return exprId
 
 def varAccess(var):
     exprId = newExpr(5, "read var")
@@ -144,22 +168,40 @@ def band(b1, b2):
 
 inttype()
 varX = newVar("X")
-varY = newVar("Y")
-varZ = newVar("Z")
+varI0 = newVar("I0")
+varI1 = newVar("I1")
+varI2 = newVar("I2")
+varZ0 = newVar("Z0")
+varZ1 = newVar("Z1")
+varZ2 = newVar("Z2")
+varZ3 = newVar("Z3")
 
-#varZ = newVar("Z")
-#varA1 = newVar("A1")
-#varA2 = newVar("A2")
-#varA = newVar("A")
+
+
+
+ifB = ifstmt(boolleq(varAccess(varZ3), intLiteral(99)), assign(varZ1, source(mul(varAccess(varZ3), varAccess(varX)))),
+assign(varZ1, varAccess(varZ3)))
+phinode(ifB, varZ2, varZ1, varZ1)
+whileBody = seq(assign(varI1, subtraction(varAccess(varI2), intLiteral(1))), ifB)
+
+seq1 = seq(assign(varI0, varAccess(varX)), assign(varZ0, intLiteral(1)))
+whileL = whilestmt(boolleq(varAccess(varI2), intLiteral(0)), whileBody)
+phinode(whileL, varZ3, varZ0, varZ2)
+phinode(whileL, varI2, varI0, varI1)
+seq2 = seq(seq1, whileL)
+seq3 = seq(seq2, sink(varAccess(varZ3)))
+
 
 #whileL = whilestmt(boolliteral(0), seq(assign(varZ, source(varAccess(varY))), sink(varY)))
 #phinode(whileL, varY, varX, varZ)
 #seqfirst = seq(assign(varX, (intLiteral(4))), whileL)
 
-whileL = whilestmt(boolliteral(0), assign(varZ, source(varAccess(varX))))
-phinode(whileL, varY, varX, varZ)
-seqfirst = seq(assign(varX, source(intLiteral(4))), whileL)
-seq(seqfirst, sink(varAccess(varY)))
+# old program
+
+#whileL = whilestmt(boolliteral(0), assign(varZ, source(varAccess(varX))))
+#phinode(whileL, varY, varX, varZ)
+#seqfirst = seq(assign(varX, source(intLiteral(4))), whileL)
+#seq(seqfirst, sink(varAccess(varY)))
 
 #seqsecond = seq(seqfirst, sink(varAccess(varY)))
 #ifS = ifstmt(bneg(boolleq(varAccess(varX), varAccess(varY))), assign(varA1, addition(source(intLiteral(3)), varAccess(varX))), assign(varA2, intLiteral(5)))

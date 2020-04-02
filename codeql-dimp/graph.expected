@@ -1,0 +1,42 @@
+#-----| DFStmtNode: assign(I1, ... - ...)
+#-----|   DFPhiNode: I2:=phi(I0,I1)
+#-----|     DFExprNode: VarAccess I2
+
+#-----|     DFExprNode: VarAccess I2
+#-----|    -> DFExprNode: VarAccess I2
+#-----|    -> DFExprNode: VarAccess I2
+#-----|  -> DFPhiNode: I2:=phi(I0,I1)
+
+#-----| DFStmtNode: assign(Z0, IntLiteral 1)
+#-----|  -> DFPhiNode: Z3:=phi(Z0,Z2)
+
+#-----| DFExprNode: VarAccess X
+
+#-----| DFExprNode: source ... * ...
+#-----|   DFStmtNode: assign(Z1, source ... * ...)
+#-----|     DFPhiNode: Z2:=phi(Z1,Z1)
+#-----|       DFPhiNode: Z3:=phi(Z0,Z2)
+#-----|         DFExprNode: VarAccess Z3
+
+#-----|         DFExprNode: VarAccess Z3
+
+#-----|         DFExprNode: VarAccess Z3
+#-----|           DFStmtNode: assign(Z1, VarAccess Z3)
+#-----|            -> DFPhiNode: Z2:=phi(Z1,Z1)
+#-----|          -> DFStmtNode: assign(Z1, VarAccess Z3)
+
+#-----|         DFExprNode: VarAccess Z3
+#-----|           DFStmtNode: sink
+#-----|          -> DFStmtNode: sink
+#-----|        -> DFExprNode: VarAccess Z3
+#-----|        -> DFExprNode: VarAccess Z3
+#-----|        -> DFExprNode: VarAccess Z3
+#-----|        -> DFExprNode: VarAccess Z3
+#-----|      -> DFPhiNode: Z3:=phi(Z0,Z2)
+#-----|    -> DFPhiNode: Z2:=phi(Z1,Z1)
+#-----|  -> DFStmtNode: assign(Z1, source ... * ...)
+
+#-----| DFExprNode: VarAccess X
+#-----|   DFStmtNode: assign(I0, VarAccess X)
+#-----|    -> DFPhiNode: I2:=phi(I0,I1)
+#-----|  -> DFStmtNode: assign(I0, VarAccess X)

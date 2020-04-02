@@ -356,3 +356,7 @@ codeql-dimp/.cache
 
 main.pdf
 *.trap
+codeql-dimp/build-db
+codeql-dimp/db/
+codeql-dimp/test-output
+

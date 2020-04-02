@@ -107,3 +107,8 @@ case @stmt.kind of
 | 4 = @whilestmt
 | 5 = @sink
 ;
+
+// needed for compatibility with CodeQL tooling
+sourceLocationPrefix(
+  string prefix : string ref
+);
