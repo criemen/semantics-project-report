@@ -75,12 +75,28 @@ newtype TNodeLabel =
   LTracked() or
   LClean()
 
+abstract class NodeLabel extends TNodeLabel {
+  abstract string toString();
+}
+
+class UnknownNodeLabel extends NodeLabel, LUnknown {
+  override string toString() { result = "LUnknown" }
+}
+
+class TrackedNodeLabel extends NodeLabel, LTracked {
+  override string toString() { result = "LTracked" }
+}
+
+class CleanNodeLabel extends NodeLabel, LClean {
+  override string toString() { result = "LClean" }
+}
+
 /**
  * Computes all applicable node label candidates.
  * Only computes labels on the subset of nodes that are reachable by `flowStep`
  * from sources in the dataflow graph.
  */
-predicate nodeLabelCand(DataFlowNode node, TNodeLabel label) {
+predicate nodeLabelCand(DataFlowNode node, NodeLabel label) {
   // Regardless where in the tree we are, a source node results in a tracked
   // marking
   sourceNode(node) and
@@ -117,7 +133,7 @@ predicate nodeLabelCand(DataFlowNode node, TNodeLabel label) {
  * This predicate computes the best label that a node can have, i.e. the most
  * specific one of the candidate labels computed by `nodeLabelCand`.
  */
-predicate nodeLabel(DataFlowNode node, TNodeLabel label) {
+predicate nodeLabel(DataFlowNode node, NodeLabel label) {
   nodeLabelCand(node, LUnknown()) and
   nodeLabelCand(node, LTracked()) and
   label = LTracked()
@@ -127,7 +143,7 @@ predicate nodeLabel(DataFlowNode node, TNodeLabel label) {
   label = LClean()
   or
   nodeLabelCand(node, label) and
-  not nodeLabelCand(node, any(TNodeLabel l | l != label))
+  not nodeLabelCand(node, any(NodeLabel l | l != label))
 }
 
 /*
