@@ -125,20 +125,29 @@ have type either $\ltracked$ or $\lunknown$ (and not $\lclean$).
 We combine this propagation information with the location of the sinks and sources 
 to detect potential dataflow.
 
-The rules to construct the dataflow graph are as follows:
-% TODO include bullet points, separate out motivation from definition
+The dataflow graph contains the following edges:
+\begin{itemize}
+    \item From the expression on the right-hand side of an assign statement 
+    to the statement node of the assignment
+    \item From the expression that is passed into a sink statement to the statement node
+    of the sink
+    \item From a $\varphi$-node defining a variable to all expression nodes reading 
+    that variable
+    \item From a $\varphi$-node defining a variable to all $\varphi$-nodes having
+    that variable as input
+    \item From an assign statement defining a variable to all expression nodes reading 
+    that variable
+    \item From an assign statement defining a variable to all $\varphi$-nodes having
+    that variable as input
+\end{itemize}
 
 By looking at the typing rule for statements, we see that only assign and sink statements
 use the tracking marker assigned to the arithmetic expression used in that statement.
-Thus, there is an edge from the right-hand side of an assignment (the expression) 
-to the node for the assign statement, as well as from the operand from the sink 
-to the node for the sink statement.
+Thus, those are the nodes that receive incoming edges from their operands.
 
 The other cases in \texttt{flowStep} deal with variable definitions.
-There is an edge from every variable definition (which is either a $\varphi$-node or 
-an assign statement) to all users of that variable, i.e. to all expressions of kind
-variable access, as well as all $\varphi$-nodes that have the variable as input.
-Formulated differently, there is an edge from a variable definition to all of its uses.
+The intention is that there is an edge from every variable definition to all of its uses,
+regardless of how the definition and use look like in the AST.
 
 There are no incoming edges for source expressions, as the result of a source expression
 is always tainted.
