@@ -1,10 +1,9 @@
 % !TEX root = main.tex
 \section{Implementation of a Dataflow Library in QL for SSA-dIMP}
-% TODO chapter 2 scheme->schema
 In this section, we describe an implementation of the algorithm schema described in the
 last section.
 The implementation is written in QL.
-As part of the project, we implemented a library and a database scheme for SSA-dIMP.
+As part of the project, we implemented a library and a database schema for SSA-dIMP.
 On top of that, the dataflow algorithm is implemented.
 
 The implementation itself is very easy, but the structure follows the
@@ -23,8 +22,8 @@ Furthermore, the Java dataflow library is an interprocedural analysis.
 Thus, the implementation has to be done very carefully to exhibit good
 performance on large projects.
 
-\subsection{The Database Scheme}
-The database scheme is given in full in the \hyperref[lst:dbscheme]{appendix}.
+\subsection{The Database Schema}
+The database schema is given in full in the \hyperref[lst:dbschema]{appendix}.
 The database contains a representation the abstract syntax tree (AST) of the program.
 For each arithmetic expression, its unique ID, its kind
 (i.e.\ integer literal, addition, multiplication, \ldots) 
@@ -35,23 +34,23 @@ expressions - every tuple there contains the ID of an expression parent
 the ID of the child arithmetic expression and the index.
 For example the addition $a_0 + a_1$ has as first child the ID of the expression 
 $a_0$, and as second child the ID of the expressions $a_1$.
-The order of these is an implementation detail of the database scheme in combination
+The order of these is an implementation detail of the database schema in combination
 with the extractor (that writes the database) and the standard library 
-(that is built on top of the database scheme).
+(that is built on top of the database schema).
 
 A similar database layout is employed for statements and Boolean expressions.
 Expressions like literals have another relation that tracks the actual value of the
 literal, variable reads have a relation that tracks the variable that is read,
 variable assignments have a relation that tracks the variable that is assigned to, etc.
 
-The database scheme is quite close how a compiler would model an AST for SSA-dIMP.
-It is certainly inspired by the QL database scheme for Java.
+The database schema is quite close how a compiler would model an AST for SSA-dIMP.
+It is certainly inspired by the QL database schema for Java.
 There is one crucial difference though - in SSA-dIMP the AST is already in SSA form,
 and we assume that sets $\Gamma, \Delta$ exist to prove that.
 Programs in Java are not in SSA form.
 Thus, as part of the QL library for Java, there exists an SSA construction algorithm
 that synthesizes an SSA form.
-As this is computed on the fly, it is not represented in the database scheme.
+As this is computed on the fly, it is not represented in the database schema.
 
 Essentially, this makes the implementation of the library for SSA-dIMP easier,
 as we dont have to deal with the SSA construction.
@@ -63,7 +62,7 @@ of the program does not lower the value of this project.
 The standard library for SSA-dIMP is implemented in the file \hyperref[lst:library]{library.qll}.
 
 The standard library offers an object-oriented interface on top of the relational
-database scheme.
+database schema.
 Again, this interface is inspired by the corresponding library for Java.
 
 The library offers interfaces for arithmetic expressions, and each kind of expression
