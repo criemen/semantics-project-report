@@ -136,10 +136,12 @@ All other predicates in a QL program are \emph{user-provided predicates}.
 These predicates are built declaratively.
 Thus, the programmer states, using first-order predicate logic,
 which data tuples belong in a predicate.
+% TODO refer to Prolog - more than horn clauses
 However, the programmer can not control how that query is executed.
 It is the sole task of the query engine to come up with and optimize a 
 query plan suitable for execution on the database.
 
+% TODO make it clear that the disjuncts are on the left-hand side of the implication
 These user-provided predicates can often separated in two parts:
 Base case(s), i.e.\ disjuncts that contain a list of logical requirements for data 
 to be part of the predicate, without invoking recursion.

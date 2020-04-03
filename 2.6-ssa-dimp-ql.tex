@@ -1,6 +1,6 @@
 % !TEX root = main.tex
 \section{Implementation of a Dataflow Library in QL for SSA-dIMP}
-
+% TODO chapter 2 scheme->schema
 In this section, we describe an implementation of the algorithm schema described in the
 last section.
 The implementation is written in QL.
@@ -127,6 +127,7 @@ We combine this propagation information with the location of the sinks and sourc
 to detect potential dataflow.
 
 The rules to construct the dataflow graph are as follows:
+% TODO include bullet points, separate out motivation from definition
 
 By looking at the typing rule for statements, we see that only assign and sink statements
 use the tracking marker assigned to the arithmetic expression used in that statement.
@@ -193,6 +194,13 @@ of one variable are different nodes in the dataflow graph.
 \end{figure}
 
 \subsubsection*{Step 2 - Labeling Nodes}
+% individual labels, monotonic increasing set of labels
+% labels: tracked and clean in bold font
+% last step: no label at all -> int_u
+% color type sets in figure 4-6
+% figure 6: use actually int sets
+% close the loop by writing predicate logic from QL
+
 As second step, the algorithm computes a labelling of the nodes of the dataflow graph.
 This labelling can be used to easily determine if a program is safe to execute or not.
 Furthermore, this labelling can be used to construct a typing derivation (by the DF-rules)
@@ -420,6 +428,8 @@ Expressions that have a label assigned to them in \texttt{nodeLabel} get that la
 All other expressions are typed with $\lclean$.
 Using this, we immediately get the map $\Delta$ for the rule $\textsc{DF-Assign}$.
 
+% TODO: From the result of the analysis we can read off all the Deltas, so they will
+% satisfy the side-condition of DF-phi (it will find A solution to the constraints)
 For all other statements, we compute the derivation tree recursively,
 following the rules.
 At any place where the rule \textsc{DF-$\varphi$} is used, the map $\Delta$ 
