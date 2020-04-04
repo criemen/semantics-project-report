@@ -136,22 +136,23 @@ All other predicates in a QL program are \emph{user-provided predicates}.
 These predicates are built declaratively.
 Thus, the programmer states, using first-order predicate logic,
 which data tuples belong in a predicate.
-% TODO refer to Prolog - more than horn clauses
-However, the programmer can not control how that query is executed.
-It is the sole task of the query engine to come up with and optimize a 
-query plan suitable for execution on the database.
+Compared to Prolog, probably the best-known logic programming language,
+predicates in QL can be built much more expressively,
+as quantifications and logic operators can be freely mixed.
+In Prolog, programmers are restricted to (implicitly universally quantified) Horn clauses.
 
-% TODO make it clear that the disjuncts are on the left-hand side of the implication
-These user-provided predicates can often separated in two parts:
+Another difference to Prolog is that there is only single definition for each predicate,
+whereas in Prolog a predicate is a list of Horn clauses.
+In QL, user-provided predicates can often separated in two parts:
 Base case(s), i.e.\ disjuncts that contain a list of logical requirements for data 
 to be part of the predicate, without invoking recursion.
 Recursive case(s), i.e.\ disjuncts that declare how existing members of the predicate 
 can be used to generate new members of the predicate.
 For example, a predicate that traverses a binary tree might contain a base case that visits 
 the root node, and then two recursive cases that visit the two children (if they exist).
+All cases are joined together by a top-level disjunction.
 
-Unlike Prolog, the probably best-known logic programming language, QL uses forward 
-chaining.
+Unlike Prolog, QL uses forward chaining.
 This means that it uses the existing tuples in a predicate and applies the declarative
 rules in the predicate as long as new tuples are generated.
 In other words, the QL database engine computes the set of tuples that are a least fixed point 
@@ -171,6 +172,11 @@ One of the user-provided predicates is designated to be the \emph{query predicat
 Its content is provided as the output of a running a query.
 Often, a query predicate will contain source code locations together with a message,
 explaining a problem that was detected at that location.
+
+While QL gives the programmer a very expressive language to state their intent,
+the programmer can not control how the query is executed.
+It is the sole task of the query engine to come up with and optimize a 
+query plan suitable for execution on the database.
 
 Another useful feature of QL is that it includes syntactic sugar to compute the reflexive-transitive
 and the transitive closure of binary predicates.
