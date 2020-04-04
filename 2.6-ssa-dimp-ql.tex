@@ -415,7 +415,54 @@ We have included the annotated dataflow graph here at several stages of the algo
 \end{figure}
 
 \subsubsection*{From QL to First-Order Predicate Logic}
-TODO
+In order to highlight how easy QL code translates into regular first-order predicate logic,
+we give the direct translation of the predicates \texttt{nodeLabelCand} and \texttt{nodeLabel}
+into first-order predicate logic.
+These translations can be seen as the formalization of the textual algorithm description
+from above.
+They can also be put side-to-side to the QL source code, to see how predicate logic
+syntax transfers to QL syntax.
+
+The following helper predicates are used:
+The predicate \texttt{sourceNode} contains only nodes that are of type expression,
+where the expression is of kind source.
+The predicate \texttt{flowStep} contains two nodes iff there is an edge in the dataflow 
+graph (according to the rules described above).
+
+\newcommand{\n}{\textit{node}}
+\newcommand{\lab}{\textit{label}}
+\newcommand{\labtwo}{\textit{label2}}
+\newcommand{\prev}{\textit{prev}}
+\begin{align*}
+    \texttt{nodeLabelCand}(\n, \lab) :\iff &\texttt{sourceNode}(\n) \land\\
+    & \lab = \labtracked \\
+    &\lor\\
+    & \neg \texttt{sourceNode}(\n) \land\\
+    &(\neg(\exists \prev: \texttt{flowStep}(\prev, \n)) \land\\
+    &\lab = \labclean\\
+    &\lor\\
+    &\exists \prev: (\texttt{flowStep}(\prev, \n) \land\\
+    & \texttt{nodeLabelCand}(\n, \lab)))
+\end{align*}
+
+\begin{align*}
+    \texttt{nodeLabel}(\n, \lab) :\iff &\texttt{nodeLabelCand}(\n, \labclean) \land \\
+    &\texttt{nodeLabelCand}(\n, \labtracked) \land\\
+    &\lab = \labunknown \\
+    &\lor\\
+    & \texttt{nodeLabelCand}(\n, \lab) \land\\
+    &\neg (\exists \labtwo: \texttt{nodeLabelCand}(\n, \labtwo) \land \labtwo \neq \lab)\\
+\end{align*}
+
+The QL database engine then takes the predicates, orders them and comes up with 
+a query plan that allows the computation of the set of tuples that are in both predicates.
+In this example, there is a dependency of \texttt{nodeLabel} on \texttt{nodeLabelCand},
+but not the other way round.
+Thus, the predicate \texttt{nodeLabelCand} gets computed first, so that the evaluation
+of \texttt{nodeLabel} can use the predicate \texttt{nodeLabelCand} in its computations.
+
+%While the same logical formulation could probably also written in Prolog,
+%at least on graphs with cycles Prolog would likely not terminate.
 
 \subsubsection*{Recovering a Typing Derivation from a Labelled Dataflow Graph}
 The information computed in step 2 is enough to detect unsafe sinks.
@@ -452,7 +499,7 @@ get the following $\Delta$ maps:
     \item $\storecmd{I0}{X}: [I_0 \mapsto \lclean]$ (line 1)
     \item $\storecmd{Z0}{1}: [Z_0 \mapsto \lclean]$ (line 2)
     \item $\textbf{while } [\phistore{Z3}{Z0}{Z2}, \phistore{I2}{I0}{I1}];
-     I2 > 0 \textbf{ do}: [Z3 \mapsto \lunknown, I2 \mapsto \lclean]$ (line 3)
+     I2 > 0 \textbf{do}: [Z3 \mapsto \lunknown, I2 \mapsto \lclean]$ (line 3)
     \item $\storecmd{I1}{I2 - 1}: [I1 \mapsto \lclean]$ (line 4)
     \item $\storecmd{Z1}{\source{Z3 * X}}: [Z1 \mapsto \ltracked]$ (line 6)
     \item $\storecmd{Z1}{Z3}: [Z1 \mapsto \lunknown]$ (line 8)

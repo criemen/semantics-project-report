@@ -1,9 +1,6 @@
 % !TEX root = main.tex
 \section{Formalization of Dataflow with dIMP}
 
-%TODO:
-%- I'm getting more and more convinced that the formulation of the rule DF-phi should be purely declarative and constraint-based. That is, replace the equality "L_i = (x) \sqcup (y)" in the side condition with two inequational constraints "(x) \sqsubseteq L_i, and (y)  \sqsubseteq L_i", but _not_ that L_i is the least element of Ltc with that property. The soundness proof should still work with that formulation (as long as the ordering on Ltc is compatible with the concretization function gamma, in the sense that L sqsubset L' implies gamma(L) subset gamma(L')), and there's really no need to hard-code any particular, deterministic way of choosing L_i into the rule, because the whole type inference system is nondeterministic anyway, due to the way Delta (or Delta1) has to be "guessed" in DF-While. 
-
 In this section, we are going to formalize what we mean by dataflow,
 give a simple algorithm for computing dataflow and proving it is sound.
 
@@ -286,7 +283,7 @@ Judgment \fbox{$\bigstep{s}{\store}{\excstore{}}$}:
 \end{conjecture}
 
 We show by example how the SSA construction works.
-We consider the following dIMP program:
+We consider the dIMP program shown in ~\autoref{fig:dimp-example}.
 \begin{figure}[h]
     \begin{minted}[linenos]{pascal}
         // loop counter
@@ -304,10 +301,8 @@ We consider the following dIMP program:
     \caption{The example dIMP program}
     \label{fig:dimp-example}
 \end{figure}
-After transformation, an equivalent SSA-dIMP program is
-
-TODO same figure for both
-
+After transformation, an equivalent SSA-dIMP program is shown in~\autoref{fig:ssa-dimp-example}.
+%TODO same figure for both
 
 \begin{figure}[h]
     \begin{minted}[escapeinside=||,mathescape=true,linenos]{pascal}
