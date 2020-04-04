@@ -273,13 +273,22 @@ Judgment \fbox{$\bigstep{s}{\store}{\excstore{}}$}:
 \subsubsection*{The dIMP To SSA-dIMP Transformation}
 \begin{conjecture}
     \label{con:dimp-to-ssa}
-    TODO this needs work
-    
-    We conjecture that for every dIMP program $c$ with store $\store$ 
-    such that $\initialstore{}$ and $\bigstep{c}{\initialstore}{\exception}$ there exists a equivalent program
-    $s$ in SSA-dIMP with sets $\Gamma, \Delta$ and an store $\store_0$ such that
-     $\initialstore[\store_0]{}$ and $\bigstep{s}{\store_0}{\exception}$ with
+%    TODO this needs work
+    We conjecture that for every dIMP program $c$, there exists a equivalent program
+    $s$ in SSA-dIMP with sets $\Gamma, \Delta$.
+    These programs fulfill that if there exists a store $\store$ 
+    such that $\initialstore{}$,
+    there exists a store $\store_0$ such that $\initialstore[\store_0]{}$, 
     $\dom{\store_0} = \Gamma$ and $\forall X \in \Gamma: \store_0(X) = \store(X)$.
+
+    Furthermore, if $\bigstep{c}{\store}{\excstore{}'}$ holds, 
+    we have that $\bigstep{s}{\store_0}{\excstore{}_0'}$ and both program have the
+    same exception behaviour:
+    $\excstore{}' = \exception \iff \excstore{}'_0 = \exception$.
+    
+    If there exists a store $\store$ such that $\initialstore{}$ and $c$ (when run 
+    with $\store$) does not terminate, the program $s$ (when run with the corresponding $\store_0$)
+    does not terminate either, and vice versa.
 \end{conjecture}
 
 We show by example how the SSA construction works.
