@@ -202,8 +202,6 @@ of one variable are different nodes in the dataflow graph.
 \end{figure}
 
 \subsubsection*{Step 2 - Labeling Nodes}
-% close the loop by writing predicate logic from QL
-
 \newcommand{\coloredset}[1]{{\color{violet}$\{#1\}$}}
 \newcommand{\setclean}{\coloredset{\labclean}}
 \newcommand{\settracked}{\coloredset{\labtracked}}
@@ -416,6 +414,9 @@ We have included the annotated dataflow graph here at several stages of the algo
     \label{fig:label-graph-3}
 \end{figure}
 
+\subsubsection*{From QL to First-Order Predicate Logic}
+TODO
+
 \subsubsection*{Recovering a Typing Derivation from a Labelled Dataflow Graph}
 The information computed in step 2 is enough to detect unsafe sinks.
 However, we can even go a step further and use the computed labels to build a
@@ -423,36 +424,41 @@ typing derivation for the whole program using the DF rules.
 In case of programs that do not exhibit dataflow (as per the algorithm), this
 typing derivation acts as an easily-checkable certificate of the safety of the program.
 
-Remember that the DF rules are non-deterministic only in the rule \textsc{DF-While},
-so the process of building a typing derivation is straight-forward, except for while loops.
+Remember that the typing using the DF rules is a refinement of the typing provided 
+by the SSA rules.
+As we assume that all programs already have a typing derivation using the SSA rules,
+we only need to supply the contents of the $\Delta$ and $\Gamma$ maps, as these 
+type contexts keep track of the refined types.
 
 The initial map $\Gamma$ is given by mapping all variables that are defined in 
 the initial store to $\lclean$.
 
-The typing rules for booleans are satisfied by the assumption that the program 
-is well-typed with respect to the SSA rules.
+The $\Delta$ maps can be read of the type-annotated dataflow graph:
+Only assign statements and invocations of the rule \textsc{DF-$\varphi$}
+have non-empty $\Delta$ maps to begin with.
+For assign statements, the assigned-to variable gets the type of the assign statement 
+node in the dataflow graph.
+For invocations of the \textsc{DF-$\varphi$} rule, we get the types of the 
+variables defined in that list of $\varphi$-nodes by using the annotated
+types in the dataflow graph of the individual $\varphi$-nodes.
 
-Expressions that have a label assigned to them in \texttt{nodeLabel} get that label.
-All other expressions are typed with $\lclean$.
-Using this, we immediately get the map $\Delta$ for the rule $\textsc{DF-Assign}$.
+These annotated types will satisfy the side-condition of the rule \textsc{DF-$\varphi$},
+as we constract a solution to the constraints using the join operator.
 
-% TODO: From the result of the analysis we can read off all the Deltas, so they will
-% satisfy the side-condition of DF-phi (it will find A solution to the constraints)
-For all other statements, we compute the derivation tree recursively,
-following the rules.
-At any place where the rule \textsc{DF-$\varphi$} is used, the map $\Delta$ 
-is determined by the labels of the respective $\varphi$-nodes in $\texttt{nodeLabel}$.
-Using this, we can compute the map $\Delta_1$ used in \textsc{DF-While} using the
-standard recursive procedure, as $\Gamma \union \Delta$ is now defined.
-This alleviates the need to guess for this rule.
-All other rules can directly be used to infer the type derivation.
-
-Applied on example program as presented in~\autoref{fig:ssa-dimp-example}, we 
-get the following (non-empty) $\Delta$ maps for the statements in the program:
-TODO
-
+Applied on example program as presented in~\autoref{fig:ssa-dimp-example} 
+and using the annotated dataflow graph from~\autoref{fig:label-graph-3}, we 
+get the following $\Delta$ maps:
+\begin{itemize}
+    \item $\storecmd{I0}{X}: [I_0 \mapsto \lclean]$ (line 1)
+    \item $\storecmd{Z0}{1}: [Z_0 \mapsto \lclean]$ (line 2)
+    \item $\textbf{while } [\phistore{Z3}{Z0}{Z2}, \phistore{I2}{I0}{I1}];
+     I2 > 0 \textbf{ do}: [Z3 \mapsto \lunknown, I2 \mapsto \lclean]$ (line 3)
+    \item $\storecmd{I1}{I2 - 1}: [I1 \mapsto \lclean]$ (line 4)
+    \item $\storecmd{Z1}{\source{Z3 * X}}: [Z1 \mapsto \ltracked]$ (line 6)
+    \item $\storecmd{Z1}{Z3}: [Z1 \mapsto \lunknown]$ (line 8)
+    \item $\textbf{if } \ldots [\phistore{Z2}{Z1}{Z1}]: [Z2 \mapsto \lunknown]$ (line 9)
+\end{itemize}
 Given these, the whole derivation tree can be easily written down.
-It is omitted here mainly for space reasons.
 
 \subsubsection*{On the Relation of the Algorithm to the DF Typing Rules}
 As explained above, this algorithm runs already on SSA-dIMP, not dIMP.
@@ -528,7 +534,8 @@ see that there is a path from the source to the sink, so that program is unsafe.
 
 \subsection{The Query}
 The query actually implementing the user-facing analysis is given in \hyperref[lst:query]{query.ql}.
-It is very simple, it outputs a list of sinks if their label is either unknown or tracked.
+It is very simple, it outputs a list of sinks if their annottated type is 
+either $\ltracked$ or $\lunknown$.
 If the list is empty, the program is safe and it is guaranteed by~\autoref{thm:soundness-df}
 that the program has no dataflow.
 If the list is not empty, no assertion about the program correctness can be given.
