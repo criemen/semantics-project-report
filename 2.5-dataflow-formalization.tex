@@ -8,9 +8,8 @@ We use the toy language IMP as presented in~\cite{sat}.
 The lecture notes themselves heavily borrow from~\cite{fsopl} for the
 presentation and semantics of IMP.
 
-\subsection{Syntax and Semantic of dIMP}
-% TODO drop semantics
-We extend the syntax of IMP a little bit
+\subsection{Syntax of dIMP}
+We extend the syntax of IMP a bit
 and call the resulting language dIMP (for dataflow IMP):
 \begin{align*}
     n \in  \:       & \Z\\
@@ -31,17 +30,15 @@ each value is tagged by either \textbf{c} for clean or \textbf{t} for being trac
 as having dataflow.
 If the tag is irrelevant in the current context, we write $\flaggedn{}$ for a tracked
 value.
-A tracked value originates from a source, and is preserved by value-preserving
-operations (see the semantics below).
+A tracked value originates from a source, and is preserved by value-preserving operations.
 The command $\defaultsink$ is a special marker for the dataflow sink.
 It aborts the program if a tracked value reaches the sink, thus indicating a policy 
 violation.
-%This ensures termination for all programs that have dataflow.
 In real programs, the dataflow source would likely be a procedure reading input,
 i.e.\ from a terminal, and the dataflow sink would likely be a procedure 
 printing the data to a terminal, or otherwise communicating with the outside world.
 
-
+\iffalse
 There is a new judgment of the form 
 \fbox{$\bigstep{a}{\sigma}{\flaggedn{}}$}:
 \begin{align*}
@@ -96,6 +93,7 @@ Judgement \fbox{$\bigstep{c}{\sigma}{\excstore'}$}:
 
 The judgement operations for booleans are modified to ignore the tracked-flag and work
 just as in IMP. This is analoguous to how $\textsc{EA-Plus}$ etc.\ work.
+\fi
 
 \subsection{Syntax and Semantics of SSA-dIMP}
 To facilitate the dataflow analysis, we describe a SSA form on dIMP with a concrete
@@ -271,28 +269,7 @@ Judgment \fbox{$\bigstep{s}{\store}{\excstore{}}$}:
     {\bigstep{\defaultsink}{\store}{\exception}}\\
 \end{align*}
 
-\subsubsection*{The dIMP To SSA-dIMP Transformation}
-% TODO drop
-\begin{conjecture}
-    \label{con:dimp-to-ssa}
-%    TODO this needs work
-    We conjecture that for every dIMP program $c$, there exists a equivalent program
-    $s$ in SSA-dIMP with sets $\Gamma, \Delta$.
-    These programs fulfill that if there exists a store $\store$ 
-    such that $\initialstore{}$,
-    there exists a store $\store_0$ such that $\initialstore[\store_0]{}$, 
-    $\dom{\store_0} = \Gamma$ and $\forall X \in \Gamma: \store_0(X) = \store(X)$.
-
-    Furthermore, if $\bigstep{c}{\store}{\excstore{}'}$ holds, 
-    we have that $\bigstep{s}{\store_0}{\excstore{}_0'}$ and both program have the
-    same exception behaviour:
-    $\excstore{}' = \exception \iff \excstore{}'_0 = \exception$.
-    
-    If there exists a store $\store$ such that $\initialstore{}$ and $c$ (when run 
-    with $\store$) does not terminate, the program $s$ (when run with the corresponding $\store_0$)
-    does not terminate either, and vice versa.
-\end{conjecture}
-
+\subsubsection*{From dIMP to SSA-dIMP}
 We show by example how the SSA construction works.
 We consider the dIMP program shown in ~\autoref{fig:dimp-example}.
 \begin{figure}[h]
@@ -342,12 +319,13 @@ This SSA form is obviously not unique, as the variable naming is not canonical.
 Furthermore, the number of $\varphi$-nodes in the example program is minimal,
 but no such assertions is made by the typing rules.
 
-\subsubsection*{Correctnes Results}
+\subsubsection*{Correctness Results}
 We state that a SSA-dIMP program together with the SSA type derivation
 is in fact in SSA form - each variable is defined only once.
 Furthermore, the structure of the bigstep derivation trees imply that 
 for every bigstep derivation, all variables are defined before they are used.
-Proofs are omitted, as we prove these theorems in greater generality later.
+% TODO check?
+Proofs are omitted, as we prove these theorems later in greater generality.
 
 \begin{theorem}
     \label{thm:ssa-gamma-delta-disjoint}
@@ -363,13 +341,13 @@ Proofs are omitted, as we prove these theorems in greater generality later.
 
 \subsection{Definition of Dataflow}
 \begin{definition}[Program]
-    A \emph{program} in dIMP is a command $c$.
-    Complex programs are expressed by using the recursive nature of the definition of commands.
+    A \emph{program} in SSA-dIMP is a command $s$ with sets $\Gamma, \Delta$ 
+    with $\typestep{\Gamma}{s}{\Delta}$.
+    Complex programs are expressed by using the recursive nature of the definition of statements.
 \end{definition}
 
 \begin{definition}[Initial Store]
-    An \emph{initial store} is a store $\store$ s.t.\ 
-    $\initialstore{}$ holds, with 
+    An \emph{initial store} is a store $\store$ such that $\initialstore{}$ holds, with 
     \begin{equation*}
         \initialstore{} \iff \forall X: \exists n: \store(X) = \clean[n]
     \end{equation*}

@@ -125,8 +125,6 @@ have type either $\ltracked$ or $\lunknown$ (and not $\lclean$).
 We combine this propagation information with the location of the sinks and sources 
 to detect potential dataflow.
 
-% TODO merge the last 4 to 2
-
 The dataflow graph contains the following edges:
 \begin{itemize}
     \item From the expression on the right-hand side of an assign statement 
@@ -134,13 +132,9 @@ The dataflow graph contains the following edges:
     \item From the expression that is passed into a sink statement to the statement node
     of the sink
     \item From a $\varphi$-node defining a variable to all expression nodes reading 
-    that variable
-    \item From a $\varphi$-node defining a variable to all $\varphi$-nodes having
-    that variable as input
+    that variable, and to all $\varphi$-nodes having that variable as input
     \item From an assign statement defining a variable to all expression nodes reading 
-    that variable
-    \item From an assign statement defining a variable to all $\varphi$-nodes having
-    that variable as input
+    that variable, and to all $\varphi$-nodes having that variable as input
 \end{itemize}
 
 By looking at the typing rule for statements, we see that only assign and sink statements
@@ -232,11 +226,10 @@ labels for each node.
 Each label of a node belongs to one or more execution flows of the program 
 that would result in that label being assigned.
 
-% TODO remove color
-Each source is marked with \settracked, as in every program execution,
+Each source is marked with $\{\labtracked\}$, as in every program execution,
 a source produce in a tracked value.
 Furthermore, all nodes in the dataflow graph without
-incoming edges that are not sources are marked with \setclean.
+incoming edges that are not sources are marked with $\{\labclean\}$.
 Nodes without incoming edges (that are not sources) represent either variable reads 
 from variables defined in the initial store (these are clean by assumption), or 
 assignments that read an expression that is clean by the DF rules, for example
