@@ -23,13 +23,13 @@ Thus, the implementation has to be done very carefully to exhibit good
 performance on large projects.
 
 \subsection{The Database Schema}
-The database schema is given in full in the \hyperref[lst:dbschema]{appendix}.
 The database contains a representation the abstract syntax tree (AST) of the program.
+Its schema is given in full in the \hyperref[lst:dbschema]{appendix}.
 For each arithmetic expression, its unique ID, its kind
 (i.e.\ integer literal, addition, multiplication, \ldots) 
 and the ID of the type of the expression are saved.
 Furthermore, another table contains the parent-child relation for arithmetic 
-expressions - every tuple there contains the ID of an expression parent 
+expressions --- every tuple there contains the ID of an expression parent 
 (either an arithmetic expression, a Boolean expression or a statement),
 the ID of the child arithmetic expression and the index.
 For example the addition $a_0 + a_1$ has as first child the ID of the expression 
@@ -45,7 +45,7 @@ variable assignments have a relation that tracks the variable that is assigned t
 
 The database schema is quite close how a compiler would model an AST for SSA-dIMP.
 It is certainly inspired by the QL database schema for Java.
-There is one crucial difference though - in SSA-dIMP the AST is already in SSA form,
+There is one crucial difference though --- in SSA-dIMP the AST is already in SSA form,
 and we assume that sets $\Gamma, \Delta$ exist to prove that.
 Programs in Java are not in SSA form.
 Thus, as part of the QL library for Java, there exists an SSA construction algorithm
@@ -53,17 +53,16 @@ that synthesizes an SSA form.
 As this is computed on the fly, it is not represented in the database schema.
 
 Essentially, this makes the implementation of the library for SSA-dIMP easier,
-as we dont have to deal with the SSA construction.
+as we don't have to deal with the SSA construction.
 Constructing the SSA form of a program is a well-researched problem in compiler
 construction, so we feel confident that assuming the existence of an SSA form 
 of the program does not lower the value of this project.
 
 \subsection{The Standard Library}
 The standard library for SSA-dIMP is implemented in the file \hyperref[lst:library]{library.qll}.
-
-The standard library offers an object-oriented interface on top of the relational
+It offers an object-oriented interface on top of the relational
 database schema.
-Again, this interface is inspired by the corresponding library for Java.
+This interface is inspired by the corresponding library for Java.
 
 The library offers interfaces for arithmetic expressions, and each kind of expression
 has a sub-class available in the standard library.
@@ -84,7 +83,7 @@ As the algorithm in \autoref{sec:df-theory} computes a type for all expressions 
 it implicitly runs on the AST.
 The algorithm in practice is given in \hyperref[lst:dataflow]{dataflow.qll}.
 
-\subsubsection*{Step 1 - The Dataflow Graph}
+\subsubsection*{Step 1 --- The Dataflow Graph}
 The algorithm given here (unlike the DF rules) does not run on the entire AST of the program,
 but on a different graph, the \emph{dataflow graph}.
 It is a datastructure that makes it easy to compute the typing derivation needed to
@@ -197,7 +196,7 @@ of one variable are different nodes in the dataflow graph.
     \label{fig:df-graph}
 \end{figure}
 
-\subsubsection*{Step 2 - Labeling Nodes}
+\subsubsection*{Step 2 --- Labeling Nodes}
 \newcommand{\coloredset}[1]{{\color{red}$\{#1\}$}}
 \newcommand{\setclean}{\coloredset{\labclean}}
 \newcommand{\settracked}{\coloredset{\labtracked}}
@@ -244,7 +243,7 @@ $\varphi$-nodes.
 A $\varphi$-node indicates that two different control flows merge at the point
 the $\varphi$-node is placed.
 At analysis time, we do not know which branch(es) will be taken by the program,
-so we approximate this behaviour by assuming tha all branches will be taken at some point.
+so we approximate this behaviour by assuming that all branches will be taken at some point.
 Thus, we propagate both incoming labels, even if they disagree.
 This is different from the DF rules, that mandate that a single label is chosen
 for a $\varphi$-node.
@@ -271,7 +270,7 @@ It does so by taking the join in the poset of all the annotated types assigned t
 If a node is marked with types $\lclean$ and $\ltracked$ it means that different
 program execution paths result in a different tracked-markings for that node.
 Thus, the node is assigned the type $\lunknown$.
-If a node is is assigned only one annotated type (either $\lclean$ or $\lunknown$), 
+If a node is assigned only one annotated type (either $\lclean$ or $\lunknown$), 
 that type is preserved.
 
 With that information, the dataflow query can report all nodes of type sink.
@@ -473,7 +472,7 @@ The information computed in step 2 is enough to detect unsafe sinks.
 However, we can even go a step further and use the computed labels to build a
 typing derivation for the whole program using the DF rules.
 In case of programs that do not exhibit dataflow (as per the algorithm), this
-typing derivation acts as an easily-checkable certificate of the safety of the program.
+typing derivation acts as an easily checkable certificate of the safety of the program.
 
 Remember that the typing using the DF rules is a refinement of the typing provided 
 by the SSA rules.
@@ -493,8 +492,9 @@ For invocations of the \textsc{DF-$\varphi$} rule, we get the types of the
 variables defined in that list of $\varphi$-nodes by using the annotated
 types in the dataflow graph of the individual $\varphi$-nodes.
 
+% TODO check again
 These annotated types will satisfy the side-condition of the rule \textsc{DF-$\varphi$},
-as we constract a solution to the constraints using the join operator.
+as we construct a solution to the constraints using the join operator.
 
 Applied on example program as presented in~\autoref{fig:ssa-dimp-example} 
 and using the annotated dataflow graph from~\autoref{fig:label-graph-3}, we 
@@ -515,10 +515,11 @@ Given these, the whole derivation tree can be easily written down.
 \subsubsection*{On the Relation of the Algorithm to the DF Typing Rules}
 As explained above, this algorithm runs already on SSA-dIMP, not dIMP.
 Thus, we assume that the SSA construction already took place.
+ %TODO conjecture will be removed
 As conjectured in~\autoref{con:dimp-to-ssa}, any dIMP program can be transformed into an equivalent
 SSA-dIMP program.
 This transformation also (implicitly) takes care of the concrete semantics of e.g.\ 
-while and if statements - the dataflow algorithm only expects correctly placed $\varphi$-nodes,
+while and if statements --- the dataflow algorithm only expects correctly placed $\varphi$-nodes,
 and does not depend on the semantics of the individual statements.
 
 If, for example, a repeat-until loop construct would be added to the language,
@@ -529,7 +530,7 @@ the $\varphi$-node placement is correct.
 This is very different from the algorithm schema with the DF rules that depends intimately on the 
 typing schema, and this might be puzzling at first.
 This apparent contradiction can be resolved by seeing that the DF typing 
-rules serve two purposes - first, they are a refinement of the SSA typing rules,
+rules serve two purposes --- first, they are a refinement of the SSA typing rules,
 and second, they describe an approximation on where dataflow occurs.
 
 As the dataflow algorithm as presented here assumes that the program is already in 
@@ -586,7 +587,7 @@ see that there is a path from the source to the sink, so that program is unsafe.
 
 \subsection{The Query}
 The query actually implementing the user-facing analysis is given in \hyperref[lst:query]{query.ql}.
-It is very simple, it outputs a list of sinks if their annottated type is 
+It is very simple, it outputs a list of sinks if their annotated type is 
 either $\ltracked$ or $\lunknown$.
 If the list is empty, the program is safe and it is guaranteed by~\autoref{thm:soundness-df}
 that the program has no dataflow.

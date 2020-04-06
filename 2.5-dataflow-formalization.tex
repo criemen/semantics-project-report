@@ -39,7 +39,7 @@ i.e.\ from a terminal, and the dataflow sink would likely be a procedure
 printing the data to a terminal, or otherwise communicating with the outside world.
 
 \iffalse
-There is a new judgment of the form 
+There is a new judgement of the form 
 \fbox{$\bigstep{a}{\sigma}{\flaggedn{}}$}:
 \begin{align*}
     &\bsrule{EA-Num}{}{\bigstep{\literalint}{\store}{\clean}} \qquad
@@ -60,7 +60,7 @@ There is a new judgment of the form
     {\bigstep{\source{a}}{\store}{\tracked}}
 \end{align*}
 
-The Judgment $\langle c, \sigma \rangle \downarrow \sigma'$ is replaced by 
+The Judgement $\langle c, \sigma \rangle \downarrow \sigma'$ is replaced by 
 $\bigstep{c}{\sigma}{\excstore'}$
 where $\excstore{}: (\Loc \to \StoreDomain) \cup \{\exception\}$.
 The state $\exception$ indicates that the program was aborted due to a policy violation.
@@ -91,14 +91,14 @@ Judgement \fbox{$\bigstep{c}{\sigma}{\excstore'}$}:
     {\bigstep{\defaultsink}{\store}{\exception}}\\
 \end{align*}
 
-The judgement operations for booleans are modified to ignore the tracked-flag and work
-just as in IMP. This is analoguous to how $\textsc{EA-Plus}$ etc.\ work.
+The judgement operations for Boolean expressions are modified to ignore the tracked-flag and work
+just as in IMP. This is analogous to how $\textsc{EA-Plus}$ etc.\ work.
 \fi
 
 \subsection{Syntax and Semantics of SSA-dIMP}
-To facilitate the dataflow analysis, we describe a SSA form on dIMP with a concrete
+To facilitate the dataflow analysis, we describe an SSA form on dIMP with a concrete
 syntax and semantics.
-We do not describe how to transform a dIMP program to a SSA-dIMP program, but 
+We do not describe how to transform a dIMP program to an SSA-dIMP program, but 
 refer the reader to the literature, where different SSA construction algorithms are
 described. Some even come with computer-verified correctness and minimality guarantees,
 we refer the reader to~\cite{verifiedssa}.
@@ -122,11 +122,11 @@ Every well-typed expression has type $\tint$, thus the set of all types is $\Tau
 Let $\Gamma, \Delta: \Loc \partialf \Tau$ be partial maps with finite domain.
 These are the type contexts.
 We define the join operator $\join$ on $\Tau$ by $\tint \join \tint = \tint$.
-We will furthermore use $\dunion$ to be the union of maps, 
+Furthermore, we will use $\dunion$ to be the union of maps, 
 where we assert that the domains of the maps are disjoint.
 
-We then show that these sets are enough to prove that the program is indeed in SSA form.
-The easiest way to get these sets is to run a SSA construction algorithm on a dIMP program.
+Then we proceed to show that these sets are enough to prove that the program is indeed in SSA form.
+The easiest way to get these sets is to run an SSA construction algorithm on a dIMP program.
 It is a gap in the provided proofs that we do not show that every dIMP program
 can be transformed in a valid SSA-dIMP program (especially, we omit showing that
 $\varphi$ nodes will be placed exactly at the places they are allowed in the syntax
@@ -201,33 +201,33 @@ contain the variable $X$.
 \autoref{thm:ssa-gamma-delta-disjoint} in combination with ~\autoref{thm:ssa-progress}
 justify this notation.
 
-The judgment for booleans and arithmetic expressions does not change.
+The judgement for Booleans and arithmetic expressions does not change.
 As before, we use $\excstore{}$ to denote stores that represent an \exception{}
 state or a partial function, i.e.\ $\excstore{} \in (\Loc \partialf \StoreDomain) \cup \{\exception\}$
-For $\varphi$ nodes, we introduce two judgements - one that evaluates all the variable definitions
-to the first argument, and one that evalutes them all to the second argument.
+For $\varphi$ nodes, we introduce two judgements --- one that evaluates all the variable definitions
+to the first argument, and one that evaluates them all to the second argument.
 Both judgements are provided with a filter $\filter \subseteq \dom\sigma$ that specifies which variables 
 from the outer store should be kept.
 The symbol $\store\restrict{\filter}$ denotes the restriction of the map $\store$
 to the domain $\filter$.
 In order to correctly model the execution of $\varphi$ nodes for \textbf{while} commands,
-a second judgment is set up.
-The regular command judmenent only populates the variables defined by the $\varphi$ nodes
+a second judgement is set up.
+The regular command judgement only populates the variables defined by the $\varphi$ nodes
 and then defers to a special while-command-judgement that evaluates all loop executions,
 evaluating the $\varphi$ nodes with the store after the loop body execution.
 \\
-Judgment \fbox{$\bigsteppl{\philist}{\filter}{\store}{\store'}$}:
+Judgement \fbox{$\bigsteppl{\philist}{\filter}{\store}{\store'}$}:
 \begin{align*}
     &\bsrule{E$\Phi_1$-Assign}{}
     {\bigsteppl{\defaultphilistn}{\filter}{\store}{\storeassign{\store\restrict{\filter}}{X_1 \mapsto \store(Y_1),\ldots, X_n \mapsto \store(Y_n)}}}\\
 \end{align*}
-Judgment \fbox{$\bigsteppr{\philist}{\filter}{\store}{\store'}$}:
+Judgement \fbox{$\bigsteppr{\philist}{\filter}{\store}{\store'}$}:
 \begin{align*}
     &\bsrule{E$\Phi_2$-Assign}{}
     {\bigsteppr{\defaultphilistn}{\filter}{\store}{\storeassign{\store\restrict{\filter}}{X_1 \mapsto \store(Z_1),\ldots, X_n \mapsto \store(Z_n)}}}\\
 \end{align*}
 \\
-Judgment \fbox{$\bigstepw{s}{\filter}{\store}{\excstore'{}}$}:
+Judgement \fbox{$\bigstepw{s}{\filter}{\store}{\excstore'{}}$}:
 \begin{align*}
     &\bsrule{EW-WhileF}{\bigstep{b}{\store}{\bfalse}}
     {\bigstepw{\defaultssawhile}{\filter}{\store}{\store}}\qquad\\
@@ -241,7 +241,7 @@ Judgment \fbox{$\bigstepw{s}{\filter}{\store}{\excstore'{}}$}:
     {\bigstepw{\defaultssawhile}{\filter}{\store}{\excstore'}}
 \end{align*}
 \\
-Judgment \fbox{$\bigstep{s}{\store}{\excstore{}}$}:
+Judgement \fbox{$\bigstep{s}{\store}{\excstore{}}$}:
 \begin{align*}
     &\bsrule{EC-Skip}{}{\bigstep{\skipcmd}{\store}{\store}}\qquad
     \bsrule{EC-Assign}{\bigstep{a}{\store}{\flaggedn{}}}
@@ -320,8 +320,8 @@ Furthermore, the number of $\varphi$-nodes in the example program is minimal,
 but no such assertions is made by the typing rules.
 
 \subsubsection*{Correctness Results}
-We state that a SSA-dIMP program together with the SSA type derivation
-is in fact in SSA form - each variable is defined only once.
+We state that an SSA-dIMP program together with the SSA type derivation
+is in fact in SSA form --- each variable is defined only once.
 Furthermore, the structure of the bigstep derivation trees imply that 
 for every bigstep derivation, all variables are defined before they are used.
 % TODO check?
@@ -334,7 +334,7 @@ Proofs are omitted, as we prove these theorems later in greater generality.
 
 \begin{theorem}
     \label{thm:ssa-progress}
-    If $\typestep{\Gamma}{s}{\Delta}$, $\text{dom } \store = \Gamma$ and
+    If $\typestep{\Gamma}{s}{\Delta}$, $\dom\store = \Gamma$ and
     $\bigstep{s}{\store}{\store'}$, then $\store' = \store \dunion \store_0$
     and $\dom{\store_0} = \Delta$.
 \end{theorem}
@@ -364,8 +364,8 @@ Proofs are omitted, as we prove these theorems later in greater generality.
 
 \begin{definition}[Dataflow Algorithm]
     A \emph{dataflow algorithm} $\A(s, \Gamma, \Delta)$ computes, given a program $s$
-    and a SSA type derivation $\typestep{\Gamma}{s}{\Delta}$,
-    whether there exists an store $\store{}$ 
+    and an SSA type derivation $\typestep{\Gamma}{s}{\Delta}$,
+    whether there exists a store $\store{}$ 
     such that $\initialstore$ and $(s, \store, \Gamma, \Delta)$ has dataflow from a source to a sink.
     We require $\A(s, \Gamma, \Delta) \in \{\text{POSSIBLE\_FLOW}, \text{NO\_FLOW}\}$.
 \end{definition}
@@ -551,12 +551,12 @@ Then we prove some lemmas needed to establish the soundness of our dataflow anal
     \end{align*}
     By assumption we have that $\matches{\store}{\Gamma}$.
     Thus, we can apply the IH on $\E_0$ with $\D_0$.
-    Thus $\store'' = \store \dunion \store''_0$ and $\matches{\store''_0}{\Delta_0}$
+    With the IH we get $\store'' = \store \dunion \store''_0$ and $\matches{\store''_0}{\Delta_0}$
     with $\matches{\store''}{\Gamma \union \Delta_0}$.
-    Thus, we apply the IH on $\E_1$ with $\D_1$, and we get that
-    $\store' = \store'' \dunion \store'_0$ and $\matches{\store'_0}{\Delta_1}$.
-    Then, we have $\store' = \store \dunion \store''_0 \dunion \store'_0$
-    and we can set $\store_0 = \store''_0 \dunion \store'_0$, and we obviously 
+    Thus, we can apply the IH on $\E_1$ with $\D_1$.
+    Then we get that $\store' = \store'' \dunion \store'_0$ and $\matches{\store'_0}{\Delta_1}$.
+    With that, we have $\store' = \store \dunion \store''_0 \dunion \store'_0$.
+    We can set $\store_0 = \store''_0 \dunion \store'_0$, and we obviously 
     have that $\matches{\store_0}{\Delta_0 \union \Delta_1}$.\\
     \textbf{Case 4:}
     \begin{align*}
@@ -576,7 +576,7 @@ Then we prove some lemmas needed to establish the soundness of our dataflow anal
     $\matches{\store''_0}{\Delta_0}$.
     The result then follows from~\autoref{thm:preservation-phi} on $\E_1$ with $\D_1$.\\
     \textbf{Case 5:}
-    $\E$ uses \textsc{EC-IfF}: analoguous.\\
+    $\E$ uses \textsc{EC-IfF}: analogous.\\
     \textbf{Case 6:}
     \begin{align*}
         &\E = \bsrule{EC-Assign}{\overset{\E_0}{\bigstep{a}{\store}{\flaggedn{}}}}
@@ -601,7 +601,7 @@ Then we prove some lemmas needed to establish the soundness of our dataflow anal
     \end{align*}
     By applying~\autoref{thm:preservation-phi} on $\E_0$ with $\D_0$, we get that
     $\store'' = \store \dunion \store_0$ and $\matches{\store_0}{\Delta}$.
-    Thus $\matches{\store''}{\Gamma \union \Delta}$.
+    Thus, $\matches{\store''}{\Gamma \union \Delta}$.
     We prove the statement by an inner induction over the while derivation $\E^w$:
     \begin{claim}
         Let $\bigstepw{\defaultwhile}{\filter}{\store_w}{\store_w'}$ by $\E^w$,
@@ -681,7 +681,7 @@ We then have the following (general) soundness property of the dataflow analysis
     \end{align*}
     By IH on $\E_0$ with $\D_0$ we get that in $\bigstep{s_0}{\store}{\excstore{}'}$ 
     we have that $\excstore{}' \neq \exception$ holds, so this case cannot happen.
-    The cases for \textsc{EC-IfTAbrt} and \textsc{EC-IfFAbrt} are proved analoguous.\\
+    The cases for \textsc{EC-IfTAbrt} and \textsc{EC-IfFAbrt} are proved analogous.\\
     \textbf{Case 3:}
     \begin{align*}
         &\E = \bsrule{EC-Seq}{\overset{\E_0}{\bigstep{s_0}{\sigma}{\store''}} \qquad 
@@ -735,7 +735,7 @@ We then have the following (general) soundness property of the dataflow analysis
         and $\matches{\store''_0}{\Delta_1}$, thus $\matches{\store''}{\Gamma \union \Delta \dunion \Delta_1}$.
         By~\autoref{thm:preservation-phi} on $\E^w_1$ with $\D_1^w$ it follows that $\store''' = \store_{w0} \dunion \store'''_0$
         with $\matches{\store'''_0}{\Delta}$.
-        Thus $\matches{\store'''}{\Gamma \union \Delta}$ and we can apply the inner IH on $\E^w_2$.
+        Thus, $\matches{\store'''}{\Gamma \union \Delta}$ and we can apply the inner IH on $\E^w_2$.
         That implies that $\excstore{}'_w \neq \exception$.
     \end{claimproof}
     We apply the claim on $\E_0$ with $\D_0$ and $\D_1$.
@@ -746,7 +746,7 @@ We then have the following (general) soundness property of the dataflow analysis
     Let $(s, \Gamma_{ssa}, \Delta_{ssa})$ be a program in SSA form and let $\store$ be a store
     with $\dom\store = \Gamma_{ssa}$.
     Let $\E$ be the bigstep derivation of $\bigstep{s}{\store}{\excstore{}'}$.
-    Let $\Gamma: \Gamma_{ssa} \partialf \lattice$ be defined by
+    Furthermore, let $\Gamma: \Gamma_{ssa} \partialf \lattice$ be defined by
     \begin{align*}
         \Gamma(X) \mapsto \begin{cases}
             \lclean & \text{if $\exists n \in \Z: \store(X) = \clean$}\\
@@ -758,13 +758,13 @@ We then have the following (general) soundness property of the dataflow analysis
 \end{theorem}
 \begin{proof}
     We have that $\matches{\store}{\Gamma}$ by construction.
-    Thus we can apply~\autoref{lem:df-soundness} to prove the theorem.
+    Thus, we can apply~\autoref{lem:df-soundness} to prove the theorem.
 \end{proof}
 
 We now describe a sound dataflow algorithm schema $\A(s, \Gamma_\text{ssa}, \Delta_\text{ssa})$.
 This algorithm schema can be seen as a general specification for sound dataflow algorithms.
 As soon as an algorithm satisfies this schema, it is sound.
-In the next section, we will se an instatiation of this algorithm schema in QL.
+In the next section, we will see an instantiation of this algorithm schema in QL.
 
 First, define $\Gamma$ by
 \begin{align*}
@@ -773,16 +773,16 @@ First, define $\Gamma$ by
 \end{align*}
 Then, compute a finite map $\Delta$ and a derivation tree $\D$ 
 such that $\typestep{\Gamma}{s}{\Delta}$ (by $\D$) holds.
-Output \text{HAS\_FLOW} if $\D$ contains a derivation of form
+Output \text{POSSIBLE\_FLOW} if $\D$ contains a derivation of form
 \begin{equation*}
     \trule{DF-Sink}{\typestep{\Gamma}{a}{\ltracked}}{\typestep{\Gamma}{\sink{a}}{\emptyset}}
 \end{equation*}
-and, in the absence of that, output \text{UNKOWN} if $\D$ contains a derivation of form
+or
 \begin{equation*}
     \trule{DF-Sink}{\typestep{\Gamma}{a}{\lunknown}}{\typestep{\Gamma}{\sink{a}}{\emptyset}}
 \end{equation*}
-and, in the absence of that, output \text{NO\_FLOW}.
 
+In the absence of these derivations, output \text{NO\_FLOW}.
 \begin{corollary}
     The algorithm schema $\A(s, \Gamma_\text{ssa}, \Delta_\text{ssa})$ describes a sound dataflow algorithm.
 \end{corollary}
