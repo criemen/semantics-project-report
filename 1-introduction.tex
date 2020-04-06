@@ -20,7 +20,7 @@ is an acronym for \emph{Looks good to me}, a common statement of reviewers befor
 pull requests.}.
 
 In September 2019, GitHub announced that they bought Semmle.
-Following the acquisition, the CodeQL CLI utility was released to the general public,
+Following the acquisition, the CodeQL CLI utility was released to the public,
 which allows the analysis of any software, not only publicly hosted projects.
 However, the license specifies that any usage has to either be academic research,
 or that the analyzed codebase is released under an OSI-approved open-source license.
@@ -125,7 +125,7 @@ A predicate contains a finite set of tuples of typed data.
 There are two types of predicates in QL.
 
 The contents of tables in the database are exposed to the programmer as \emph{database 
-predicates} --- these are pre-defined in the program and can only be queried, but not modified.
+predicates} --- these are predefined in the program and can only be queried, but not modified.
 The types and names of these predicates are specified in the relational database schema.
 An example of a database schema for a small language (introduced later) can be 
 seen in the appendix.
@@ -164,7 +164,7 @@ QL only allows recursion if the predicate appears under an even number of negati
 Another rule that is needed to ensure termination is that all data included in a tuple 
 ranges over a finite domain.
 For data types defined in the database, this is trivially true.
-For numbers, booleans and strings, this is ensured by requiring that they are bound 
+For numbers, Booleans and strings, this is ensured by requiring that they are bound 
 in the predicate body, for example by restricting their values to a finite set of constants,
 or by restricting their values to be in another predicate.
 

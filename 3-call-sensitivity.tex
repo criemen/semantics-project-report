@@ -2,11 +2,10 @@
 \section{Call Sensitivity}
 \label{sec:call-sens}
 \subsection{Motivation}
-% TODO intro
 A common pattern used by software developers is to 
 write functions that change their behavior based on 
 a Boolean parameter.
-This happens when two functions are very similar, but only have different behaviour
+This happens when two functions are very similar, but only have different behavior
 in one small area of the function.
 Then a good abstraction is to merge these two functions into one function that takes 
 a Boolean parameter, toggling the two different sub-functionalities.
@@ -20,8 +19,8 @@ should be written to or not, a constant Boolean argument is passed to the called
 On the other hand, sometimes programmers even use a top-level
 \java{if} statement, so depending on the
 value of the Boolean parameter, a function $f$ contains two entirely different implementations.
-In those cases, a design with two separate functions containg both implementations,
-i.e\ $f_1(\ldots) = f(\text{true}, \ldots)$ and $f_2(\ldots) = f(\text{false}, \ldots)$
+In those cases, a design with two separate functions containing both implementations,
+i.e.\ $f_1(\ldots) = f(\text{true}, \ldots)$ and $f_2(\ldots) = f(\text{false}, \ldots)$
 would be preferable from a software engineering perspective. But as this patterns
 occurs in practice, it makes sense to handle it.
 
@@ -39,7 +38,7 @@ For example in the Apache Hadoop project, an analysis\footnote{\url{https://lgtm
 reveals over 5400 call sites 
 where a constant Boolean parameter is provided that later influences control flow.
 Thus, it makes sense not only theoretically to work on this problem, but it also 
-solves problems occuring in practice.
+solves problems occurring in practice.
 
 The goal of this section is to remove false positives like in~\autoref{lst:fp-cs}
 from the dataflow library.
@@ -53,7 +52,7 @@ in the context of \texttt{B} calling \texttt{f}.
 To remove these false positives, the local dataflow 
 analysis is made call context sensitive, so only relevant branches of a function
 are analyzed when computing local 
-(an,d in later stages of the algorithm, interprocedural) dataflow.
+(and in later stages of the algorithm, interprocedural) dataflow.
 
 \begin{listing}
     \begin{javacode}
@@ -126,7 +125,7 @@ A node is unreachable in a given call if
 \begin{itemize}
     \item one of the arguments in that call is Boolean
     \item that Boolean is either a compile-time constant (as defined by \cite{jls}, section 15.28)
-    or a read of a SSA variable that is defined using a Boolean compile-time constant
+    or a read of an SSA variable that is defined using a Boolean compile-time constant
     \item the Boolean parameter is used in an expression that guards a basic block
     \item the unreachable node is in that basic block
 \end{itemize}
@@ -151,7 +150,8 @@ The computation of the local flow bigstep relation is modified to include checks
 that all nodes that are part of a local bigstep step are not unreachable in the 
 given context.
 
-The correctness of the implementation was not formally proven, but we provided 
+% TODO what about this?
+%The correctness of the implementation was not formally proven, but we provided 
 
 It should be noted that the implementation of this feature was contributed to Semmle/Github,
 reviewed by their engineers and is live on the LGTM.com platform.

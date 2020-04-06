@@ -61,7 +61,7 @@ to enable the precise analysis of~\autoref{lst:ex-ps-nullness},
 having a concept that some dataflow nodes are only active in some program paths 
 is an important prerequisite to implement this analysis.
 The reason that the presented analysis wouldn't work on that example is that
-the proposed path-sensitivity focusses on identifying mutually exclusive 
+the proposed path-sensitivity focuses on identifying mutually exclusive 
 blocks like in~\autoref{lst:ex-ps-1}.
 So the deduction of the fact that whenever \java{b} is \java{true},
 then \java{o} is overwritten with something non-null is missing.

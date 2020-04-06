@@ -515,11 +515,9 @@ Given these, the whole derivation tree can be easily written down.
 \subsubsection*{On the Relation of the Algorithm to the DF Typing Rules}
 As explained above, this algorithm runs already on SSA-dIMP, not dIMP.
 Thus, we assume that the SSA construction already took place.
- %TODO conjecture will be removed
-As conjectured in~\autoref{con:dimp-to-ssa}, any dIMP program can be transformed into an equivalent
-SSA-dIMP program.
-This transformation also (implicitly) takes care of the concrete semantics of e.g.\ 
-while and if statements --- the dataflow algorithm only expects correctly placed $\varphi$-nodes,
+The transformation from dIMP to SSA-dIMP also (implicitly) takes care of the
+concrete semantics of e.g.\ while and if statements --- the dataflow algorithm
+only expects correctly placed $\varphi$-nodes,
 and does not depend on the semantics of the individual statements.
 
 If, for example, a repeat-until loop construct would be added to the language,
