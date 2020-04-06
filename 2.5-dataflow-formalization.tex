@@ -9,6 +9,7 @@ The lecture notes themselves heavily borrow from~\cite{fsopl} for the
 presentation and semantics of IMP.
 
 \subsection{Syntax and Semantic of dIMP}
+% TODO drop semantics
 We extend the syntax of IMP a little bit
 and call the resulting language dIMP (for dataflow IMP):
 \begin{align*}
@@ -271,6 +272,7 @@ Judgment \fbox{$\bigstep{s}{\store}{\excstore{}}$}:
 \end{align*}
 
 \subsubsection*{The dIMP To SSA-dIMP Transformation}
+% TODO drop
 \begin{conjecture}
     \label{con:dimp-to-ssa}
 %    TODO this needs work
@@ -387,26 +389,24 @@ Proofs are omitted, as we prove these theorems in greater generality later.
     and a SSA type derivation $\typestep{\Gamma}{s}{\Delta}$,
     whether there exists an store $\store{}$ 
     such that $\initialstore$ and $(s, \store, \Gamma, \Delta)$ has dataflow from a source to a sink.
-    We require $\A(s, \Gamma, \Delta) \in \{\text{HAS\_FLOW}, \text{NO\_FLOW}, \text{UNKOWN}\}$.
+    We require $\A(s, \Gamma, \Delta) \in \{\text{POSSIBLE\_FLOW}, \text{NO\_FLOW}\}$.
 \end{definition}
 
-TODO these definitions need to be fixed with UNKNOWN, as an algorithm outputting UNKNOWN is both sound and complete.
 \begin{definition}[Soundness]
     A dataflow algorithm is \emph{sound} if for all tuples $(s, \store, \Gamma, \Delta)$ with $\initialstore$ that
-    have dataflow it holds that $\A(s, \Gamma, \Delta) = \text{HAS\_FLOW}$ or
-    $\A(s, \Gamma, \Delta) = \text{UNKNOWN}$.
+    have dataflow it holds that $\A(s, \Gamma, \Delta) = \text{POSSIBLE\_FLOW}$.
 \end{definition}
 
 \begin{definition}[Completeness]
-    A dataflow algorithm is \emph{complete} if $\A(s, \Gamma, \Delta) = \text{HAS\_FLOW}$
-    implies that there exists an store $\store$ with $\initialstore$
-     such that $(s, \store, \Gamma, \Delta)$ has dataflow.
+    A dataflow algorithm is \emph{complete} if $\A(s, \Gamma, \Delta) = \text{NO\_FLOW}$
+    implies that no store $\sigma$ with $\initialstore$ exists such that
+    $(s, \store, \Gamma, \Delta)$ has dataflow.
 \end{definition}
+
 \begin{definition}[False Positive]
     A program $s$ for which there exists no store $\store$ such that 
     $(s, \initialstore, \Gamma, \Delta)$ with $\initialstore{}$ has dataflow,
-     but for which $\A(s, \Gamma, \Delta) = \text{HAS\_FLOW}$
-    or $\A(s, \Gamma, \Delta) = \text{UNKOWN}$ holds
+     but for which $\A(s, \Gamma, \Delta) = \text{POSSIBLE\_FLOW}$ holds
     is called a \emph{false positive} of the algorithm.
 \end{definition}
 \begin{remark}
@@ -415,7 +415,7 @@ TODO these definitions need to be fixed with UNKNOWN, as an algorithm outputting
     In practice, a dataflow algorithm may be neither sound nor complete.
     However, in the theoretical setting of this chapter, we are interested in 
     sound dataflow algorithms.
-    The \emph{trivially sound dataflow algorithm} $\A_0(s, \Gamma, \Delta) = \text{UNKOWN}$ 
+    The \emph{trivially sound dataflow algorithm} $\A_0(s, \Gamma, \Delta) = \text{POSSIBLE\_FLOW}$ 
     is sound by definition, but not very interesting.
     We will not consider it further, but it is interesting to keep in mind,
     because it shows that just proving that a dataflow algorithm is sound does not

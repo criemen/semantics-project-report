@@ -125,6 +125,8 @@ have type either $\ltracked$ or $\lunknown$ (and not $\lclean$).
 We combine this propagation information with the location of the sinks and sources 
 to detect potential dataflow.
 
+% TODO merge the last 4 to 2
+
 The dataflow graph contains the following edges:
 \begin{itemize}
     \item From the expression on the right-hand side of an assign statement 
@@ -202,13 +204,13 @@ of one variable are different nodes in the dataflow graph.
 \end{figure}
 
 \subsubsection*{Step 2 - Labeling Nodes}
-\newcommand{\coloredset}[1]{{\color{violet}$\{#1\}$}}
+\newcommand{\coloredset}[1]{{\color{red}$\{#1\}$}}
 \newcommand{\setclean}{\coloredset{\labclean}}
 \newcommand{\settracked}{\coloredset{\labtracked}}
 \newcommand{\setboth}{\coloredset{\labclean, \labtracked}}
-\newcommand{\clclean}{:\ {\color{violet}$\lclean$}}
-\newcommand{\cltracked}{:\ {\color{violet}$\ltracked$}}
-\newcommand{\clunknown}{:\ {\color{violet}$\lunknown$}}
+\newcommand{\clclean}{:\ {\color{red}$\lclean$}}
+\newcommand{\cltracked}{:\ {\color{red}$\ltracked$}}
+\newcommand{\clunknown}{:\ {\color{red}$\lunknown$}}
 
 As second step, the algorithm computes a labelling of the nodes of the dataflow graph.
 Possible labels are \labclean, \labtracked and \labunknown.
@@ -230,6 +232,7 @@ labels for each node.
 Each label of a node belongs to one or more execution flows of the program 
 that would result in that label being assigned.
 
+% TODO remove color
 Each source is marked with \settracked, as in every program execution,
 a source produce in a tracked value.
 Furthermore, all nodes in the dataflow graph without
@@ -261,8 +264,13 @@ no more nodes.
 After all nodes are labelled with a set of labels, we still need to pick one label
 that correctly describes the node.
 For that, we map the labels to the annotated types used by the DF rules.
+% TODO if node is marked with singleton clean -> int_c
+% type is a label set
 The label $\labclean$ becomes $\lclean$, and the label $\labtracked$ becomes $\ltracked$.
+% first describe what's happening, then talk about QL code
 
+% TODO "second substep" 
+% After the propagation stabilizes...
 This second step is implemented in the predicate \texttt{nodeLabel}.
 The predicate computes the best-matching annotated type for each node using the candidate labels.
 It does so by taking the join in the poset of all the annotated types assigned to each node.
@@ -433,16 +441,19 @@ graph (according to the rules described above).
 \newcommand{\lab}{\textit{label}}
 \newcommand{\labtwo}{\textit{label2}}
 \newcommand{\prev}{\textit{prev}}
+% TODO design
 \begin{align*}
     \texttt{nodeLabelCand}(\n, \lab) :\iff &\texttt{sourceNode}(\n) \land\\
     & \lab = \labtracked \\
     &\lor\\
     & \neg \texttt{sourceNode}(\n) \land\\
-    &(\neg(\exists \prev: \texttt{flowStep}(\prev, \n)) \land\\
-    &\lab = \labclean\\
-    &\lor\\
-    &\exists \prev: (\texttt{flowStep}(\prev, \n) \land\\
-    & \texttt{nodeLabelCand}(\n, \lab)))
+    &(\\
+    &\qquad\neg(\exists \prev: \texttt{flowStep}(\prev, \n)) \land\\
+    &\qquad\lab = \labclean\\
+    &\qquad\lor\\
+    &\qquad\exists \prev: (\texttt{flowStep}(\prev, \n) \land\\
+    &\qquad \texttt{nodeLabelCand}(\n, \lab))\\
+    &)
 \end{align*}
 
 \begin{align*}
@@ -495,11 +506,12 @@ as we constract a solution to the constraints using the join operator.
 Applied on example program as presented in~\autoref{fig:ssa-dimp-example} 
 and using the annotated dataflow graph from~\autoref{fig:label-graph-3}, we 
 get the following $\Delta$ maps:
+% TODO presentation
 \begin{itemize}
     \item $\storecmd{I0}{X}: [I_0 \mapsto \lclean]$ (line 1)
     \item $\storecmd{Z0}{1}: [Z_0 \mapsto \lclean]$ (line 2)
     \item $\textbf{while } [\phistore{Z3}{Z0}{Z2}, \phistore{I2}{I0}{I1}];
-     I2 > 0 \textbf{do}: [Z3 \mapsto \lunknown, I2 \mapsto \lclean]$ (line 3)
+     I2 > 0 \textbf{ do}: [Z3 \mapsto \lunknown, I2 \mapsto \lclean]$ (line 3)
     \item $\storecmd{I1}{I2 - 1}: [I1 \mapsto \lclean]$ (line 4)
     \item $\storecmd{Z1}{\source{Z3 * X}}: [Z1 \mapsto \ltracked]$ (line 6)
     \item $\storecmd{Z1}{Z3}: [Z1 \mapsto \lunknown]$ (line 8)
@@ -586,3 +598,6 @@ either $\ltracked$ or $\lunknown$.
 If the list is empty, the program is safe and it is guaranteed by~\autoref{thm:soundness-df}
 that the program has no dataflow.
 If the list is not empty, no assertion about the program correctness can be given.
+
+% TODO write about how to interpret the analysis results
+% a different opsemantics could also make the formal distinction
