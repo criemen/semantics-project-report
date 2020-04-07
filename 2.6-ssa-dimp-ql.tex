@@ -253,25 +253,19 @@ increase monotonically.
 A least fixed point for that recursion is found when applying the recursive rules yields
 no more nodes.
 
-After all nodes are labelled with a set of labels, we still need to pick one label
+After all nodes are labelled with a set of labels, we still need to pick one annotated type
 that correctly describes the node.
-For that, we map the labels to the annotated types used by the DF rules.
-% TODO if node is marked with singleton clean -> int_c
-% type is a label set
-The label $\labclean$ becomes $\lclean$, and the label $\labtracked$ becomes $\ltracked$.
-% first describe what's happening, then talk about QL code
+If a node is marked with $\{\labclean\}$, the type becomes $\lclean$,
+and if a node is marked with $\{\labtracked\}$, the type becomes $\ltracked$.
 
-% TODO "second substep" 
-% After the propagation stabilizes...
-This second step is implemented in the predicate \texttt{nodeLabel}.
-The predicate computes the best-matching annotated type for each node using the candidate labels.
-It does so by taking the join in the poset of all the annotated types assigned to each node.
-
-If a node is marked with types $\lclean$ and $\ltracked$ it means that different
+If a node is marked with $\{\lclean, \ltracked\}$ it means that different
 program execution paths result in a different tracked-markings for that node.
 Thus, the node is assigned the type $\lunknown$.
-If a node is assigned only one annotated type (either $\lclean$ or $\lunknown$), 
-that type is preserved.
+This is in line with the side-condition of the rule \textsc{DF-$\varphi$}.
+
+Assigning nodes an annotated type is implemented in the predicate \texttt{nodeLabel}.
+The predicate computes the best-matching annotated type for each node using the candidate labels.
+This happens after the propagation of labels (in \texttt{nodeLabelCand}) stabilizes.
 
 With that information, the dataflow query can report all nodes of type sink.
 If any of them has the type $\lunknown$ or $\ltracked$, then we know that the sink
@@ -433,15 +427,11 @@ graph (according to the rules described above).
 \newcommand{\lab}{\textit{label}}
 \newcommand{\labtwo}{\textit{label2}}
 \newcommand{\prev}{\textit{prev}}
-% TODO design
 \begin{align*}
-    \texttt{nodeLabelCand}(\n, \lab) :\iff &\texttt{sourceNode}(\n) \land\\
-    & \lab = \labtracked \\
+    \texttt{nodeLabelCand}(\n, \lab) :\iff &\texttt{sourceNode}(\n) \land \lab = \labtracked \\
     &\lor\\
-    & \neg \texttt{sourceNode}(\n) \land\\
-    &(\\
-    &\qquad\neg(\exists \prev: \texttt{flowStep}(\prev, \n)) \land\\
-    &\qquad\lab = \labclean\\
+    & \neg \texttt{sourceNode}(\n) \land (\\
+    &\qquad\neg(\exists \prev: \texttt{flowStep}(\prev, \n)) \land \lab = \labclean\\
     &\qquad\lor\\
     &\qquad\exists \prev: (\texttt{flowStep}(\prev, \n) \land\\
     &\qquad \texttt{nodeLabelCand}(\n, \lab))\\
@@ -450,8 +440,7 @@ graph (according to the rules described above).
 
 \begin{align*}
     \texttt{nodeLabel}(\n, \lab) :\iff &\texttt{nodeLabelCand}(\n, \labclean) \land \\
-    &\texttt{nodeLabelCand}(\n, \labtracked) \land\\
-    &\lab = \labunknown \\
+    &\texttt{nodeLabelCand}(\n, \labtracked) \land \lab = \labunknown \\
     &\lor\\
     & \texttt{nodeLabelCand}(\n, \lab) \land\\
     &\neg (\exists \labtwo: \texttt{nodeLabelCand}(\n, \labtwo) \land \labtwo \neq \lab)\\
@@ -492,25 +481,37 @@ For invocations of the \textsc{DF-$\varphi$} rule, we get the types of the
 variables defined in that list of $\varphi$-nodes by using the annotated
 types in the dataflow graph of the individual $\varphi$-nodes.
 
-% TODO check again
 These annotated types will satisfy the side-condition of the rule \textsc{DF-$\varphi$},
-as we construct a solution to the constraints using the join operator.
+as we construct a solution to the constraints by basically hardcoding the join operator
+of the poset.
 
 Applied on example program as presented in~\autoref{fig:ssa-dimp-example} 
 and using the annotated dataflow graph from~\autoref{fig:label-graph-3}, we 
-get the following $\Delta$ maps:
-% TODO presentation
-\begin{itemize}
-    \item $\storecmd{I0}{X}: [I_0 \mapsto \lclean]$ (line 1)
-    \item $\storecmd{Z0}{1}: [Z_0 \mapsto \lclean]$ (line 2)
-    \item $\textbf{while } [\phistore{Z3}{Z0}{Z2}, \phistore{I2}{I0}{I1}];
-     I2 > 0 \textbf{ do}: [Z3 \mapsto \lunknown, I2 \mapsto \lclean]$ (line 3)
-    \item $\storecmd{I1}{I2 - 1}: [I1 \mapsto \lclean]$ (line 4)
-    \item $\storecmd{Z1}{\source{Z3 * X}}: [Z1 \mapsto \ltracked]$ (line 6)
-    \item $\storecmd{Z1}{Z3}: [Z1 \mapsto \lunknown]$ (line 8)
-    \item $\textbf{if } \ldots [\phistore{Z2}{Z1}{Z1}]: [Z2 \mapsto \lunknown]$ (line 9)
-\end{itemize}
-Given these, the whole derivation tree can be easily written down.
+can annotate all variable definitions with their type.
+The types make up the contents of the $\Delta$ maps.
+Given the types (and thus the $\Delta$ maps), the whole derivation tree can be easily written down.
+
+\newcommand{\redltracked}{{\color{red}\ltracked}}
+\newcommand{\redlclean}{{\color{red}\lclean}}
+\newcommand{\redlunknown}{{\color{red}\lunknown}}
+
+\begin{figure}[h]
+    \begin{minted}[escapeinside=||,mathescape=false,linenos]{pascal}
+        I0 |$:\redlclean$| := X;
+        Z0 |$:\redlclean$| := 1;
+        while [Z3 := |$\varphi$|(Z0, Z2) |$:\redlunknown$|, I2 |$:\redlclean$| := |$\varphi$|(I0, I1)]; I2 > 0 do
+            I1 |$:\redlclean$| := I2 - 1;
+            if Z3 < 100 then
+                Z1 |$:\redltracked$| := source Z3 * X
+            else
+                Z1 |$:\redlunknown$| := Z3
+            ;[Z2 |$:\redlunknown$| := |$\varphi$|(Z1, Z1)]
+        ;
+        sink Z3
+    \end{minted}    
+    \caption{The example programs annotated with types}
+    \label{fig:delta-maps-example}
+\end{figure}
 
 \subsubsection*{On the Relation of the Algorithm to the DF Typing Rules}
 As explained above, this algorithm runs already on SSA-dIMP, not dIMP.
