@@ -2,7 +2,8 @@
 \section{Formalization of Dataflow with dIMP}
 
 In this section, we are going to formalize what we mean by dataflow,
-give a simple algorithm for computing dataflow and proving it is sound.
+give a algorithm specification for computing dataflow and prove that any algorithm conforming
+to that algorithm specification is a sound dataflow algorithm.
 
 We use the toy language IMP as presented in~\cite{sat}.
 The lecture notes themselves heavily borrow from~\cite{fsopl} for the
@@ -28,7 +29,7 @@ values.
 The intuition here is that for all $n \in \Z$, 
 each value is tagged by either \textbf{c} for clean or \textbf{t} for being tracked
 as having dataflow.
-If the tag is irrelevant in the current context, we write $\flaggedn{}$ for a tracked
+If the tag is irrelevant in the current context, we write $\flaggedn{}$ for a tagged
 value.
 A tracked value originates from a source, and is preserved by value-preserving operations.
 The command $\defaultsink$ is a special marker for the dataflow sink.
@@ -103,17 +104,17 @@ refer the reader to the literature, where different SSA construction algorithms 
 described. Some even come with computer-verified correctness and minimality guarantees,
 we refer the reader to~\cite{verifiedssa}.
 
-The syntax for boolean and arithmetic expressions in SSA-dIMP is the same as in dIMP.
+The syntax for Boolean and arithmetic expressions in SSA-dIMP is the same as in dIMP.
 However, the command syntax changes.
-We now denote commands by $s$ (statement, or SSA-command) to highlight the differences
+We now denote commands by $s$ (short for statement, or SSA-command) to highlight the differences
 from the commands denoted by $c$ in dIMP.
 \begin{align*}
     s \Coloneqq &\:\skipcmd \mid \defaultstore \mid \defaultssaseq \mid \defaultssaif\\
     &\mid \defaultssawhile  \mid \defaultsink \\
     \philist \Coloneqq &\: \defaultphilistn\\
 \end{align*}
-At every point where $\varphi$ nodes can placed in the control flow graph
-of a dIMP program, the syntax of SSA-dIMP has an explicit list of $\varphi$ nodes.
+At every point where $\varphi$-nodes can placed in the control flow graph
+of a dIMP program, the syntax of SSA-dIMP has an explicit list of $\varphi$-nodes.
 
 \subsubsection*{The SSA Type System}
 A program in SSA-dIMP is only valid if it conforms to the SSA properties.
@@ -125,12 +126,15 @@ We define the join operator $\join$ on $\Tau$ by $\tint \join \tint = \tint$.
 Furthermore, we will use $\dunion$ to be the union of maps, 
 where we assert that the domains of the maps are disjoint.
 
+% TODO weird sentence!
 Then we proceed to show that these sets are enough to prove that the program is indeed in SSA form.
 The easiest way to get these sets is to run an SSA construction algorithm on a dIMP program.
 It is a gap in the provided proofs that we do not show that every dIMP program
 can be transformed in a valid SSA-dIMP program (especially, we omit showing that
-$\varphi$ nodes will be placed exactly at the places they are allowed in the syntax
+$\varphi$-nodes will be placed exactly at the places they are allowed in the syntax
 of SSA-dIMP).
+
+The type system has the following judgments:
 \\
 Judgement \fbox{$\typestep{\Gamma}{a}{\tint}$}:
 \begin{align*}
@@ -153,13 +157,13 @@ Judgement \fbox{$\typestmt{\Gamma}{b}$}:
     {\typestmt{\Gamma}{a_0 \leq a_1}}\qquad
     \trule{SSA-Neg}{\typestmt{\Gamma}{b}}
     {\typestmt{\Gamma}{\neg b}}\qquad
-    \trule{SSA-And}{\typestmt{\Gamma}{b_1}\qquad\typestmt{\Gamma}{b_2}}
-    {\typestmt{\Gamma}{b_1 \land b_2}}\\
+    \trule{SSA-And}{\typestmt{\Gamma}{b_0}\qquad\typestmt{\Gamma}{b_1}}
+    {\typestmt{\Gamma}{b_0 \land b_1}}\\
 \end{align*}
 Judgement \fbox{$\typestep{\Gamma;\Delta_0;\Delta_1}{\philist}{\Delta}$}:
 \begin{align*}
     &\trule{SSA-$\varphi$}{}{\typestep{\Gamma;\Delta_0;\Delta_1}{\defaultphilistn}{[X_1 \mapsto \type_1, \ldots, X_n \mapsto \type_n]}}\\
-    &\text{(if for $i \in \{1, \ldots, n\}: X_i \notin \dom\Gamma \land \type_i = (\Gamma \cup \Delta_0)(Y_i) \join (\Gamma \cup \Delta_1)(Z_i)
+    &\text{(if for $i \in \{1, \ldots, n\}: X_i \notin \dom\Gamma \land \type_i = (\Gamma \dunion \Delta_0)(Y_i) \join (\Gamma \dunion \Delta_1)(Z_i)
     \land \forall j \neq i: X_j \neq X_i$)}
 \end{align*}
 Note that this implies that this rule is only applicable if $Y_i$, $Z_i$ exist in the respective domains
@@ -170,27 +174,27 @@ Judgement \fbox{$\typestep{\Gamma}{s}{\Delta}$}:
     &\trule{SSA-Skip}{}{\typestep{\Gamma}{\skipcmd}{\emptyset}}\qquad
     \trule{SSA-Assign}{\typestep{\Gamma}{a}{\tint}}{\typestep{\Gamma}{\defaultstore}{[X \mapsto \tint]}} \text{($X \notin \dom\Gamma$)}\\
     &\trule{SSA-Seq}{\typestep{\Gamma}{s_0}{\Delta_0}\qquad
-    \typestep{\Gamma \cup \Delta_0}{s_1}{\Delta_1}}{\typestep{\Gamma}{\defaultssaseq}{\Delta_0 \cup \Delta_1}}\\
+    \typestep{\Gamma \dunion \Delta_0}{s_1}{\Delta_1}}{\typestep{\Gamma}{\defaultssaseq}{\Delta_0 \dunion \Delta_1}}\\
     &\trule{SSA-If}{\typestmt{\Gamma}{b}\qquad\typestep{\Gamma}{s_0}{\Delta_0}\qquad \typestep{\Gamma}{s_1}{\Delta_1}\qquad
     \typestep{\Gamma;\Delta_0;\Delta_1}{\philist}{\Delta}}
     {\typestep{\Gamma}{\defaultssaif}{\Delta}}\\
     &\trule{SSA-While}{\typestep{\Gamma;\emptyset;\Delta_1}{\philist}{\Delta}\qquad
-    \typestmt{\Gamma \cup \Delta}{b}\qquad\typestep{\Gamma \cup \Delta}{s_0}{\Delta_1}}
+    \typestmt{\Gamma \dunion \Delta}{b}\qquad\typestep{\Gamma \dunion \Delta}{s_0}{\Delta_1}}
     {\typestep{\Gamma}{\defaultssawhile}{\Delta}}\\
     &\trule{SSA-Sink}{\typestep{\Gamma}{a}{\tint}}{\typestep{\Gamma}{\sink{a}}{\emptyset}}\\
 \end{align*}
 
-Note that by this definition, the first argument of $\varphi$ nodes for \textbf{if} commands
+Note that by this definition, the first argument of $\varphi$-nodes for \textbf{if} commands
 corresponds to the variable after executing the \btrue{} branch, and the second argument to that
 of the variable after executing the \bfalse{} branch.
-For \textbf{while} commands, the first argument to the $\varphi$ node corresponds to the value
+For \textbf{while} commands, the first argument to the $\varphi$-node corresponds to the value
 before executing $s_0$ the first time, and the second argument corresponds to the value 
 after executing the loop body.
 The sets $\Gamma$ and $\Delta$ are natural outputs of an algorithm that converts a 
 dIMP program into SSA-dIMP form.
 They prove that a (not necessarily minimal) SSA form was indeed achieved.
 Inputs to the program are provided in the initially provided store, and $\Gamma$
-has to contain the list of variables accessed by the program without definition in the program.
+has to contain all variables accessed by the program that don't have a definition in the program.
 
 \subsubsection*{The Semantics of SSA-dIMP}
 Stores are now partial functions $\store : \Sigma \partialf \Loc$ to indicate that
@@ -203,18 +207,18 @@ justify this notation.
 
 The judgement for Booleans and arithmetic expressions does not change.
 As before, we use $\excstore{}$ to denote stores that represent an \exception{}
-state or a partial function, i.e.\ $\excstore{} \in (\Loc \partialf \StoreDomain) \cup \{\exception\}$
-For $\varphi$ nodes, we introduce two judgements --- one that evaluates all the variable definitions
+state or a partial function, i.e.\ $\excstore{} \in (\Loc \partialf \StoreDomain) \union \{\exception\}$
+For $\varphi$-nodes, we introduce two judgements --- one that evaluates all the variable definitions
 to the first argument, and one that evaluates them all to the second argument.
 Both judgements are provided with a filter $\filter \subseteq \dom\sigma$ that specifies which variables 
 from the outer store should be kept.
 The symbol $\store\restrict{\filter}$ denotes the restriction of the map $\store$
 to the domain $\filter$.
-In order to correctly model the execution of $\varphi$ nodes for \textbf{while} commands,
+In order to correctly model the execution of $\varphi$-nodes for \textbf{while} commands,
 a second judgement is set up.
-The regular command judgement only populates the variables defined by the $\varphi$ nodes
-and then defers to a special while-command-judgement that evaluates all loop executions,
-evaluating the $\varphi$ nodes with the store after the loop body execution.
+The regular command judgement only populates the variables defined by the $\varphi$-nodes
+and then defers to a special while-command judgement that evaluates all loop executions,
+evaluating the $\varphi$-nodes with the store after the loop body execution.
 \\
 Judgement \fbox{$\bigsteppl{\philist}{\filter}{\store}{\store'}$}:
 \begin{align*}
@@ -274,7 +278,6 @@ We show by example how the SSA construction works.
 We consider the dIMP program shown in ~\autoref{fig:dimp-example}.
 \begin{figure}[h]
     \begin{minted}[linenos]{pascal}
-        // loop counter
         I := X;
         Z := 1;
         while I > 0 do
@@ -324,8 +327,8 @@ We state that an SSA-dIMP program together with the SSA type derivation
 is in fact in SSA form --- each variable is defined only once.
 Furthermore, the structure of the bigstep derivation trees imply that 
 for every bigstep derivation, all variables are defined before they are used.
-% TODO check?
-Proofs are omitted, as we prove these theorems later in greater generality.
+Proofs are omitted.
+The first theorem is very easy to prove, and the second theorem is proved later in greater generality.
 
 \begin{theorem}
     \label{thm:ssa-gamma-delta-disjoint}
@@ -351,7 +354,7 @@ Proofs are omitted, as we prove these theorems later in greater generality.
     \begin{equation*}
         \initialstore{} \iff \forall X: \exists n: \store(X) = \clean[n]
     \end{equation*}
-    This means that in an initial store all values are flagged as being clean.
+    This means that in an initial store all values are tagged as being clean.
 \end{definition}
 
 \begin{definition}[Dataflow]
@@ -402,7 +405,7 @@ Proofs are omitted, as we prove these theorems later in greater generality.
 
 \subsection{A General Setting For Flow Analysis}
 \label{sec:df-theory}
-In this section, we extend the type system presented for SSA to be viable as a
+In this section, we refine the type system presented for SSA to be viable as a
 general-purpose constraint system.
 This constraint system can then be solved via fixed-point iteration.
 The system is designed in a way that it can be easily adapted to different analyses.
@@ -418,8 +421,8 @@ Thus, we generalize the definition of $\Gamma$ and $\Delta$ here.
 The previous definition can be recovered by setting $\lattice$ to be the one-point set.
 
 For dataflow analysis, we have $\lattice = \{\lclean, \ltracked, \lunknown\}$.
-Every variable encountered in the program is marked with a value in \lattice.
-Thus, it is either marked with $\lclean{}$ (the variable
+Every variable encountered in the program is typed with an annotated type from \lattice.
+Thus, it is either typed with $\lclean{}$ (the variable
 is clean, i.e.\ does not contain a value originating from a dataflow source), $\lunknown{}$
 (it is unknown whether the variable contains a value originating from a source) or $\ltracked{}$
 (the variable contains a tracked value from a dataflow source).
@@ -460,14 +463,14 @@ Judgement \fbox{$\typestmt{\Gamma}{b}$}:
     {\typestmt{\Gamma}{a_0 \leq a_1}}\qquad
     \trule{DF-Neg}{\typestmt{\Gamma}{b}}
     {\typestmt{\Gamma}{\neg b}}\qquad
-    \trule{DF-And}{\typestmt{\Gamma}{b_1}\qquad\typestmt{\Gamma}{b_2}}
-    {\typestmt{\Gamma}{b_1 \land b_2}}\\
+    \trule{DF-And}{\typestmt{\Gamma}{b_0}\qquad\typestmt{\Gamma}{b_1}}
+    {\typestmt{\Gamma}{b_0 \land b_1}}\\
 \end{align*}
 \\
 Judgement \fbox{$\typestep{\Gamma;\Delta_0;\Delta_1}{\philist}{\Delta}$}:
 \begin{align*}
     &\trule{DF-$\varphi$}{}{\typestep{\Gamma;\Delta_0;\Delta_1}{\defaultphilistn}{[X_1 \mapsto L_1, \ldots, X_n \mapsto L_n]}}\\
-    &\text{(if for $i \in \{1, \ldots, n\}: X_i \notin \dom\Gamma \land (\Gamma \dunion \Delta_0)(Y_i) \leq L_i \land (\Gamma \dunion \Delta_1)(Z_i) \leq L_i
+    &\text{(if for $i \in \{1, \ldots, n\} \exists L_i: X_i \notin \dom\Gamma \land (\Gamma \dunion \Delta_0)(Y_i) \leq L_i \land (\Gamma \dunion \Delta_1)(Z_i) \leq L_i
     \land \forall j \neq i: X_j \neq X_i$)}
 \end{align*}
 Note that this implies that this rule is only applicable if $Y_i$, $Z_i$ exist in the respective
@@ -506,6 +509,8 @@ Judgement \fbox{$\typestep{\Gamma}{s}{\Delta}$}:
 
 First, we justify why the semantics contains disjoint unions when updating stores.
 Then we prove some lemmas needed to establish the soundness of our dataflow analysis.
+We omit the easy proofs.
+
 \begin{theorem}
     \label{thm:gamma-delta-disjoint}
     If $\typestep{\Gamma}{s}{\Delta}$ holds, then $\dom\Gamma \cap \dom\Delta = \emptyset$.
@@ -632,7 +637,7 @@ Then we prove some lemmas needed to establish the soundness of our dataflow anal
         and $\matches{\sigma_w''}{\Delta_1}$.
         By~\autoref{thm:preservation-phi} we get that $\store''' = \store_w^0 \dunion \store_0'''$ and
         $\matches{\store_0'''}{\Delta}$.
-        With that we can apply the inner induction on $\E^2_w$ with $\D$ to get the result on $\sigma_w'$.
+        With that we can apply the inner IH on $\E^2_w$ with $\D$ to get the result on $\sigma_w'$.
     \end{claimproof}
     We finish the proof by applying the claim on $\E^2$ with $\D$.
 \end{proof}
@@ -768,7 +773,7 @@ In the next section, we will see an instantiation of this algorithm schema in QL
 
 First, define $\Gamma$ by
 \begin{align*}
-    \Gamma: &\Gamma_s \to \lattice\\
+    \Gamma: &\Gamma_\text{ssa} \to \lattice\\
     &X \mapsto \lclean
 \end{align*}
 Then, compute a finite map $\Delta$ and a derivation tree $\D$ 

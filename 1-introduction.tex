@@ -3,7 +3,7 @@
 \subsection{Static Analysis}
 Static analysis is the analysis of computer programs, while not executing the program.
 Usually, the static analysis has access to the source code of the analyzed program.
-Static analysis has several goals, among them are to support the programmer in finding (possible) mistakes and
+Static analysis has several goals, one of them is to support the programmer in finding (possible) mistakes and
 security issues in their programs.
 Furthermore, static analysis is also employed by compilers in order to optimize code.
 If for example a compiler can prove that the condition expression of an if statement is always false,
@@ -26,7 +26,7 @@ However, the license specifies that any usage has to either be academic research
 or that the analyzed codebase is released under an OSI-approved open-source license.
 Still, this was quite a step up from only having code that has been uploaded to
 GitHub analyzed.
-During this project, the CodeQL CLI utility was used under the academic research clause.
+During this project, the CodeQL CLI utility was used under the clause allowing academic research.
 
 Throughout the report, there are links to CodeQL analyses on open-source projects.
 These refer to a single analysis (called query in CodeQL lingo), as well as a specific result
@@ -41,6 +41,7 @@ Now we give a short overview of the CodeQL architecture, as well as where our
 project fits in. 
 The CodeQL tool is built upon the domain specific language QL\footnote{QL is an acronym for \emph{Query Language}}
 that enables declarative, logic-based programming.
+It is based on first-order predicate logic.
 Every analysis of a program is described as a query of a relational database built using 
 the program's source code. These queries are written in QL.
 
@@ -65,7 +66,9 @@ that signed integer overflow needs to be treated differently in Java than in C/C
 
 For each language, a set of \emph{libraries} assists in the development of queries.
 These libraries are implemented in QL.
-The libraries implement features such as taint tracking, dataflow analysis or control flow graphs.
+First, the libraries abstract away from the database view of the program source code,
+and provide an object-oriented representation of the program.
+Second, features such as taint tracking, dataflow analysis or control flow graphs is implemented in libraries.
 For every language supported by the CodeQL analyzers, developers usually re-implement all of these libraries from
 scratch, as sharing components across languages is quite difficult.
 The only exception is the dataflow library, which is separated into a language-agnostic and 
@@ -86,12 +89,11 @@ proprietary license\footnote{\url{https://github.com/github/codeql-cli-binaries}
 While the license is quite restrictive,
 usage of the CodeQL CLI utility for academic research is explicitly allowed.
 
-Our project outside the course scope contributes improvements to the dataflow library,
+Our project outside the course scope contributes a small improvement to the dataflow library,
 both the shared and the language-specific part. We only implemented the language-specific 
 functionality, and a GitHub employee provided stubs for C/C++ and C\#.
-The individual features are discussed in the next chapters.
-
-%For a detailed description of the QL language
+Furthermore, the theoretical framework laid out in this project aims to further the understanding
+of the dataflow algorithm employed by CodeQL.
 
 \subsection{Philosophy of Bug Finding}
 Using static analysis for bug finding is lacking in the theoretical foundation {---} 
@@ -117,7 +119,7 @@ However, its syntax is very much inspired by Java, so it might look weird to the
 experienced logic programmer at first.
 The paper~\cite{qlpaper} provides a thorough introduction to QL, gives a 
 formal syntax, semantics and a translation to ordinary Datalog.
-This subsection provides a short overview about the evaluation model that should
+Here we provide a short overview about the evaluation model that should
 enable the reader to understand this report.
 
 At the root of QL is the concept of a \emph{predicate}.
@@ -178,10 +180,11 @@ the programmer can not control how the query is executed.
 It is the sole task of the query engine to come up with and optimize a 
 query plan suitable for execution on the database.
 
-Another useful feature of QL is that it includes syntactic sugar to compute the reflexive-transitive
+A useful feature of QL is that it includes syntactic sugar to compute the reflexive-transitive
 and the transitive closure of binary predicates.
-For example, a predicate \texttt{getSucc} on control flow nodes gives the set of all reachable
-nodes by invoking \texttt{getSucc*}.
+For example, a predicate \texttt{getSucc} on control flow nodes that contains the 
+successor relationship can be turned into the set of all reachable
+nodes of that control flow node by invoking \texttt{getSucc*}.
 
 For the details of the object model, as well as more details of the evaluation, we refer
 the interested reader to~\cite{qlpaper}.
