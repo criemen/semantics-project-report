@@ -1,12 +1,23 @@
 % !TEX root = main.tex
 \begin{abstract}
-    This project describes how a modern static analysis tool detects dataflow paths.
-    We formalize the dataflow algorithm in a reduced language without support for procedure calls
-    or objects in order to highlight how the dataflow library used by CodeQL works.
-    We prove the soundness of the formalized algorithm with respect to a tracing semantics
-    we developed.
-    Then we describe the implementation of the algorithm in QL, as well as a small improvement
-    that was contributed in the course of this project.
-    %\lipsum[1-2][1-20]
+    This project describes how a modern static analyzer detects dataflow, i.e.\ data that 
+    comes from an untrusted source that flows to a sink.
+    It gives an introduction to CodeQL, a static analyzer developed by Github,
+    and their logic-programming language QL.
+    We formalize a specification of a dataflow algorithm analysing a reduced imperative language
+    without support for procedure calls or objects.
+    We then prove, using a tracing operational semantics, that any algorithm
+    conforming to this specification is sound.
+    Following that, we provide an implementation of a dataflow algorithm in QL.
+    This implementation is supported by a database schema and library for our toy language.
+    The implementation is based on the same principles as the dataflow algorithm used by
+    CodeQL when analysing Java code.
+    Namely, it works on an auxiliary datastructure, the dataflow graph.
+    We explain how the implementation can be used to get a certificate that 
+    a program does not exhibit dataflow.
+    To highlight how close QL code is to first-order predicate logic, we translate
+    the main parts of our implementation back to the usual logic syntax.
+    We end with describing a small improvement in the Java dataflow library
+    that was contributed as part of this project.
 \end{abstract}
 \tableofcontents
