@@ -592,5 +592,17 @@ If the list is empty, the program is safe and it is guaranteed by~\autoref{thm:s
 that the program has no dataflow.
 If the list is not empty, no assertion about the program correctness can be given.
 
-% TODO write about how to interpret the analysis results
-% a different opsemantics could also make the formal distinction
+The difference between $\ltracked$ and $\lunknown$ is not reflected in the theoretical framework,
+but it can be used to tailor the warnings given to the user.
+If a sink is marked with $\ltracked$, that sink will abort the program, if it is ever
+executed.
+A sink that is marked with $\lunknown$ may abort the program, depending on control flow.
+There is even the possibility that no control flow path exists at which the sink aborts 
+the program.
+Thus, the annotated types could be used to show sinks with $\ltracked$ with a higher
+priority than sinks with $\lunknown$.
+
+With a different operational semantics, this behaviour could be formalized, allowing us to
+formally make the distinction in the output of the algorithm as well.
+Currently, both $\ltracked$ and $\lunknown$ get mapped to POSSIBLE\_FLOW,
+as the algorithm definition does not take dead code into account.
