@@ -12,17 +12,18 @@ presentation and semantics of IMP.
 \subsection{Syntax of dIMP}
 We extend the syntax of IMP a bit
 and call the resulting language dIMP (for dataflow IMP):
-% TODO open up arithmetic+boolean definitions
 \begin{align*}
     n \in  \:       & \Z\\
     \flaggedn{} \in \: & \StoreDomain = \{\flagged{} \mid n \in \Z\}\\
     X \in  \:       & \Loc = \{x, y, z, sum, \ldots\}\\
-    a \Coloneqq \: &\literalint{} \mid X \mid a_0+a_1 \mid a_0-a_1 \mid a_0 \times a_1 \mid \defaultsource\\
+    a \Coloneqq \: &\literalint{} \mid X \mid \defaultsource \mid a_0+a_1 \mid \ldots\\
     t \Coloneqq \: & \btrue \mid \bfalse                                                \\
-    b \Coloneqq \: & t \mid a_0 = a_1 \mid a_0 \leq a_1 \mid \neg b_0 \mid b_0 \land b_1 \\
+    b \Coloneqq \: & t \mid a_0 = a_1 \mid \neg b_0 \mid b_0 \land b_1 \mid \ldots \\
     c \Coloneqq \: &\skipcmd \mid \defaultstore \mid \defaultseq \mid \defaultif \mid \defaultwhile \mid \defaultsink\\
     f \Coloneqq \: & \textbf{c} \mid \textbf{t}\\
 \end{align*}
+Exactly which arithmetic and Boolean expressions are available in the language
+is left unspecified, as it doesn't matter to the dataflow algorithm.
 Stores are denoted with $\store \in \Sigma = \Loc \to \StoreDomain$.
 Stores are function from locations to the set of tagged integer
 values.
@@ -124,16 +125,15 @@ To enforce that, we describe a simple type system.
 Every well-typed expression has type $\tint$, thus the set of all types is $\Tau = \{ \tint \}$.
 Let $\Gamma, \Delta: \Loc \partialf \Tau$ be partial maps with finite domain.
 These are the type contexts.
-% throw out join
-% possible boolean type?
-% sets gamma and delta
-We define the join operator $\join$ on $\Tau$ by $\tint \join \tint = \tint$.
-Furthermore, we will use $\dunion$ to be the union of maps, 
+% TODO throw out join
+% TODO possible boolean type?
+% TODO sets gamma and delta
+We will use $\dunion$ to be the union of maps, 
 where we assert that the domains of the maps are disjoint.
 
 % TODO weird sentence!
-Then we proceed to show that these sets are enough to prove that the program is indeed in SSA form.
-The easiest way to get these sets is to run an SSA construction algorithm on a dIMP program.
+Then we proceed to show that these finite maps are enough to prove that the program is indeed in SSA form.
+The easiest way to get these finite maps is to run an SSA construction algorithm on a dIMP program.
 It is a gap in the provided proofs that we do not show that every dIMP program
 can be transformed in a valid SSA-dIMP program (especially, we omit showing that
 $\varphi$-nodes will be placed exactly at the places they are allowed in the syntax
@@ -145,30 +145,26 @@ Judgement \fbox{$\typestep{\Gamma}{a}{\tint}$}:
 \begin{align*}
     &\trule{SSA-Num}{}{\typestep{\Gamma}{\overline{n}}{\tint}}\qquad
     \trule{SSA-Loc}{}{\typestep{\Gamma}{X}{\Gamma(X)}}\\
+    &\trule{SSA-Source}{\typestep{\Gamma}{a}{\tint}}{\typestep{\Gamma}{\source{a}}{\tint}}\\
     &\trule{SSA-Plus}{\typestep{\Gamma}{a_0}{\tint}\qquad\typestep{\Gamma}{a_1}{\tint}}
-    {\typestep{\Gamma}{a_0+a_1}{\tint}}\qquad
-    \trule{SSA-Minus}{\typestep{\Gamma}{a_0}{\tint}\qquad\typestep{\Gamma}{a_1}{\tint}}
-    {\typestep{\Gamma}{a_0-a_1}{\tint}}\\
-    &\trule{SSA-Times}{\typestep{\Gamma}{a_0}{\tint}\qquad\typestep{\Gamma}{a_1}{\tint}}
-    {\typestep{\Gamma}{a_0 \times a_1}{\tint}}\qquad
-    \trule{SSA-Source}{\typestep{\Gamma}{a}{\tint}}{\typestep{\Gamma}{\source{a}}{\tint}}\\
+    {\typestep{\Gamma}{a_0+a_1}{\tint}}\\
+    &\ldots
 \end{align*}
 Judgement \fbox{$\typestmt{\Gamma}{b}$}:
 \begin{align*}
     &\trule{SSA-Bool}{}{\typestmt{\Gamma}{t}}\qquad
     \trule{SSA-Eq}{\typestep{\Gamma}{a_0}{\tint}\qquad \typestep{\Gamma}{a_1}{\tint}}
     {\typestmt{\Gamma}{a_0 = a_1}}\\
-    &\trule{SSA-Leq}{\typestep{\Gamma}{a_0}{\tint}\qquad \typestep{\Gamma}{a_1}{\tint}}
-    {\typestmt{\Gamma}{a_0 \leq a_1}}\qquad
-    \trule{SSA-Neg}{\typestmt{\Gamma}{b}}
+    &\trule{SSA-Neg}{\typestmt{\Gamma}{b}}
     {\typestmt{\Gamma}{\neg b}}\qquad
     \trule{SSA-And}{\typestmt{\Gamma}{b_0}\qquad\typestmt{\Gamma}{b_1}}
     {\typestmt{\Gamma}{b_0 \land b_1}}\\
+    &\ldots
 \end{align*}
 Judgement \fbox{$\typestep{\Gamma;\Delta_0;\Delta_1}{\philist}{\Delta}$}:
 \begin{align*}
     &\trule{SSA-$\varphi$}{}{\typestep{\Gamma;\Delta_0;\Delta_1}{\defaultphilistn}{[X_1 \mapsto \type_1, \ldots, X_n \mapsto \type_n]}}\\
-    &\text{(if for $i \in \{1, \ldots, n\}: X_i \notin \dom\Gamma \land \type_i = (\Gamma \dunion \Delta_0)(Y_i) \join (\Gamma \dunion \Delta_1)(Z_i)
+    &\text{(if for $i \in \{1, \ldots, n\}: X_i \notin \dom\Gamma \land \type_i = (\Gamma \dunion \Delta_0)(Y_i) = (\Gamma \dunion \Delta_1)(Z_i)
     \land \forall j \neq i: X_j \neq X_i$)}
 \end{align*}
 Note that this implies that this rule is only applicable if $Y_i$, $Z_i$ exist in the respective domains
@@ -195,28 +191,32 @@ of the variable after executing the \bfalse{} branch.
 For \textbf{while} commands, the first argument to the $\varphi$-node corresponds to the value
 before executing $s_0$ the first time, and the second argument corresponds to the value 
 after executing the loop body.
-The sets $\Gamma$ and $\Delta$ are natural outputs of an algorithm that converts a 
+The finite maps $\Gamma$ and $\Delta$ are natural outputs of an algorithm that converts a 
 dIMP program into SSA-dIMP form.
 They prove that a (not necessarily minimal) SSA form was indeed achieved.
 Inputs to the program are provided in the initially provided store, and $\Gamma$
-has to contain all variables accessed by the program that don't have a definition in the program.
+has to contain types for all variables accessed by the program that don't
+have a definition in the program.
 
 \subsubsection*{The Semantics of SSA-dIMP}
 Stores are now partial functions $\store : \Sigma \partialf \Loc$ to indicate that
 variables have to be defined before they can be read.
-When updating a store, we now use the syntax 
+When updating a store, we use the syntax 
 $\store \dunion [X \mapsto \flagged{}]$ to indicate that the store $\store$ does not
 contain the variable $X$.
 \autoref{thm:ssa-gamma-delta-disjoint} in combination with ~\autoref{thm:ssa-progress}
 justify this notation.
 
-% TODO change, include semantic rules
-The judgement for Booleans and arithmetic expressions does not change.
-% sigma hat is not defined before, say more about the notion of abort, not representing the execution-semantics
-% stress that this is a pseudo-semantics/tracing semantics, not trying to mirror that the values are tracked at runtime
-% perl taint checking
-As before, we use $\excstore{}$ to denote stores that represent an \exception{}
+Let $\excstore{}$ denote stores that represent an \exception{}
 state or a partial function, i.e.\ $\excstore{} \in (\Loc \partialf \StoreDomain) \union \{\exception\}$
+The state $\exception$ indicates that the program was aborted due to a policy violation.
+This semantics is not necessarily meant to mirror what actually happens at runtime, i.e.\ 
+in Java values don't have a flag attached whether a variable is tracked or not.
+However, this does not mean that the semantics has only theoretical value - for example 
+Perl has a taint-checking feature, where user input is marked at runtime as tainted,
+and if unchecked user input ends up in sinks such as SQL statements, the program aborts.
+This is very similar to the semantics given here.
+
 For $\varphi$-nodes, we introduce two judgements --- one that evaluates all the variable definitions
 to the first argument, and one that evaluates them all to the second argument.
 Both judgements are provided with a filter $\filter \subseteq \dom\sigma$ that specifies which variables 
@@ -228,6 +228,19 @@ a second judgement is set up.
 The regular command judgement only populates the variables defined by the $\varphi$-nodes
 and then defers to a special while-command judgement that evaluates all loop executions,
 evaluating the $\varphi$-nodes with the store after the loop body execution.
+\\
+Judgment \fbox{$\bigstep{a}{\sigma}{\flaggedn{}}$}:
+\begin{align*}
+    &\bsrule{EA-Num}{}{\bigstep{\literalint}{\store}{\clean}} \qquad
+    \bsrule{EA-Loc}{}{\bigstep{X}{\store}{\store(X)}}\\
+    &\bsrule{EA-Source}{\bigstep{a}{\store}{\flagged}}
+    {\bigstep{\source{a}}{\store}{\tracked}}\\
+    &\bsrule{EA-Plus}
+    {\bigstep{a_0}{\store}{\flagged[n_0][0]}
+    \qquad \bigstep{a_1}{\store}{\flagged[n_1][1]}}
+    {\bigstep{a_0+a_1}{\store}{\clean[(n_0+n_1)]}}\\
+    &\ldots\\
+\end{align*}
 \\
 Judgement \fbox{$\bigsteppl{\philist}{\filter}{\store}{\store'}$}:
 \begin{align*}
@@ -281,6 +294,9 @@ Judgement \fbox{$\bigstep{s}{\store}{\excstore{}}$}:
     \bsrule{EC-SinkAbrt}{\bigstep{a}{\store}{\tracked{}}}
     {\bigstep{\defaultsink}{\store}{\exception}}\\
 \end{align*}
+
+The judgement operations for Boolean expressions are modified to ignore the tracked-flag and work
+just as in IMP. This is analogous to how $\textsc{EA-Plus}$ etc.\ work.
 
 \subsubsection*{From dIMP to SSA-dIMP}
 We show by example how the SSA construction works.
@@ -387,11 +403,9 @@ The first theorem is very easy to prove, and the second theorem is proved later 
     have dataflow it holds that $\A(s, \Gamma, \Delta) = \text{POSSIBLE\_FLOW}$.
 \end{definition}
 
-% TODO check again, probably wrong
 \begin{definition}[Completeness]
-    A dataflow algorithm is \emph{complete} if $\A(s, \Gamma, \Delta) = \text{NO\_FLOW}$
-    implies that no store $\sigma$ with $\initialstore$ exists such that
-    $(s, \store, \Gamma, \Delta)$ has dataflow.
+    A dataflow algorithm is \emph{complete} if for all tuples $(s, \store, \Gamma, \Delta)$ with $\initialstore$ that
+    do not have dataflow it holds that $\A(s, \Gamma, \Delta) = \text{NO\_FLOW}$.
 \end{definition}
 
 \begin{definition}[False Positive]
@@ -422,14 +436,7 @@ The system is designed in a way that it can be easily adapted to different analy
 We instantiate this system to determine if programs have dataflow.
 
 Let $\lattice$ be a poset.
-% TODO remove join, also adjust text later referencing it
-Let $\join: \lattice \times \lattice \partialf \lattice$ be the (partially defined)
-join operator on the poset.
-We require that its domain is maximal, i.e. if $L_1, L_2 \in \lattice$ have a least upper
-bound, it is $L_1 \join L_2$.
 Let $\Gamma, \Delta: \Loc \partialf \lattice$ with finite domain.
-Thus, we generalize the definition of $\Gamma$ and $\Delta$ here.
-The previous definition can be recovered by setting $\lattice$ to be the one-point set.
 
 For dataflow analysis, we have $\lattice = \{\lclean, \ltracked, \lunknown\}$.
 Every variable encountered in the program is typed with an annotated type from \lattice.
@@ -437,8 +444,7 @@ Thus, it is either typed with $\lclean{}$ (the variable
 is clean, i.e.\ does not contain a value originating from a dataflow source), $\lunknown{}$
 (it is unknown whether the variable contains a value originating from a source) or $\ltracked{}$
 (the variable contains a tracked value from a dataflow source).
-We define the following poset structure, where the join operator is defined on the whole
-poset:
+We define the following poset structure:
 \begin{figure}[h]
     \centering
     \begin{tikzpicture}
