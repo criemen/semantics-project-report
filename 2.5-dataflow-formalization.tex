@@ -12,6 +12,7 @@ presentation and semantics of IMP.
 \subsection{Syntax of dIMP}
 We extend the syntax of IMP a bit
 and call the resulting language dIMP (for dataflow IMP):
+% TODO open up arithmetic+boolean definitions
 \begin{align*}
     n \in  \:       & \Z\\
     \flaggedn{} \in \: & \StoreDomain = \{\flagged{} \mid n \in \Z\}\\
@@ -117,11 +118,15 @@ At every point where $\varphi$-nodes can placed in the control flow graph
 of a dIMP program, the syntax of SSA-dIMP has an explicit list of $\varphi$-nodes.
 
 \subsubsection*{The SSA Type System}
+% add more about gamma and delta up-front, what they mean
 A program in SSA-dIMP is only valid if it conforms to the SSA properties.
 To enforce that, we describe a simple type system.
 Every well-typed expression has type $\tint$, thus the set of all types is $\Tau = \{ \tint \}$.
 Let $\Gamma, \Delta: \Loc \partialf \Tau$ be partial maps with finite domain.
 These are the type contexts.
+% throw out join
+% possible boolean type?
+% sets gamma and delta
 We define the join operator $\join$ on $\Tau$ by $\tint \join \tint = \tint$.
 Furthermore, we will use $\dunion$ to be the union of maps, 
 where we assert that the domains of the maps are disjoint.
@@ -205,7 +210,11 @@ contain the variable $X$.
 \autoref{thm:ssa-gamma-delta-disjoint} in combination with ~\autoref{thm:ssa-progress}
 justify this notation.
 
+% TODO change, include semantic rules
 The judgement for Booleans and arithmetic expressions does not change.
+% sigma hat is not defined before, say more about the notion of abort, not representing the execution-semantics
+% stress that this is a pseudo-semantics/tracing semantics, not trying to mirror that the values are tracked at runtime
+% perl taint checking
 As before, we use $\excstore{}$ to denote stores that represent an \exception{}
 state or a partial function, i.e.\ $\excstore{} \in (\Loc \partialf \StoreDomain) \union \{\exception\}$
 For $\varphi$-nodes, we introduce two judgements --- one that evaluates all the variable definitions
@@ -378,6 +387,7 @@ The first theorem is very easy to prove, and the second theorem is proved later 
     have dataflow it holds that $\A(s, \Gamma, \Delta) = \text{POSSIBLE\_FLOW}$.
 \end{definition}
 
+% TODO check again, probably wrong
 \begin{definition}[Completeness]
     A dataflow algorithm is \emph{complete} if $\A(s, \Gamma, \Delta) = \text{NO\_FLOW}$
     implies that no store $\sigma$ with $\initialstore$ exists such that
@@ -412,6 +422,7 @@ The system is designed in a way that it can be easily adapted to different analy
 We instantiate this system to determine if programs have dataflow.
 
 Let $\lattice$ be a poset.
+% TODO remove join, also adjust text later referencing it
 Let $\join: \lattice \times \lattice \partialf \lattice$ be the (partially defined)
 join operator on the poset.
 We require that its domain is maximal, i.e. if $L_1, L_2 \in \lattice$ have a least upper
@@ -467,6 +478,7 @@ Judgement \fbox{$\typestmt{\Gamma}{b}$}:
     {\typestmt{\Gamma}{b_0 \land b_1}}\\
 \end{align*}
 \\
+% TODO use square leq instead of leq
 Judgement \fbox{$\typestep{\Gamma;\Delta_0;\Delta_1}{\philist}{\Delta}$}:
 \begin{align*}
     &\trule{DF-$\varphi$}{}{\typestep{\Gamma;\Delta_0;\Delta_1}{\defaultphilistn}{[X_1 \mapsto L_1, \ldots, X_n \mapsto L_n]}}\\
@@ -491,6 +503,8 @@ Judgement \fbox{$\typestep{\Gamma}{s}{\Delta}$}:
     &\trule{DF-Sink}{\typestep{\Gamma}{a}{L}}{\typestep{\Gamma}{\sink{a}}{[]}}\\
 \end{align*}
 
+% pull out gamma as concretization function, maps lattice points to subsets
+% FOLLOWING abstr intr, coceau+coceau reference
 \begin{definition}[Store-Matching]
     Let $\gamma:\lattice \to \P(\StoreDomain)$ by defined by
     \begin{align*}
@@ -522,6 +536,8 @@ We omit the easy proofs.
     If $\typestep{\Gamma}{a}{L}$ and $\matches{\store}{\Gamma}$, then $\flaggedn{} \in \gamma(L)$.
 \end{lemma}
 
+% delete preservation-ish
+% add note about preservation
 \begin{lemma}[Preservation-ish $\Phi$]
     \label{thm:preservation-phi}
     Let $\bigsteppl{\Phi}{\Theta}{\sigma''}{\sigma'}$ (or $\bigsteppr{\Phi}{\Theta}{\sigma''}{\sigma'}$),
@@ -644,6 +660,7 @@ We omit the easy proofs.
 
 
 We then have the following (general) soundness property of the dataflow analysis:
+% in a typing derivation an occurence of a sink is safe, if it is typed with int_c
 \begin{definition}[Safe Sink]
     Let $s, \Gamma$ be such that $s = \defaultsink$ and $\typestep{\Gamma}{s}{\Delta}$ (by $\D$).
     The sink invocation $s$ is \emph{safe}, if the derivation $\D$ has the shape
@@ -653,13 +670,14 @@ We then have the following (general) soundness property of the dataflow analysis
     with $L = \lclean$.
 \end{definition}
 
+% promote to theorem
 \begin{lemma}
     \label{lem:df-soundness}
     Let $s$ with $\typestep{\Gamma_{ssa}}{s}{\Delta_{ssa}}$ be a program in SSA form and let $\store$ be a store
     with $\dom\store = \Gamma_{ssa}$ and $\matches{\store}{\Gamma}$.
     Let $\E$ be the bigstep derivation of $\bigstep{s}{\store}{\excstore{}'}$
     and $\typestep{\Gamma}{s}{\Delta}$ (by $\D$).
-    Assume that all sinks in $\E$ (with $\D$) are safe.
+    Assume that all sinks in $\D$ are safe.
     Then $\excstore{}' \neq \exception$.
 \end{lemma}
 \begin{proof}
@@ -674,7 +692,7 @@ We then have the following (general) soundness property of the dataflow analysis
         {\typestep{\Gamma}{\sink{a}}{\emptyset}}
     \end{align*}
     However, because all sinks are safe, we have $L = \lclean$.
-    Furthermore, as $\store : \Gamma$ this is a contradiction,
+    Furthermore, as $\store : \Gamma$ this is a contradiction to ~\autoref{lem:gamma-arithm},
     so this case cannot happen.\\
     \textbf{Case 2:}
     \begin{align*}
@@ -746,6 +764,8 @@ We then have the following (general) soundness property of the dataflow analysis
     We apply the claim on $\E_0$ with $\D_0$ and $\D_1$.
 \end{proof}
 
+% assume a gamma, then require that the store matches the gamma
+% maybe corollary: if something is well-typed with clean gamma and store matches, then no crash
 \begin{theorem}[Soundness of the DF rules]
     \label{thm:soundness-df}
     Let $(s, \Gamma_{ssa}, \Delta_{ssa})$ be a program in SSA form and let $\store$ be a store
@@ -772,8 +792,9 @@ As soon as an algorithm satisfies this schema, it is sound.
 In the next section, we will see an instantiation of this algorithm schema in QL.
 
 First, define $\Gamma$ by
+% old set gamma(X)=\lclean for all x in \dom\gamma_ssa
 \begin{align*}
-    \Gamma: &\Gamma_\text{ssa} \to \lattice\\
+    \Gamma: &\dom\Gamma_\text{ssa} \to \lattice\\
     &X \mapsto \lclean
 \end{align*}
 Then, compute a finite map $\Delta$ and a derivation tree $\D$ 
@@ -791,3 +812,7 @@ In the absence of these derivations, output \text{NO\_FLOW}.
 \begin{corollary}
     The algorithm schema $\A(s, \Gamma_\text{ssa}, \Delta_\text{ssa})$ describes a sound dataflow algorithm.
 \end{corollary}
+
+% TODO discuss unknown versus tracked
+% move it from 3.4 to here
+% also, different op-semantics this could be expressed

@@ -98,6 +98,8 @@ The node set of the dataflow graph contains all AST nodes of the following form:
     \item all $\varphi$-nodes
 \end{itemize}
 
+% tagged with an annotated type
+% make sure annotated type is used consistently
 All of these nodes then get tagged in step 2 with a label.
 For the expressions, this directly corresponds to the type in the refined type system
 as presented in~\autoref{sec:df-theory}.
@@ -206,7 +208,7 @@ of one variable are different nodes in the dataflow graph.
 \newcommand{\clunknown}{:\ {\color{red}$\lunknown$}}
 
 As second step, the algorithm computes a labelling of the nodes of the dataflow graph.
-Possible labels are \labclean{}, \labtracked{} and \labunknown{}.
+Possible labels are \labclean{} and \labtracked{}.
 This labelling can be used to easily determine if a program is safe to execute or not.
 Furthermore, this labelling can be used to construct a typing derivation (by the DF-rules)
 of the program.
@@ -258,7 +260,7 @@ that correctly describes the node.
 If a node is marked with $\{\labclean\}$, the type becomes $\lclean$,
 and if a node is marked with $\{\labtracked\}$, the type becomes $\ltracked$.
 
-If a node is marked with $\{\lclean, \ltracked\}$ it means that different
+If a node is marked with $\{\labclean, \labtracked\}$ it means that different
 program execution paths result in a different tracked-markings for that node.
 Thus, the node is assigned the type $\lunknown$.
 This is in line with the side-condition of the rule \textsc{DF-$\varphi$}.
@@ -282,6 +284,7 @@ We have included the annotated dataflow graph here at several stages of the algo
      ~\autoref{fig:label-graph-3}
 \end{enumerate}
 
+%TODO add red empty set to all nodes
 \begin{figure}[h]
     \begin{tikzpicture}[roundnode/.style={rectangle,rounded corners=1ex,draw=black!100,thick},->,thick]
         \node[roundnode] (storez0) at(0, 1) {$\storecmd{Z0}{1}$ \setclean};
@@ -438,6 +441,7 @@ graph (according to the rules described above).
     &)
 \end{align*}
 
+% labunknown here??
 \begin{align*}
     \texttt{nodeLabel}(\n, \lab) :\iff &\texttt{nodeLabelCand}(\n, \labclean) \land \\
     &\texttt{nodeLabelCand}(\n, \labtracked) \land \lab = \labunknown \\
@@ -472,7 +476,7 @@ type contexts keep track of the refined types.
 The initial map $\Gamma$ is given by mapping all variables that are defined in 
 the initial store to $\lclean$.
 
-The $\Delta$ maps can be read of the type-annotated dataflow graph:
+The $\Delta$ maps can be read off the type-annotated dataflow graph:
 Only assign statements and invocations of the rule \textsc{DF-$\varphi$}
 have non-empty $\Delta$ maps to begin with.
 For assign statements, the assigned-to variable gets the type of the assign statement 
@@ -554,6 +558,9 @@ Thus, it can safely skip the entire part of the rules that deal with scoping.
 %or another $\varphi$-node).
 
 \subsubsection*{Simplification of the Algorithm}
+% label set empty, or label set track, empty set gets mapped to clean, tracked to unknown
+% we could still use the same lattice for the theory
+% label is now tracked
 In practice, we can optimize the algorithm even more.
 This is done by reducing the lattice and only keeping $\lclean$ and $\lunknown$.
 Then, we do not need an explicit node label anymore, a predicate can now
@@ -600,6 +607,7 @@ If the list is empty, the program is safe and it is guaranteed by~\autoref{thm:s
 that the program has no dataflow.
 If the list is not empty, no assertion about the program correctness can be given.
 
+% TODO make this more precise, only for soundness theorem
 The difference between $\ltracked$ and $\lunknown$ is not reflected in the theoretical framework,
 but it can be used to tailor the warnings given to the user.
 If a sink is marked with $\ltracked$, that sink will abort the program, if it is ever

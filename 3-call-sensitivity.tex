@@ -1,5 +1,7 @@
 % !TEX root = main.tex
 \section{Call Sensitivity}
+% see if this can be tied a bit more stronger to the theory, might be selling it a bit short
+% LOC of the DF library, used on large codebases
 \label{sec:call-sens}
 \subsection{Motivation}
 A common pattern used by software developers is to 
@@ -197,3 +199,6 @@ Only the predicate \texttt{isUnreachableInCall} would need to be modified
 to also detects unreachable basic blocks in the presence of enum constant arguments.
 Thus, adding support for enum constants is a software engineering effort
 with no significant academic interest.
+
+% TODO reflections about path-sensitivity
+% maybe doing theory first would have helped with the practical part
