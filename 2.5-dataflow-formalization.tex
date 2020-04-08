@@ -119,15 +119,16 @@ At every point where $\varphi$-nodes can placed in the control flow graph
 of a dIMP program, the syntax of SSA-dIMP has an explicit list of $\varphi$-nodes.
 
 \subsubsection*{The SSA Type System}
-% add more about gamma and delta up-front, what they mean
 A program in SSA-dIMP is only valid if it conforms to the SSA properties.
 To enforce that, we describe a simple type system.
 Every well-typed expression has type $\tint$, thus the set of all types is $\Tau = \{ \tint \}$.
 Let $\Gamma, \Delta: \Loc \partialf \Tau$ be partial maps with finite domain.
 These are the type contexts.
-% TODO throw out join
+$\Gamma$ keeps tracks of the type of the variables defined in the store before a 
+statement is executed, and $\Delta$ keeps track of the types of the 
+newly defined variables while executing that statement.
+
 % TODO possible boolean type?
-% TODO sets gamma and delta
 We will use $\dunion$ to be the union of maps, 
 where we assert that the domains of the maps are disjoint.
 
@@ -369,7 +370,7 @@ The first theorem is very easy to prove, and the second theorem is proved later 
 
 \subsection{Definition of Dataflow}
 \begin{definition}[Program]
-    A \emph{program} in SSA-dIMP is a command $s$ with sets $\Gamma, \Delta$ 
+    A \emph{program} in SSA-dIMP is a command $s$ with finite maps $\Gamma, \Delta$ 
     with $\typestep{\Gamma}{s}{\Delta}$.
     Complex programs are expressed by using the recursive nature of the definition of statements.
 \end{definition}
@@ -484,11 +485,10 @@ Judgement \fbox{$\typestmt{\Gamma}{b}$}:
     {\typestmt{\Gamma}{b_0 \land b_1}}\\
 \end{align*}
 \\
-% TODO use square leq instead of leq
 Judgement \fbox{$\typestep{\Gamma;\Delta_0;\Delta_1}{\philist}{\Delta}$}:
 \begin{align*}
     &\trule{DF-$\varphi$}{}{\typestep{\Gamma;\Delta_0;\Delta_1}{\defaultphilistn}{[X_1 \mapsto L_1, \ldots, X_n \mapsto L_n]}}\\
-    &\text{(if for $i \in \{1, \ldots, n\} \exists L_i: X_i \notin \dom\Gamma \land (\Gamma \dunion \Delta_0)(Y_i) \leq L_i \land (\Gamma \dunion \Delta_1)(Z_i) \leq L_i
+    &\text{(if for $i \in \{1, \ldots, n\} \exists L_i: X_i \notin \dom\Gamma \land (\Gamma \dunion \Delta_0)(Y_i) \sqsubseteq L_i \land (\Gamma \dunion \Delta_1)(Z_i) \sqsubseteq L_i
     \land \forall j \neq i: X_j \neq X_i$)}
 \end{align*}
 Note that this implies that this rule is only applicable if $Y_i$, $Z_i$ exist in the respective
@@ -509,7 +509,7 @@ Judgement \fbox{$\typestep{\Gamma}{s}{\Delta}$}:
     &\trule{DF-Sink}{\typestep{\Gamma}{a}{L}}{\typestep{\Gamma}{\sink{a}}{[]}}\\
 \end{align*}
 
-% pull out gamma as concretization function, maps lattice points to subsets
+% TODO pull out gamma as concretization function, maps lattice points to subsets
 % FOLLOWING abstr intr, coceau+coceau reference
 \begin{definition}[Store-Matching]
     Let $\gamma:\lattice \to \P(\StoreDomain)$ by defined by
@@ -542,9 +542,10 @@ We omit the easy proofs.
     If $\typestep{\Gamma}{a}{L}$ and $\matches{\store}{\Gamma}$, then $\flaggedn{} \in \gamma(L)$.
 \end{lemma}
 
-% delete preservation-ish
-% add note about preservation
-\begin{lemma}[Preservation-ish $\Phi$]
+The following lemma and theorem are very similar to the classic preservation lemma
+used to prove the soundness of type systems.
+
+\begin{lemma}
     \label{thm:preservation-phi}
     Let $\bigsteppl{\Phi}{\Theta}{\sigma''}{\sigma'}$ (or $\bigsteppr{\Phi}{\Theta}{\sigma''}{\sigma'}$),
     such that $\store'' = \store \dunion \store_0''\dunion \store{\_}$, $\matches{\store}{\Gamma}$, 
@@ -554,7 +555,7 @@ We omit the easy proofs.
     and $\matches{\store_0}{\Delta}$.
 \end{lemma}
 
-\begin{theorem}[Preservation-ish]
+\begin{theorem}
     \label{thm:preservation}
     Suppose $\bigstep{s}{\store}{\store'}$ by $\E$, $\matches{\store}{\Gamma}$,
     and let $\typestep{\Gamma}{s}{\Delta}$ by $\D$ and the DF rules.
@@ -665,27 +666,21 @@ We omit the easy proofs.
 \end{proof}
 
 
-We then have the following (general) soundness property of the dataflow analysis:
-% in a typing derivation an occurence of a sink is safe, if it is typed with int_c
 \begin{definition}[Safe Sink]
-    Let $s, \Gamma$ be such that $s = \defaultsink$ and $\typestep{\Gamma}{s}{\Delta}$ (by $\D$).
-    The sink invocation $s$ is \emph{safe}, if the derivation $\D$ has the shape
-    \begin{align*}
-        \D = \trule{DF-Sink}{\typestep{\Gamma}{a}{L}}{\typestep{\Gamma}{\defaultsink}{\emptyset}}
-    \end{align*}
-    with $L = \lclean$.
+    Let $s, \Gamma, \Delta$ be such that $\typestep{\Gamma}{s}{\Delta}$ (by $\D$).
+    A sink in $\D$ is \emph{safe}, if the type of its argument is $\lclean$.
 \end{definition}
 
-% promote to theorem
-\begin{lemma}
-    \label{lem:df-soundness}
-    Let $s$ with $\typestep{\Gamma_{ssa}}{s}{\Delta_{ssa}}$ be a program in SSA form and let $\store$ be a store
-    with $\dom\store = \Gamma_{ssa}$ and $\matches{\store}{\Gamma}$.
+We then have the following (general) soundness property of the dataflow analysis:
+\begin{theorem}[Soundness of the DF rules]
+    \label{thm:df-soundness}
+    Let $s$ with $\typestep{\Gamma_\text{ssa}}{s}{\Delta_\text{ssa}}$ be a program in SSA form and let $\store$ be a store
+    with $\dom\store = \dom\Gamma_\text{ssa}$ and $\matches{\store}{\Gamma}$.
     Let $\E$ be the bigstep derivation of $\bigstep{s}{\store}{\excstore{}'}$
     and $\typestep{\Gamma}{s}{\Delta}$ (by $\D$).
     Assume that all sinks in $\D$ are safe.
     Then $\excstore{}' \neq \exception$.
-\end{lemma}
+\end{theorem}
 \begin{proof}
     Proof by induction over the derivation $\E$.
     The cases \textsc{EC-Skip}, \textsc{EC-Sink}, \textsc{EC-Assign}, \textsc{EC-IfT} and \textsc{EC-IfF}
@@ -770,39 +765,23 @@ We then have the following (general) soundness property of the dataflow analysis
     We apply the claim on $\E_0$ with $\D_0$ and $\D_1$.
 \end{proof}
 
-% assume a gamma, then require that the store matches the gamma
-% maybe corollary: if something is well-typed with clean gamma and store matches, then no crash
-\begin{theorem}[Soundness of the DF rules]
-    \label{thm:soundness-df}
-    Let $(s, \Gamma_{ssa}, \Delta_{ssa})$ be a program in SSA form and let $\store$ be a store
-    with $\dom\store = \Gamma_{ssa}$.
-    Let $\E$ be the bigstep derivation of $\bigstep{s}{\store}{\excstore{}'}$.
-    Furthermore, let $\Gamma: \Gamma_{ssa} \partialf \lattice$ be defined by
-    \begin{align*}
-        \Gamma(X) \mapsto \begin{cases}
-            \lclean & \text{if $\exists n \in \Z: \store(X) = \clean$}\\
-            \ltracked & \text{if $\exists n \in \Z: \store(X) = \tracked{}$}\\
-        \end{cases}
-    \end{align*}
+\begin{corollary}
+    \label{cor:soundness-df}
+    Let $(s, \Gamma_{ssa}, \Delta_{ssa})$ be a program in SSA form.
+    Define $\Gamma: \dom\Gamma_{ssa} \partialf \lattice$ by setting
+    $\Gamma(X) = \lclean$.
+    Let $\store : \Gamma$, $\E$ be the bigstep derivation of 
+    $\bigstep{s}{\store}{\excstore{}'}$
     and let $\typestep{\Gamma}{s}{\Delta}$ (by $\D$).
     If all sinks in $\D$ are safe, then $\excstore{}' \neq \exception$.
-\end{theorem}
-\begin{proof}
-    We have that $\matches{\store}{\Gamma}$ by construction.
-    Thus, we can apply~\autoref{lem:df-soundness} to prove the theorem.
-\end{proof}
+\end{corollary}
 
 We now describe a sound dataflow algorithm schema $\A(s, \Gamma_\text{ssa}, \Delta_\text{ssa})$.
 This algorithm schema can be seen as a general specification for sound dataflow algorithms.
 As soon as an algorithm satisfies this schema, it is sound.
 In the next section, we will see an instantiation of this algorithm schema in QL.
 
-First, define $\Gamma$ by
-% old set gamma(X)=\lclean for all x in \dom\gamma_ssa
-\begin{align*}
-    \Gamma: &\dom\Gamma_\text{ssa} \to \lattice\\
-    &X \mapsto \lclean
-\end{align*}
+First, define $\Gamma$ by $\Gamma(X) = \lclean$ for all $X \in \dom\Gamma_\text{ssa}$.
 Then, compute a finite map $\Delta$ and a derivation tree $\D$ 
 such that $\typestep{\Gamma}{s}{\Delta}$ (by $\D$) holds.
 Output \text{POSSIBLE\_FLOW} if $\D$ contains a derivation of form
@@ -819,6 +798,20 @@ In the absence of these derivations, output \text{NO\_FLOW}.
     The algorithm schema $\A(s, \Gamma_\text{ssa}, \Delta_\text{ssa})$ describes a sound dataflow algorithm.
 \end{corollary}
 
-% TODO discuss unknown versus tracked
-% move it from 3.4 to here
-% also, different op-semantics this could be expressed
+The difference between $\ltracked$ and $\lunknown$ is not reflected in the soundness theorem,
+but it can be used to tailor the warnings given to the user.
+If a sink is marked with $\ltracked$, that sink will abort the program, if it is ever
+executed.
+A sink that is marked with $\lunknown$ may abort the program, depending on control flow.
+There is even the possibility that no control flow path exists at which the sink aborts 
+the program.
+Thus, the annotated types could be used to show sinks with $\ltracked$ with a higher
+priority than sinks with $\lunknown$.
+
+With a different operational semantics, this behaviour could be formalized, allowing us to
+formally make the distinction in the output of the algorithm as well.
+Currently, both $\ltracked$ and $\lunknown$ get mapped to POSSIBLE\_FLOW,
+as the algorithm definition does not take dead code into account.
+
+Furthermore, algorithmic improvements could reduce the number of sinks marked with 
+$\lunknown$, but not the number of sinks marked with $\ltracked$.

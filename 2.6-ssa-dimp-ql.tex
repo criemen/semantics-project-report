@@ -201,6 +201,7 @@ of one variable are different nodes in the dataflow graph.
 \subsubsection*{Step 2 --- Labeling Nodes}
 \newcommand{\coloredset}[1]{{\color{red}$\{#1\}$}}
 \newcommand{\setclean}{\coloredset{\labclean}}
+\newcommand{\setempty}{{\color{red}$\emptyset$}}
 \newcommand{\settracked}{\coloredset{\labtracked}}
 \newcommand{\setboth}{\coloredset{\labclean, \labtracked}}
 \newcommand{\clclean}{:\ {\color{red}$\lclean$}}
@@ -288,17 +289,17 @@ We have included the annotated dataflow graph here at several stages of the algo
 \begin{figure}[h]
     \begin{tikzpicture}[roundnode/.style={rectangle,rounded corners=1ex,draw=black!100,thick},->,thick]
         \node[roundnode] (storez0) at(0, 1) {$\storecmd{Z0}{1}$ \setclean};
-        \node[roundnode] (phiz3) at (0, 0) {$\phistore{Z3}{Z0}{Z2}$};
-        \node[roundnode] (varaccessbool) at (6, 0) {VarAccess $Z3$};
-        \node[roundnode] (multvaraccess) at (6, -1) {VarAccess $Z3$};
+        \node[roundnode] (phiz3) at (0, 0) {$\phistore{Z3}{Z0}{Z2}$ \setempty};
+        \node[roundnode] (varaccessbool) at (6, 0) {VarAccess $Z3$ \setempty};
+        \node[roundnode] (multvaraccess) at (6, -1) {VarAccess $Z3$ \setempty};
         \node[roundnode] (source) at (6, -2) {$\source{Z3 * X}$  \settracked};
-        \node[roundnode] (storemult) at (6, -3) {$\storecmd{Z1}{\source{Z3 * X}}$};
+        \node[roundnode] (storemult) at (6, -3) {$\storecmd{Z1}{\source{Z3 * X}}$ \setempty};
         \node[roundnode] (multvaraccess2) at (0, 2) {VarAccess $X$  \setclean};
-        \node[roundnode] (varaccessz4) at (0, -1) {VarAccess $Z3$ };
-        \node[roundnode] (storez1) at (0, -2) {$\storecmd{Z1}{Z3}$ };
-        \node[roundnode] (phiz2) at (0, -3) {$\phistore{Z2}{Z1}{Z1}$  };
-        \node[roundnode] (varaccessz42) at (-5, -3) {VarAccess $Z3$ };
-        \node[roundnode] (sink) at (-5, -4) {$\sink{Z3}$};
+        \node[roundnode] (varaccessz4) at (0, -1) {VarAccess $Z3$ \setempty};
+        \node[roundnode] (storez1) at (0, -2) {$\storecmd{Z1}{Z3}$ \setempty};
+        \node[roundnode] (phiz2) at (0, -3) {$\phistore{Z2}{Z1}{Z1}$ \setempty};
+        \node[roundnode] (varaccessz42) at (-5, -3) {VarAccess $Z3$ \setempty};
+        \node[roundnode] (sink) at (-5, -4) {$\sink{Z3}$ \setempty};
         \draw (storez0.south) -- (phiz3.north);
         \draw (phiz3.east) -- (varaccessbool.west);
         \draw (phiz3.east) -- (multvaraccess.west);
@@ -311,11 +312,11 @@ We have included the annotated dataflow graph here at several stages of the algo
         \draw (varaccessz42.south) -- (sink.north);
         \draw (source.south) -- (storemult.north);
         \node[roundnode] (ivarx) at (0, 7) {VarAccess $X$ \setclean};
-        \node[roundnode] (i0getsx) at (0, 6) {$\storecmd{I0}{X}$};
-        \node[roundnode] (phii2) at (0, 5) {$\phistore{I2}{I0}{I1}$};
-        \node[roundnode] (readi21) at (-4, 4) {VarAccess $I2$ };
-        \node[roundnode] (readi22) at (4, 4) {VarAccess $I2$ };
-        \node[roundnode] (writei1) at (7, 3) {$\storecmd{I1}{I2 - I1}$  \setclean};
+        \node[roundnode] (i0getsx) at (0, 6) {$\storecmd{I0}{X}$ \setempty};
+        \node[roundnode] (phii2) at (0, 5) {$\phistore{I2}{I0}{I1}$ \setempty};
+        \node[roundnode] (readi21) at (-4, 4) {VarAccess $I2$ \setempty};
+        \node[roundnode] (readi22) at (4, 4) {VarAccess $I2$ \setempty};
+        \node[roundnode] (writei1) at (7, 3) {$\storecmd{I1}{I2 - I1}$ \setclean};
         \draw (ivarx.south) -- (i0getsx.north);
         \draw (i0getsx.south) -- (phii2.north);
         \draw (phii2.south) -- (readi21.north);
@@ -602,22 +603,6 @@ see that there is a path from the source to the sink, so that program is unsafe.
 The query actually implementing the user-facing analysis is given in \hyperref[lst:query]{query.ql}.
 It is very simple, it outputs a list of sinks if their annotated type is 
 either $\ltracked$ or $\lunknown$.
-If the list is empty, the program is safe and it is guaranteed by~\autoref{thm:soundness-df}
+If the list is empty, the program is safe and it is guaranteed by~\autoref{cor:soundness-df}
 that the program has no dataflow.
 If the list is not empty, no assertion about the program correctness can be given.
-
-% TODO make this more precise, only for soundness theorem
-The difference between $\ltracked$ and $\lunknown$ is not reflected in the theoretical framework,
-but it can be used to tailor the warnings given to the user.
-If a sink is marked with $\ltracked$, that sink will abort the program, if it is ever
-executed.
-A sink that is marked with $\lunknown$ may abort the program, depending on control flow.
-There is even the possibility that no control flow path exists at which the sink aborts 
-the program.
-Thus, the annotated types could be used to show sinks with $\ltracked$ with a higher
-priority than sinks with $\lunknown$.
-
-With a different operational semantics, this behaviour could be formalized, allowing us to
-formally make the distinction in the output of the algorithm as well.
-Currently, both $\ltracked$ and $\lunknown$ get mapped to POSSIBLE\_FLOW,
-as the algorithm definition does not take dead code into account.
