@@ -462,27 +462,23 @@ We introduce the following judgements:
 Judgement \fbox{$\typestep{\Gamma}{a}{L}$}:
 \begin{align*}
     &\trule{DF-Num}{}{\typestep{\Gamma}{\overline{n}}{\lclean}}\qquad
-    \trule{DF-Loc}{}{\typestep{\Gamma}{X}{\Gamma(X)}}\qquad
-    \trule{DF-Plus}{\typestep{\Gamma}{a_0}{L_0}\qquad\typestep{\Gamma}{a_1}{L_1}}
-    {\typestep{\Gamma}{a_0+a_1}{\lclean}}\\
-    &\trule{DF-Minus}{\typestep{\Gamma}{a_0}{L_0}\qquad\typestep{\Gamma}{a_1}{L_1}}
-    {\typestep{\Gamma}{a_0-a_1}{\lclean}}\qquad
-    \trule{DF-Times}{\typestep{\Gamma}{a_0}{L_0}\qquad\typestep{\Gamma}{a_1}{L_1}}
-    {\typestep{\Gamma}{a_0 \times a_1}{\lclean}}\\
+    \trule{DF-Loc}{}{\typestep{\Gamma}{X}{\Gamma(X)}}\\
     &\trule{DF-Source}{\typestep{\Gamma}{a}{L}}
     {\typestep{\Gamma}{\source{a}}{\ltracked}}\\
+    &\trule{DF-Plus}{\typestep{\Gamma}{a_0}{L_0}\qquad\typestep{\Gamma}{a_1}{L_1}}
+    {\typestep{\Gamma}{a_0+a_1}{\lclean}}\\
+    &\ldots
 \end{align*}
 Judgement \fbox{$\typestmt{\Gamma}{b}$}:
 \begin{align*}
     &\trule{DF-Bool}{}{\typestmt{\Gamma}{t}}\qquad
     \trule{DF-Eq}{\typestep{\Gamma}{a_0}{L_0}\qquad \typestep{\Gamma}{a_1}{L_1}}
     {\typestmt{\Gamma}{a_0 = a_1}}\\
-    &\trule{DF-Leq}{\typestep{\Gamma}{a_0}{L_0}\qquad \typestep{\Gamma}{a_1}{L_1}}
-    {\typestmt{\Gamma}{a_0 \leq a_1}}\qquad
-    \trule{DF-Neg}{\typestmt{\Gamma}{b}}
+    &\trule{DF-Neg}{\typestmt{\Gamma}{b}}
     {\typestmt{\Gamma}{\neg b}}\qquad
     \trule{DF-And}{\typestmt{\Gamma}{b_0}\qquad\typestmt{\Gamma}{b_1}}
     {\typestmt{\Gamma}{b_0 \land b_1}}\\
+    &\ldots
 \end{align*}
 \\
 Judgement \fbox{$\typestep{\Gamma;\Delta_0;\Delta_1}{\philist}{\Delta}$}:
