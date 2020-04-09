@@ -98,7 +98,7 @@ The node set of the dataflow graph contains all AST nodes of the following form:
     \item all $\varphi$-nodes
 \end{itemize}
 
-% tagged with an annotated type
+% TODO tagged with an annotated type
 % make sure annotated type is used consistently
 All of these nodes then get tagged in step 2 with a label.
 For the expressions, this directly corresponds to the type in the refined type system
@@ -285,7 +285,6 @@ We have included the annotated dataflow graph here at several stages of the algo
      ~\autoref{fig:label-graph-3}
 \end{enumerate}
 
-%TODO add red empty set to all nodes
 \begin{figure}[h]
     \begin{tikzpicture}[roundnode/.style={rectangle,rounded corners=1ex,draw=black!100,thick},->,thick]
         \node[roundnode] (storez0) at(0, 1) {$\storecmd{Z0}{1}$ \setclean};
@@ -429,6 +428,7 @@ graph (according to the rules described above).
 
 \newcommand{\n}{\textit{node}}
 \newcommand{\lab}{\textit{label}}
+\newcommand{\typ}{\textit{type}}
 \newcommand{\labtwo}{\textit{label2}}
 \newcommand{\prev}{\textit{prev}}
 \begin{align*}
@@ -442,7 +442,7 @@ graph (according to the rules described above).
     &)
 \end{align*}
 
-% labunknown here??
+% TODO labunknown here??
 \begin{align*}
     \texttt{nodeLabel}(\n, \lab) :\iff &\texttt{nodeLabelCand}(\n, \labclean) \land \\
     &\texttt{nodeLabelCand}(\n, \labtracked) \land \lab = \labunknown \\
@@ -457,9 +457,6 @@ In this example, there is a dependency of \texttt{nodeLabel} on \texttt{nodeLabe
 but not the other way round.
 Thus, the predicate \texttt{nodeLabelCand} gets computed first, so that the evaluation
 of \texttt{nodeLabel} can use the predicate \texttt{nodeLabelCand} in its computations.
-
-%While the same logical formulation could probably also written in Prolog,
-%at least on graphs with cycles Prolog would likely not terminate.
 
 \subsubsection*{Recovering a Typing Derivation from a Labelled Dataflow Graph}
 The information computed in step 2 is enough to detect unsafe sinks.
@@ -558,7 +555,7 @@ Thus, it can safely skip the entire part of the rules that deal with scoping.
 %or another $\varphi$-node).
 
 \subsubsection*{Simplification of the Algorithm}
-% label set empty, or label set track, empty set gets mapped to clean, tracked to unknown
+% TODO label set empty, or label set track, empty set gets mapped to clean, tracked to unknown
 % we could still use the same lattice for the theory
 % label is now tracked
 In practice, we can optimize the algorithm even more.
