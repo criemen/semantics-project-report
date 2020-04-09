@@ -505,10 +505,10 @@ Judgement \fbox{$\typestep{\Gamma}{s}{\Delta}$}:
     &\trule{DF-Sink}{\typestep{\Gamma}{a}{L}}{\typestep{\Gamma}{\sink{a}}{[]}}\\
 \end{align*}
 
-% TODO pull out gamma as concretization function, maps lattice points to subsets
-% FOLLOWING abstr intr, coceau+coceau reference
-\begin{definition}[Store-Matching]
-    Let $\gamma:\lattice \to \P(\StoreDomain)$ by defined by
+\begin{definition}[Concretization Function, ~\cite{abstractinterpretation}]
+    Let $\gamma:\lattice \to \P(\StoreDomain)$ be the concretization function in the abstract interpretation framework,
+    as presented in~\cite{abstractinterpretation}.
+    The concretization function is defined by
     \begin{align*}
         &\gamma:\lattice \to \P(\StoreDomain)\\
         &\gamma(L) = \begin{cases}
@@ -517,6 +517,9 @@ Judgement \fbox{$\typestep{\Gamma}{s}{\Delta}$}:
             \StoreDomain & \text{if }L = \lunknown\\
         \end{cases}
     \end{align*}
+\end{definition}
+
+\begin{definition}[Store-Matching]
     A store $\store$ \emph{matches a description} $\Gamma: \Loc \partialf \lattice$ if it holds that
     \begin{equation*}
         \matches{\store}{\Gamma} \longeq \dom\store = \dom\Gamma \land \forall X: \sigma(X) \in \gamma(\Gamma(X))
