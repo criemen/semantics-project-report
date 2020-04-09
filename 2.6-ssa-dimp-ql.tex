@@ -98,13 +98,11 @@ The node set of the dataflow graph contains all AST nodes of the following form:
     \item all $\varphi$-nodes
 \end{itemize}
 
-% TODO tagged with an annotated type
-% make sure annotated type is used consistently
-All of these nodes then get tagged in step 2 with a label.
+All of these nodes then get tagged in step 2 with an annotated type.
 For the expressions, this directly corresponds to the type in the refined type system
 as presented in~\autoref{sec:df-theory}.
-For assign statements and $\varphi$-nodes, this label corresponds to the type of 
-the variable that is defined, and for sinks the label corresponds to the type
+For assign statements and $\varphi$-nodes, this type corresponds to the type of 
+the variable that is defined, and for sinks the type corresponds to the type
 of the expression that is passed to the sink.
 
 We can restrict the node set to these expression kinds, as all other expression kinds
@@ -120,7 +118,7 @@ by the label of \textit{node1}.
 Thus, the edges of the dataflow graph indicate along which paths dataflow tracking marker propagate
 through the program.
 
-For example, if an expression node has type $\ltracked$,
+For example, if an expression node has annotated type $\ltracked$,
 all downstream expression nodes on a path from the first expression node 
 have type either $\ltracked$ or $\lunknown$ (and not $\lclean$).
 We combine this propagation information with the location of the sinks and sources 
@@ -271,7 +269,7 @@ The predicate computes the best-matching annotated type for each node using the 
 This happens after the propagation of labels (in \texttt{nodeLabelCand}) stabilizes.
 
 With that information, the dataflow query can report all nodes of type sink.
-If any of them has the type $\lunknown$ or $\ltracked$, then we know that the sink
+If any of them has the annotated type $\lunknown$ or $\ltracked$, then we know that the sink
 is unsafe, because it (potentially) reads from a source.
 
 To see how the candidate label computation works in practice, recall the dataflow graph
@@ -490,7 +488,7 @@ Applied on example program as presented in~\autoref{fig:ssa-dimp-example}
 and using the annotated dataflow graph from~\autoref{fig:label-graph-3}, we 
 can annotate all variable definitions with their type.
 The types make up the contents of the $\Delta$ maps.
-Given the types (and thus the $\Delta$ maps), the whole derivation tree can be easily written down.
+Given these types (and thus the $\Delta$ maps), the whole derivation tree can be easily written down.
 
 \newcommand{\redltracked}{{\color{red}\ltracked}}
 \newcommand{\redlclean}{{\color{red}\lclean}}
@@ -539,43 +537,28 @@ In particular, it only has to worry about the introduction of flow in expression
 and the propagation of the tracked marking to variable stores and to sinks.
 Thus, it can safely skip the entire part of the rules that deal with scoping.
 
-%The tracked marker for variable reads is fully determined by the type context,
-%which we do not explicitly compute.
-%In the implicit formulation, a variable access gets the tracking marker of its definition,
-%which is, because the program is in SSA form, unique.
-%If the variable definition is an assign statement, this follows immediately from the
-%\textsc{DF-Assign} rule - the variable is tagged with the marker of the expression.
-%Thus, we have an edge from the expression node to that of the 
-%If the variable is defined in a $\varphi$-node, we have compute the least upper bound of 
-%both variables that make up the $\varphi$-node.
-%This is implicit in the algorithm, as the $\varphi$-node will have an incoming edge if 
-%at least one of the variables is marked with $\ltracked$ or $\lunknown$.
-%However, in both cases, we have flow from a variable definition (either an assign
-%statement or a $\varphi$-node) to a variable read (either a VarAccess expression, 
-%or another $\varphi$-node).
-
 \subsubsection*{Simplification of the Algorithm}
-% TODO label set empty, or label set track, empty set gets mapped to clean, tracked to unknown
-% we could still use the same lattice for the theory
-% label is now tracked
 In practice, we can optimize the algorithm even more.
 This is done by reducing the lattice and only keeping $\lclean$ and $\lunknown$.
-Then, we do not need an explicit node label anymore, a predicate can now
-keep track of all nodes that are marked with $\labunknown$ and that then later 
-get assigned the type $\lunknown$.
-As we know that a node label set of $\{\labclean, \labunknown\}$ with a 2-point lattice
-would result in a type of $\lunknown$ anyways, we only store one bit of information
-per node - namely if it is marked as unknown or not.
-This bit of information is kept track if implicitly - if a node is in the predicate 
-tracking dataflow, it is marked with \labunknown{}, otherwise it is labeled with \labclean{}.
+
+Then, the first step can be replaced by keeping track of nodes that get data from a source 
+by marking them with $\{\labtracked\}$.
+The other label is represented by $\emptyset$.
+Thus, we do not need an explicit node label anymore, a predicate can now
+just keep track of all nodes that are marked with $\{\labtracked\}$.
 This reduces the predicate size (and thus the computation time).
-The nodes with label \labunknown{} are the only relevant nodes for dataflow.
+
+In the second step, the labelling with the empty set
+ (i.e.\ a node that is not contained in the predicate)
+then gets assigned the type $\lclean$, and a node that is 
+labeled with $\{\labtracked\}$ gets the type $\lunknown$.
 
 Furthermore, we can restrict ourselves to connected components of the dataflow graph
 that start in a source node.
 All other parts of the dataflow graph can be discarded, as they do not contribute 
 to detecting dataflow.
-In fact, nodes in this restricted dataflow graph are getting the type $\lunknown$ if there
+
+In fact, nodes in this restricted dataflow graph are typed with $\lunknown$ if there
 exists a path from a source to the node.
 Especially, this means a program is (potentially) dangerous if there exists a path
 from a node of type source to a node of type sink.
