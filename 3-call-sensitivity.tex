@@ -1,7 +1,19 @@
 % !TEX root = main.tex
 \section{Call Sensitivity}
-% TODO see if this can be tied a bit more stronger to the theory, might be selling it a bit short
-% LOC of the DF library, used on large codebases
+In this section, we switch gears.
+In the previous sections, we looked at how to formalize what dataflow is, and how 
+to implement a provably sound dataflow algorithm in QL.
+Now we move on to the discussion of an actual, production-grade dataflow library
+that is used to analyze Java programs with millions of lines of code.
+This dataflow library is obviously much more sophisticated than the implementation given above,
+consisting of several thousands line of QL code,
+as it deals with the whole Java semantics, tracks flow through fields stored in 
+objects, and works intraprocedurally.
+
+We describe how we designed and implemented a restricted notion of call sensitivity
+for the dataflow library for Java.
+Our contribution was accepted by Semmle (now Github), and is live of LGTM.com.
+% TODO see if this can be tied a bit more stronger to the theory
 \label{sec:call-sens}
 \subsection{Motivation}
 A common pattern used by software developers is to 
@@ -199,6 +211,62 @@ Only the predicate \texttt{isUnreachableInCall} would need to be modified
 to also detects unreachable basic blocks in the presence of enum constant arguments.
 Thus, adding support for enum constants is a software engineering effort
 with no significant academic interest.
+
+\subsection{Path Sensitivity}
+The initial goal of this project was to make the dataflow analysis path-sensitive
+to reduce false positives. Code like in~\autoref{lst:ex-ps-1} is currentyl detected 
+as having (potentially) dataflow.
+
+\begin{listing}[h]
+    \begin{javacode}
+public void f(boolean b) {
+    Object o = null;
+    if (b) {
+        o = source();
+    }
+    if (!b) {
+        sink(o);
+    }
+}
+    \end{javacode}
+    \caption{Simple example of path-sensitive dataflow}
+    \label{lst:ex-ps-1}
+\end{listing}
+
+\begin{listing}[h]
+    \begin{javacode}
+public void f() {
+    boolean[] boolArray = {true, false};
+    Object x = null;
+    for(boolean b: boolArray) {
+        if (b) {
+            x = source();
+        }
+        if (!b) {
+            sink(x);
+        }
+    }
+}
+    \end{javacode}
+    \caption{Example of a false negative with the implemented algorithm}
+    \label{lst:ps-false-negative}
+\end{listing}
+
+However, the initial implementation had a serious soundness problem, that only was discovered
+quite late in the implementation process.
+Namely, it was wrongly not reporting code like in~\autoref{lst:ps-false-negative} to have dataflow.
+This was understandably not acceptable to the CodeQL developers.
+
+The focus of the project then shifted to understanding the dataflow algorithm better,
+which is when sections 2 and 3 were developed.
+Now, using these tools to formalize a path-sensitive dataflow algorithm, proving it sound
+and also providing a sound implementation for Java is not feasible in the time-constraints
+of this project.
+
+However, using the understanding gained while developing the theoretical part of the project,
+we can at least outline a solution that we think is worth exploring.
+
+
 
 % TODO reflections about path-sensitivity
 % maybe doing theory first would have helped with the practical part
