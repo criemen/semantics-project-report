@@ -119,6 +119,7 @@ At every point where $\varphi$-nodes can placed in the control flow graph
 of a dIMP program, the syntax of SSA-dIMP has an explicit list of $\varphi$-nodes.
 
 \subsubsection*{The SSA Type System}
+% TODO possible boolean type?
 A program in SSA-dIMP is only valid if it conforms to the SSA properties.
 To enforce that, we describe a simple type system.
 Every well-typed expression has type $\tint$, thus the set of all types is $\Tau = \{ \tint \}$.
@@ -128,13 +129,12 @@ $\Gamma$ keeps tracks of the type of the variables defined in the store before a
 statement is executed, and $\Delta$ keeps track of the types of the 
 newly defined variables while executing that statement.
 
-% TODO possible boolean type?
 We will use $\dunion$ to be the union of maps, 
 where we assert that the domains of the maps are disjoint.
 
-% TODO weird sentence!
-Then we proceed to show that these finite maps are enough to prove that the program is indeed in SSA form.
-The easiest way to get these finite maps is to run an SSA construction algorithm on a dIMP program.
+After giving the typing rules, 
+we state that type contexts $\Gamma$ and $\Delta$ are enough to prove that the program is indeed in SSA form.
+The easiest way to get them is to run an SSA construction algorithm on a dIMP program.
 It is a gap in the provided proofs that we do not show that every dIMP program
 can be transformed in a valid SSA-dIMP program (especially, we omit showing that
 $\varphi$-nodes will be placed exactly at the places they are allowed in the syntax
