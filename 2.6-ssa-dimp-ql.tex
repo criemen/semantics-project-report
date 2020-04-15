@@ -17,7 +17,7 @@ omitted.
 The most complicated feature is that the Java dataflow library supports tracking 
 flow through fields, i.e.\ if a variable that received data from a source 
 is assigned to a field in an object, and a sink later reads from that field,
-dataflow is detected.
+unsafe dataflow is detected.
 Furthermore, the Java dataflow library is an interprocedural analysis.
 Thus, the implementation has to be done very carefully to exhibit good
 performance on large projects.
@@ -107,10 +107,10 @@ of the expression that is passed to the sink.
 
 We can restrict the node set to these expression kinds, as all other expression kinds
 are always tagged with $\lclean$.
-The only relevant statements for dataflow are assign and sink, as all DF rules for the 
+The only relevant statements for detecting unsafe dataflow are assign and sink, as all DF rules for the 
 other statements just pass through labels, but don't define new labels.
 Thus, the node set contains  exactly the relevant elements of the AST that are involved in determining
-if a program has dataflow or not.
+if a program has unsafe dataflow or not.
 
 Building the dataflow graph is done by defining the \texttt{flowStep} relation on the node set.
 It contains the tuple $(\textit{node1}, \textit{node2})$ if the label of \textit{node2} is directly affected
@@ -122,7 +122,7 @@ For example, if an expression node has annotated type $\ltracked$,
 all downstream expression nodes on a path from the first expression node 
 have type either $\ltracked$ or $\lunknown$ (and not $\lclean$).
 We combine this propagation information with the location of the sinks and sources 
-to detect potential dataflow.
+to detect potential unsafe dataflow.
 
 The dataflow graph contains the following edges:
 \begin{itemize}
@@ -199,7 +199,7 @@ of one variable are different nodes in the dataflow graph.
 \subsubsection*{Step 2 --- Labeling Nodes}
 \newcommand{\coloredset}[1]{{\color{red}$\{#1\}$}}
 \newcommand{\setclean}{\coloredset{\labclean}}
-\newcommand{\setempty}{{\color{red}$\emptyset$}}
+\newcommand{\setempty}{{\color{red}$\{\}$}}
 \newcommand{\settracked}{\coloredset{\labtracked}}
 \newcommand{\setboth}{\coloredset{\labclean, \labtracked}}
 \newcommand{\clclean}{:\ {\color{red}$\lclean$}}
@@ -529,7 +529,7 @@ This is very different from the algorithm schema with the DF rules that depends 
 typing schema, and this might be puzzling at first.
 This apparent contradiction can be resolved by seeing that the DF typing 
 rules serve two purposes --- first, they are a refinement of the SSA typing rules,
-and second, they describe an approximation on where dataflow occurs.
+and second, they describe an approximation on where unsafe dataflow occurs.
 
 As the dataflow algorithm as presented here assumes that the program is already in 
 SSA form, it can do substantially less than what is described in the DF rules.
@@ -556,7 +556,7 @@ labeled with $\{\labtracked\}$ gets the type $\lunknown$.
 Furthermore, we can restrict ourselves to connected components of the dataflow graph
 that start in a source node.
 All other parts of the dataflow graph can be discarded, as they do not contribute 
-to detecting dataflow.
+to detecting unsafe dataflow.
 
 In fact, nodes in this restricted dataflow graph are typed with $\lunknown$ if there
 exists a path from a source to the node.
@@ -584,5 +584,5 @@ The query actually implementing the user-facing analysis is given in \hyperref[l
 It is very simple, it outputs a list of sinks if their annotated type is 
 either $\ltracked$ or $\lunknown$.
 If the list is empty, the program is safe and it is guaranteed by~\autoref{cor:soundness-df}
-that the program has no dataflow.
+that the program has no unsafe dataflow.
 If the list is not empty, no assertion about the program correctness can be given.

@@ -1,7 +1,7 @@
 % !TEX root = main.tex
 \section{Call Sensitivity}
 In this section, we switch gears.
-In the previous sections, we looked at how to formalize what dataflow is, and how 
+In the previous sections, we looked at how to formalize what unsafe dataflow is, and how 
 to implement a provably sound dataflow algorithm in QL.
 Now we move on to the discussion of an actual, production-grade dataflow library
 that is used to analyze Java programs with millions of lines of code.
@@ -187,7 +187,7 @@ the approach and introduced call-sensitive path pruning for C\#.
 %Maybe find a real-world false-positive that has been removed, Anders had one 
 % or two in JDK
 
-\subsection{Future Improvements}
+\subsection{Future Improvements to Call Sensitivity}
 The analysis described in this pattern can be further generalized, as
 this pattern applies to more than just functions that take a Boolean parameter.
 Boolean types are generalized by enumerated types, providing (usually) more than two options.
@@ -211,150 +211,3 @@ Only the predicate \texttt{isUnreachableInCall} would need to be modified
 to also detects unreachable basic blocks in the presence of enum constant arguments.
 Thus, adding support for enum constants is a software engineering effort
 with no significant academic interest.
-
-\subsection{Path Sensitivity}
-The initial goal of this project was to make the dataflow analysis path-sensitive
-to reduce false positives. Code like in~\autoref{lst:ex-ps-1} is currentyl detected 
-as having (potentially) dataflow.
-
-\begin{listing}[h]
-    \begin{javacode}
-public void f(boolean b) {
-    Object o = null;
-    if (b) {
-        o = source();
-    }
-    if (!b) {
-        sink(o);
-    }
-}
-    \end{javacode}
-    \caption{Simple example of path-sensitive dataflow}
-    \label{lst:ex-ps-1}
-\end{listing}
-
-\begin{listing}[h]
-    \begin{javacode}
-public void f() {
-    boolean[] boolArray = {true, false};
-    Object x = null;
-    for(boolean b: boolArray) {
-        if (b) {
-            x = source();
-        }
-        if (!b) {
-            sink(x);
-        }
-    }
-}
-    \end{javacode}
-    \caption{Example of a false negative with the implemented algorithm}
-    \label{lst:ps-false-negative}
-\end{listing}
-
-However, the initial implementation had a serious soundness problem, that only was discovered
-quite late in the implementation process.
-Namely, it was wrongly not reporting code like in~\autoref{lst:ps-false-negative} to have dataflow.
-It boils down that the implementation was ignoring dataflow in~\autoref{lst:ps-false-negative},
-because both variable reads refer to the same variable (even in SSA), but the 
-variable can have different values in different loop iterations.
-This unsoundness was understandably not acceptable to the CodeQL developers.
-
-The focus of the project then shifted to understanding the dataflow algorithm better,
-which is when sections 2 and 3 were developed.
-Now, using these tools to formalize a path-sensitive dataflow algorithm, proving it sound
-and also providing a sound implementation for Java is not feasible in the time-constraints
-of this project.
-
-However, using the understanding gained while developing the theoretical part of the project,
-we can at least outline a possible solution to the soundness problem.
-While this solution has good chances of being sound, it raises performance concerns
-that might make it prohibitive to implement in a intraprocedural setting.
-
-\subsubsection*{Changes to the Algorithm} 
-In order to make the algorithm path-sensitive, we have to look at the labels.
-Right now, the algorithm labels nodes with $\labclean$ and $\labtracked$.
-
-This needs to be changed to track labels together with a dynamic set of constraints.
-These constraints describe the values of the conditionals that need to be true for a value
-to propagate from its creation (a node in the dataflow graph that introduces a new label)
-to any given node. Thus, the constraints in the set are viewed as conjunction.
-
-During label propagation, dataflow nodes in a then-branch of an if statement attach the condition of the
-if to their labels, and in the else-branch the negation of that if statement.
-The same propagation rule is implemented for while loops.
-If this rule leads to an unsatisfiable constraint set, i.e.\ the conjunction of its 
-elements will always evaluate to false, regardless of the variables in the program,
-the label is dropped.
-An example of an unsatisfiable constraint set would be $\{b, \neg b\}$.
-
-Note that getting constraints from nodes in the the dataflow graph alone would only result in a subset of all available
-conditions be attached to the labels, as the dataflow graph is a very coarse subset of 
-the control-flow graph. Thus, there is a loss of precision here that would only be alleviated
-if switching to propagate the dataflow information directly on the control-flow graph.
-That would have huge performance implications, that might be untenable in practice.
-
-At $\varphi$-nodes, both incoming labels are preserved if they have different labels or different constraint sets.
-If the same label is attached to a node with different constraint sets, it means that
-either one of the constraint set holds for that label.
-
-Furthermore, and this is the important difference to our na\"ive implementation suffering from
-soundness problems is that constraints in the constraint set sometimes need to be dropped 
-during dataflow propagation.
-Specifically, all constraints that refer to variables that go out of scope need to be dropped.
-
-Determining which labels to drop exactly based on the dataflow graph alone might
-be very difficult, if not impossible.
-This is because data can flow from a dataflow node to another node,
-and all SSA variables referenced in the constraints are live at both nodes.
-However, the variables could have been re-defined in the meantime, thus possibly having new values.
-This is mainly caused by the dataflow graph skipping over some parts of the
-control-flow graph, so label propagation might not see the re-definition of variables.
-
-A main concern for a sound implementation is thus figuring out when variables in the
-constraint set go out of scope, and the constraint needs to be dropped.
-
-At the end, dataflow is detected if a sink has at least one label of type $\labtracked$,
-regardless of the constraint set.
-
-\subsubsection*{Changes to the Theory}
-The theoretical model of dataflow would need to change quite a bit to accomodate 
-a soundness proof of the algorithm outlined above.
-This section is purely speculative, as we haven't done the actual work, and it might turn out
-that it turns out entirely different.
-
-In our discussion of the dataflow algorithm without path-sensitivity, we have two slightly
-different approaches in theoretical world, that keeps track of annotated types, whereas
-the algorithm implementation computes these types by using label sets.
-
-If each label gets a constraint set, and labels of the same type (but with different constraint sets)
-can coexist in the same set, this needs to be modelled on the type level as well.
-Furthermore, the typing rules need to allow for the possibility of adding constraints at
-branch points (i.e.\ while and if statements).
-This formulation should be flexible enough that not every condition \emph{needs}
-to contribute to the constraint set, so conditions that are too complicated can be skipped
-by the implementation.
-
-However, on the other hand, the framework needs to be strong enough to be able to prove that if
-two constraints in a constraint set conflict, that the label can be dropped.
-Not having a label assigned at a node after the label propagation stops needs somehow to 
-result in an annotated type that markes variables as clean.
-
-We can conclude this thought experiment by stating that the algorithm implementation and
-the algorithm specification (that should be proven to be sound) need a tighter coupling
-than the framework presented in this project report provides.
-
-\subsubsection*{Practical Feasibility}
-The main concern with path-sensitive extensions of the dataflow algorithm in practice is
-that it is unlikely to work purely on the dataflow graph.
-Probably more than less involvement of the control-flow graph would be needed.
-
-While an algorithm for that could certainly be developed, and, in a reduced setting like
-dIMP, be proven sound, it would probably perform badly.
-The size of the control-flow graph is much bigger than the carefully optimized dataflow graph.
-Especially in an intraprocedural setting, the whole control-flow graph of a program
-consisting of several millions of lines of code is too big run analyses on.
-
-Thus, without further research and some good ideas, it is probably not a good idea
-to spend significant ressources on making an intraprocedural dataflow algorithm path-sensitive
-as outlined above.

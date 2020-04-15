@@ -1,13 +1,17 @@
 % !TEX root = main.tex
-\section{Formalization of Dataflow with dIMP}
+\section{Formalization of Unsafe Dataflow with dIMP}
 
-In this section, we are going to formalize what we mean by dataflow,
-give a algorithm specification for computing dataflow and prove that any algorithm conforming
-to that algorithm specification is a sound dataflow algorithm.
+In this section, we are going to formalize what we mean by a program having unsafe dataflow,
+give a algorithm specification for computing if a program has unsafe dataflow and 
+prove that any algorithm conforming to that algorithm specification is sound.
 
 We use the toy language IMP as presented in~\cite{sat}.
 The lecture notes themselves heavily borrow from~\cite{fsopl} for the
 presentation and semantics of IMP.
+
+We call an algorithm that detects if a program has unsafe dataflow also a dataflow algorithm.
+Dataflow is unsafe, if (user-controlled) values flow, without modification,
+ from a set of sources to a set of sinks.
 
 \subsection{Syntax of dIMP}
 We extend the syntax of IMP a bit
@@ -30,7 +34,7 @@ values.
 
 The intuition here is that for all $n \in \Z$, 
 each value is tagged by either \textbf{c} for clean or \textbf{t} for being tracked
-as having dataflow.
+as having unsafe dataflow.
 If the tag is irrelevant in the current context, we write $\flaggedn{}$ for a tagged
 value.
 A tracked value originates from a source, and is preserved by value-preserving operations.
@@ -314,7 +318,7 @@ We consider the dIMP program shown in ~\autoref{fig:dimp-example}.
                 Z := Z
         ;
         sink Z
-    \end{minted}    
+    \end{minted}
     \caption{The example dIMP program}
     \label{fig:dimp-example}
 \end{figure}
@@ -368,7 +372,7 @@ The first theorem is very easy to prove, and the second theorem is proved later 
     and $\dom{\store_0} = \Delta$.
 \end{theorem}
 
-\subsection{Definition of Dataflow}
+\subsection{Definition of Unsafe Dataflow}
 \begin{definition}[Program]
     A \emph{program} in SSA-dIMP is a command $s$ with finite maps $\Gamma, \Delta$ 
     with $\typestep{\Gamma}{s}{\Delta}$.
@@ -383,10 +387,10 @@ The first theorem is very easy to prove, and the second theorem is proved later 
     This means that in an initial store all values are tagged as being clean.
 \end{definition}
 
-\begin{definition}[Dataflow]
+\begin{definition}[Unsafe Dataflow]
     A tuple $(s, \store, \Gamma, \Delta)$ of a program $s$ and initial store $\store{}$ 
     with $\dom{\store{}} = \Gamma$ and $\initialstore$ 
-    has \emph{dataflow from a source to a sink} if
+    has \emph{(unsafe) dataflow from a source to a sink} if
     $\bigstep{s}{\store{}}{\exception}$ holds.
     This means that the program may abort.
 \end{definition}
@@ -395,23 +399,23 @@ The first theorem is very easy to prove, and the second theorem is proved later 
     A \emph{dataflow algorithm} $\A(s, \Gamma, \Delta)$ computes, given a program $s$
     and an SSA type derivation $\typestep{\Gamma}{s}{\Delta}$,
     whether there exists a store $\store{}$ 
-    such that $\initialstore$ and $(s, \store, \Gamma, \Delta)$ has dataflow from a source to a sink.
+    such that $\initialstore$ and $(s, \store, \Gamma, \Delta)$ has unsafe dataflow from a source to a sink.
     We require $\A(s, \Gamma, \Delta) \in \{\text{POSSIBLE\_FLOW}, \text{NO\_FLOW}\}$.
 \end{definition}
 
 \begin{definition}[Soundness]
     A dataflow algorithm is \emph{sound} if for all tuples $(s, \store, \Gamma, \Delta)$ with $\initialstore$ that
-    have dataflow it holds that $\A(s, \Gamma, \Delta) = \text{POSSIBLE\_FLOW}$.
+    have unsafe dataflow it holds that $\A(s, \Gamma, \Delta) = \text{POSSIBLE\_FLOW}$.
 \end{definition}
 
 \begin{definition}[Completeness]
     A dataflow algorithm is \emph{complete} if for all tuples $(s, \store, \Gamma, \Delta)$ with $\initialstore$ that
-    do not have dataflow it holds that $\A(s, \Gamma, \Delta) = \text{NO\_FLOW}$.
+    do not have unsafe dataflow it holds that $\A(s, \Gamma, \Delta) = \text{NO\_FLOW}$.
 \end{definition}
 
 \begin{definition}[False Positive]
     A program $s$ for which there exists no store $\store$ such that 
-    $(s, \initialstore, \Gamma, \Delta)$ with $\initialstore{}$ has dataflow,
+    $(s, \initialstore, \Gamma, \Delta)$ with $\initialstore{}$ has unsafe dataflow,
      but for which $\A(s, \Gamma, \Delta) = \text{POSSIBLE\_FLOW}$ holds
     is called a \emph{false positive} of the algorithm.
 \end{definition}
@@ -434,7 +438,7 @@ In this section, we refine the type system presented for SSA to be viable as a
 general-purpose constraint system.
 This constraint system can then be solved via fixed-point iteration.
 The system is designed in a way that it can be easily adapted to different analyses.
-We instantiate this system to determine if programs have dataflow.
+We instantiate this system to determine if programs have unsafe dataflow.
 
 Let $\lattice$ be a poset.
 Let $\Gamma, \Delta: \Loc \partialf \lattice$ with finite domain.
@@ -673,10 +677,9 @@ used to prove the soundness of type systems.
 We then have the following (general) soundness property of the dataflow analysis:
 \begin{theorem}[Soundness of the DF rules]
     \label{thm:df-soundness}
-    Let $s$ with $\typestep{\Gamma_\text{ssa}}{s}{\Delta_\text{ssa}}$ be a program in SSA form and let $\store$ be a store
-    with $\dom\store = \dom\Gamma_\text{ssa}$ and $\matches{\store}{\Gamma}$.
-    Let $\E$ be the bigstep derivation of $\bigstep{s}{\store}{\excstore{}'}$
-    and $\typestep{\Gamma}{s}{\Delta}$ (by $\D$).
+    Let $s$ be a program in SSA form, $\typestep{\Gamma}{s}{\Delta}$ (by $\D$)
+    and let $\store$ be a store with $\matches{\store}{\Gamma}$.
+    Let $\E$ be the bigstep derivation of $\bigstep{s}{\store}{\excstore{}'}$.
     Assume that all sinks in $\D$ are safe.
     Then $\excstore{}' \neq \exception$.
 \end{theorem}
@@ -763,17 +766,17 @@ We then have the following (general) soundness property of the dataflow analysis
     \end{claimproof}
     We apply the claim on $\E_0$ with $\D_0$ and $\D_1$.
 \end{proof}
-
+\iffalse
 \begin{corollary}
-    \label{cor:soundness-df}
-    Let $(s, \Gamma_{ssa}, \Delta_{ssa})$ be a program in SSA form.
-    Define $\Gamma: \dom\Gamma_{ssa} \partialf \lattice$ by setting
-    $\Gamma(X) = \lclean$.
-    Let $\store : \Gamma$, $\E$ be the bigstep derivation of 
-    $\bigstep{s}{\store}{\excstore{}'}$
-    and let $\typestep{\Gamma}{s}{\Delta}$ (by $\D$).
+    Let $s$ be a program in SSA form with
+    $\typestep{\Gamma}{s}{\Delta}$ (by $\D$ with the DF rules).
+    Let $\sigma$ be a store with $\initialstore{}$
+    and $\matches{\store}{\Gamma}$.
+    Let $\E$ be the bigstep derivation of 
+    $\bigstep{s}{\store}{\excstore{}'}$.
     If all sinks in $\D$ are safe, then $\excstore{}' \neq \exception$.
 \end{corollary}
+\fi
 
 We now describe a sound dataflow algorithm schema $\A(s, \Gamma_\text{ssa}, \Delta_\text{ssa})$.
 This algorithm schema can be seen as a general specification for sound dataflow algorithms.
@@ -794,23 +797,42 @@ or
 
 In the absence of these derivations, output \text{NO\_FLOW}.
 \begin{corollary}
+    \label{cor:soundness-df}
     The algorithm schema $\A(s, \Gamma_\text{ssa}, \Delta_\text{ssa})$ describes a sound dataflow algorithm.
 \end{corollary}
+\begin{proof}
+    We prove the corollary by contraposition.
+    If the algorithm outputs \text{POSSIBLE\_FLOW}, there is nothing to prove.
 
-The difference between $\ltracked$ and $\lunknown$ is not reflected in the soundness theorem,
+    If the algorithm outputs \text{NO\_FLOW}, we have to show that no store $\sigma$ 
+    with $\initialstore{}$ exists such that the program aborts.
+    As we have $\matches{\store}{\Gamma}$ by construction of $\Gamma$,
+    we can apply~\autoref{thm:df-soundness}.
+    Thus, in this case the program cannot program, and the algorithm schema 
+    is indeed sound.    
+\end{proof}
+
+The difference between $\ltracked$ and $\lunknown$ at an unsafe sink 
+is not reflected in the soundness theorem,
 but it can be used to tailor the warnings given to the user.
 If a sink is marked with $\ltracked$, that sink will abort the program, if it is ever
-executed.
-A sink that is marked with $\lunknown$ may abort the program, depending on control flow.
-There is even the possibility that no control flow path exists at which the sink aborts 
-the program.
-Thus, the annotated types could be used to show sinks with $\ltracked$ with a higher
+executed. Such a sink almost always constitutes an error of the programmer.
+
+A sink that is marked with $\lunknown$ might, or might not, abort the program depending on control flow.
+There is also the possibility that no control flow path exists at which the sink aborts 
+the program. In this case, marking the sink as unsafe happens only because the analysis
+is not fine-grained enough to detect this.
+
+Thus, the annotated types can be used to show sinks with $\ltracked$ with a higher
 priority than sinks with $\lunknown$.
 
-With a different operational semantics, this behaviour could be formalized, allowing us to
-formally make the distinction in the output of the algorithm as well.
-Currently, both $\ltracked$ and $\lunknown$ get mapped to POSSIBLE\_FLOW,
-as the algorithm definition does not take dead code into account.
+With a different operational semantics where a sink would output the value,
+as well as its flag, we could formally make a distinction 
+if a sink will always get a tainted value, or if that only might happen in some cases.
+With that, we could add \text{HAS\_FLOW} to the possible outputs of the algorithm,
+and make a distinction between $\ltracked$ and $\lunknown$ at sinks.
+This would allow for a stronger soundness theorem.
+Currently, both $\ltracked$ and $\lunknown$ get mapped to the algorithm output POSSIBLE\_FLOW.
 
 Furthermore, algorithmic improvements could reduce the number of sinks marked with 
 $\lunknown$, but not the number of sinks marked with $\ltracked$.

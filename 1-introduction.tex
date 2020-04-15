@@ -68,7 +68,7 @@ For each language, a set of \emph{libraries} assists in the development of queri
 These libraries are implemented in QL.
 First, the libraries abstract away from the database view of the program source code,
 and provide an object-oriented representation of the program.
-Second, features such as taint tracking, dataflow analysis or control flow graphs is implemented in libraries.
+Second, features such as taint tracking, unsafe dataflow analysis or control flow graphs is implemented in libraries.
 For every language supported by the CodeQL analyzers, developers usually re-implement all of these libraries from
 scratch, as sharing components across languages is quite difficult.
 The only exception is the dataflow library, which is separated into a language-agnostic and 
